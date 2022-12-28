@@ -1,0 +1,6 @@
+import os
+
+PG_HOST = os.environ.get('POSTGRES_HOST')
+PG_DATABASE = os.environ.get('POSTGRES_DB')
+PG_USER = os.environ.get('POSTGRES_USER')
+PG_PASSWORD = os.environ.get('POSTGRES_PASSWORD')

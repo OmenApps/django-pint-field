@@ -1,0 +1,30 @@
+version: '3'
+
+volumes:
+  postgres_data: {}
+
+services:
+
+  postgres:
+    image: postgres:12-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # DB persistence
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+
+  app: &app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: django-pint-field
+    depends_on:
+      - postgres
+    volumes:
+      - .:/django-pint-field
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    command: sleep 5d

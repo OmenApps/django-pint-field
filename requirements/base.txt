@@ -1,0 +1,2 @@
+django>=2.2
+pydantic>=1.8
