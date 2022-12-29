@@ -7,9 +7,9 @@ from django.test import TestCase
 from decimal import Decimal
 from pint import DimensionalityError, UndefinedUnitError
 
-from quantityfield.fields import IntegerQuantityFormField, QuantityFormField
-from quantityfield.units import ureg
-from quantityfield.widgets import QuantityWidget
+from django_pint_field.fields import IntegerPintFormField, PintFormField
+from django_pint_field.units import ureg
+from django_pint_field.widgets import PintWidget
 from tests.dummyapp.models import (
     ChoicesDefinedInModel,
     ChoicesDefinedInModelInt,
@@ -20,8 +20,8 @@ Quantity = ureg.Quantity
 
 
 class HayBaleForm(forms.ModelForm):
-    weight = QuantityFormField(base_units="gram", unit_choices=["ounce", "gram"])
-    weight_int = IntegerQuantityFormField(
+    weight = PintFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight_int = IntegerPintFormField(
         base_units="gram", unit_choices=["ounce", "gram", "kilogram"]
     )
 
@@ -31,10 +31,10 @@ class HayBaleForm(forms.ModelForm):
 
 
 class HayBaleFormDefaultWidgets(forms.ModelForm):
-    weight = QuantityFormField(
+    weight = PintFormField(
         base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
-    weight_int = IntegerQuantityFormField(
+    weight_int = IntegerPintFormField(
         base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
@@ -56,11 +56,11 @@ class UnitChoicesDefinedInModelFieldModelFormInt(forms.ModelForm):
 
 
 class NullableWeightForm(forms.Form):
-    weight = QuantityFormField(base_units="gram", required=False)
+    weight = PintFormField(base_units="gram", required=False)
 
 
 class UnitChoicesForm(forms.Form):
-    distance = QuantityFormField(
+    distance = PintFormField(
         base_units="kilometer", unit_choices=["mile", "kilometer", "yard", "feet"]
     )
 
@@ -68,8 +68,8 @@ class UnitChoicesForm(forms.Form):
 class TestWidgets(TestCase):
     def test_creates_correct_widget_for_modelform(self):
         form = HayBaleForm()
-        self.assertIsInstance(form.fields["weight"], QuantityFormField)
-        self.assertIsInstance(form.fields["weight"].widget, QuantityWidget)
+        self.assertIsInstance(form.fields["weight"], PintFormField)
+        self.assertIsInstance(form.fields["weight"].widget, PintWidget)
 
     def test_displays_initial_data_correctly(self):
         form = HayBaleForm(
@@ -120,7 +120,7 @@ class TestWidgets(TestCase):
 
     def test_base_units_is_required_for_form_field(self):
         with self.assertRaises(ValueError):
-            field = QuantityFormField()  # noqa: F841
+            field = PintFormField()  # noqa: F841
 
     def test_quantityfield_can_be_null(self):
         form = NullableWeightForm(data={"weight_0": None, "weight_1": None})
@@ -131,7 +131,7 @@ class TestWidgets(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_base_units_is_included_by_default(self):
-        field = QuantityFormField(base_units="mile", unit_choices=["meters", "feet"])
+        field = PintFormField(base_units="mile", unit_choices=["meters", "feet"])
         self.assertIn("mile", field.units)
 
     def test_widget_field_displays_unit_choices(self):
@@ -170,13 +170,13 @@ class TestWidgets(TestCase):
 
     def test_unit_choices_must_be_valid_units(self):
         with self.assertRaises(UndefinedUnitError):
-            field = QuantityFormField(
+            field = PintFormField(
                 base_units="mile", unit_choices=["gunzu"]
             )  # noqa: F841
 
     def test_unit_choices_must_match_base_dimensionality(self):
         with self.assertRaises(DimensionalityError):
-            field = QuantityFormField(
+            field = PintFormField(
                 base_units="gram", unit_choices=["meter", "ounces"]
             )  # noqa: F841
 

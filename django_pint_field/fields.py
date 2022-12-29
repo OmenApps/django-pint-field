@@ -12,10 +12,9 @@ from decimal import Decimal
 from pint import Quantity
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 
-from quantityfield.helper import check_matching_unit_dimension
-
+from .helper import check_matching_unit_dimension
 from .units import ureg
-from .widgets import QuantityWidget
+from .widgets import PintWidget
 
 DJANGO_JSON_SERIALIZABLE_BASE = Union[
     None, bool, str, int, float, complex, datetime.datetime
@@ -26,7 +25,7 @@ DJANGO_JSON_SERIALIZABLE = Union[
 NUMBER_TYPE = Union[int, float, Decimal]
 
 
-class QuantityFieldMixin(object):
+class PintFieldMixin(object):
     to_number_type: Callable[[Any], NUMBER_TYPE]
 
     # TODO: Move these stuff into an Protocol or anything
@@ -36,7 +35,7 @@ class QuantityFieldMixin(object):
     validate: Callable
     run_validators: Callable
 
-    """A Django Model Field that resolves to a pint Quantity object"""
+    """A Django Model Field that resolves to a pint Pint object"""
 
     def __init__(
         self,
@@ -46,14 +45,14 @@ class QuantityFieldMixin(object):
         **kwargs,
     ):
         """
-        Create a Quantity field
+        Create a Pint field
         :param base_units: Unit description of base unit
         :param unit_choices: If given the possible unit choices with the same
                              dimension like the base_unit
         """
         if not isinstance(base_units, str):
             raise ValueError(
-                'QuantityField must be defined with base units, eg: "gram"'
+                'PintField must be defined with base units, eg: "gram"'
             )
 
         self.ureg = ureg
@@ -81,7 +80,7 @@ class QuantityFieldMixin(object):
         # Check if all unit_choices are valid
         check_matching_unit_dimension(self.ureg, self.base_units, self.unit_choices)
 
-        super(QuantityFieldMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def units(self) -> str:
@@ -227,10 +226,10 @@ class QuantityFieldMixin(object):
             "unit_choices": self.unit_choices,
         }
         defaults.update(kwargs)
-        return super(QuantityFieldMixin, self).formfield(**defaults)
+        return super().formfield(**defaults)
 
 
-class QuantityFormFieldMixin(object):
+class PintFormFieldMixin(object):
     """This formfield allows a user to choose which units they
     wish to use to enter a value, but the value is yielded in
     the base_units
@@ -251,7 +250,7 @@ class QuantityFormFieldMixin(object):
         self.base_units = kwargs.pop("base_units", None)
         if self.base_units is None:
             raise ValueError(
-                "QuantityFormField requires a base_units kwarg of a "
+                "PintFormField requires a base_units kwarg of a "
                 "single unit type (eg: grams)"
             )
         self.units = kwargs.pop("unit_choices", [self.base_units])
@@ -290,11 +289,11 @@ class QuantityFormFieldMixin(object):
 
         widget = kwargs.get("widget", None)
         if widget is None or is_special_admin_widget(widget):
-            widget = QuantityWidget(
+            widget = PintWidget(
                 base_units=self.base_units, allowed_types=self.units
             )
         kwargs["widget"] = widget
-        super(QuantityFormFieldMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def prepare_value(self, value):
 
@@ -339,40 +338,40 @@ class QuantityFormFieldMixin(object):
         return val
 
 
-class QuantityFormField(QuantityFormFieldMixin, forms.FloatField):
+class PintFormField(PintFormFieldMixin, forms.FloatField):
     to_number_type = float
 
 
-class QuantityField(QuantityFieldMixin, models.FloatField):
-    form_field_class = QuantityFormField
+class PintField(PintFieldMixin, models.FloatField):
+    form_field_class = PintFormField
     to_number_type = float
 
 
-class IntegerQuantityFormField(QuantityFormFieldMixin, forms.IntegerField):
+class IntegerPintFormField(PintFormFieldMixin, forms.IntegerField):
     to_number_type = int
 
 
-class IntegerQuantityField(QuantityFieldMixin, models.IntegerField):
-    form_field_class = IntegerQuantityFormField
+class IntegerPintField(PintFieldMixin, models.IntegerField):
+    form_field_class = IntegerPintFormField
     to_number_type = int
 
 
-class BigIntegerQuantityField(QuantityFieldMixin, models.BigIntegerField):
-    form_field_class = IntegerQuantityFormField
+class BigIntegerPintField(PintFieldMixin, models.BigIntegerField):
+    form_field_class = IntegerPintFormField
     to_number_type = int
 
 
-class PositiveIntegerQuantityField(QuantityFieldMixin, models.PositiveIntegerField):
-    form_field_class = IntegerQuantityFormField
+class PositiveIntegerPintField(PintFieldMixin, models.PositiveIntegerField):
+    form_field_class = IntegerPintFormField
     to_number_type = int
 
 
-class DecimalQuantityFormField(QuantityFormFieldMixin, forms.DecimalField):
+class DecimalPintFormField(PintFormFieldMixin, forms.DecimalField):
     to_number_type = Decimal
 
 
-class DecimalQuantityField(QuantityFieldMixin, models.DecimalField):
-    form_field_class = DecimalQuantityFormField
+class DecimalPintField(PintFieldMixin, models.DecimalField):
+    form_field_class = DecimalPintFormField
     to_number_type = Decimal
 
     def __init__(
@@ -391,7 +390,7 @@ class DecimalQuantityField(QuantityFieldMixin, models.DecimalField):
         if not isinstance(max_digits, int) or not isinstance(decimal_places, int):
             raise ValueError(
                 _(
-                    "Invalid initialization for DecimalQuantityField! "
+                    "Invalid initialization for DecimalPintField! "
                     "We expect max_digits and decimal_places to be set as integers."
                 )
             )
@@ -399,7 +398,7 @@ class DecimalQuantityField(QuantityFieldMixin, models.DecimalField):
         if decimal_places < 0 or max_digits < 1 or decimal_places > max_digits:
             raise ValueError(
                 _(
-                    "Invalid initialization for DecimalQuantityField! "
+                    "Invalid initialization for DecimalPintField! "
                     "max_digits and decimal_places need to positive and max_digits"
                     "needs to be larger than decimal_places and at least 1. "
                     "So max_digits=%(max_digits)s and "

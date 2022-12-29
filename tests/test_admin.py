@@ -7,7 +7,7 @@ from django.forms import Field, ModelForm
 
 from typing import Dict
 
-from quantityfield.widgets import QuantityWidget
+from django_pint_field.widgets import PintWidget
 from tests.dummyapp import models
 
 
@@ -40,4 +40,4 @@ def test_admin_widgets(model: Model, field: str):
     admin: ModelAdmin = django.contrib.admin.site._registry[model]
     form: ModelForm = admin.get_form({})()
     form_fields: Dict[str, Field] = form.fields
-    assert type(form_fields[field].widget) == QuantityWidget
+    assert type(form_fields[field].widget) == PintWidget

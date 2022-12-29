@@ -6,7 +6,7 @@ from numbers import Number
 from .units import ureg
 
 
-class QuantityWidget(MultiWidget):
+class PintWidget(MultiWidget):
     def __init__(self, *, attrs=None, base_units=None, allowed_types=None):
         self.ureg = ureg
         choices = self.get_choices(allowed_types)
@@ -14,7 +14,7 @@ class QuantityWidget(MultiWidget):
         attrs = attrs or {}
         attrs.setdefault("step", "any")
         widgets = (NumberInput(attrs=attrs), Select(attrs=attrs, choices=choices))
-        super(QuantityWidget, self).__init__(widgets, attrs)
+        super().__init__(widgets, attrs)
 
     def get_choices(self, allowed_types=None):
         allowed_types = allowed_types or dir(self.ureg)

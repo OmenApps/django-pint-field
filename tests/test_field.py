@@ -13,15 +13,15 @@ from decimal import Decimal
 from pint import DimensionalityError, UndefinedUnitError, UnitRegistry
 from typing import Type, Union
 
-from quantityfield.fields import (
-    BigIntegerQuantityField,
-    DecimalQuantityField,
-    IntegerQuantityField,
-    PositiveIntegerQuantityField,
-    QuantityField,
-    QuantityFieldMixin,
+from django_pint_field.fields import (
+    BigIntegerPintField,
+    DecimalPintField,
+    IntegerPintField,
+    PositiveIntegerPintField,
+    PintField,
+    PintFieldMixin,
 )
-from quantityfield.units import ureg
+from django_pint_field.units import ureg
 from tests.dummyapp.models import (
     BigIntFieldSaveModel,
     CustomUregDecimalHayBale,
@@ -42,7 +42,7 @@ Quantity = ureg.Quantity
 
 class BaseMixinTestFieldCreate:
     # The field that needs to be tested
-    FIELD: Type[Union[Field, QuantityFieldMixin]]
+    FIELD: Type[Union[Field, PintFieldMixin]]
     # Some fields, i.e. the decimal require default kwargs to work properly
     DEFAULT_KWARGS = {}
 
@@ -81,23 +81,23 @@ class BaseMixinTestFieldCreate:
 
 
 class TestFloatFieldCreate(BaseMixinTestFieldCreate, TestCase):
-    FIELD = QuantityField
+    FIELD = PintField
 
 
 class TestIntegerFieldCreate(BaseMixinTestFieldCreate, TestCase):
-    FIELD = IntegerQuantityField
+    FIELD = IntegerPintField
 
 
 class TestBigIntegerFieldCreate(BaseMixinTestFieldCreate, TestCase):
-    FIELD = BigIntegerQuantityField
+    FIELD = BigIntegerPintField
 
 
 class TestPositiveIntegerFieldCreate(BaseMixinTestFieldCreate, TestCase):
-    FIELD = PositiveIntegerQuantityField
+    FIELD = PositiveIntegerPintField
 
 
 class TestDecimalFieldCreate(BaseMixinTestFieldCreate, TestCase):
-    FIELD = DecimalQuantityField
+    FIELD = DecimalPintField
     DEFAULT_KWARGS = {"max_digits": 10, "decimal_places": 2}
 
 
@@ -114,14 +114,14 @@ class TestDecimalFieldCreate(BaseMixinTestFieldCreate, TestCase):
 )
 def test_decimal_init_fail(max_digits, decimal_places, error):
     with pytest.raises(ValueError, match=error):
-        DecimalQuantityField(
+        DecimalPintField(
             "meter", max_digits=max_digits, decimal_places=decimal_places
         )
 
 
 @pytest.mark.parametrize("max_digits, decimal_places", [(2, 0), (2, 2), (1, 0)])
 def decimal_init_success(max_digits, decimal_places):
-    DecimalQuantityField("meter", max_digits=max_digits, decimal_places=decimal_places)
+    DecimalPintField("meter", max_digits=max_digits, decimal_places=decimal_places)
 
 
 @pytest.mark.django_db

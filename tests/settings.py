@@ -4,26 +4,26 @@ from pint import UnitRegistry
 # Allow user specific postgres credentials to be provided
 # in a local.py file
 try:
-    from .local import PG_PASSWORD, PG_USER
+    from .env import PG_PASSWORD, PG_USER
 except ImportError:
     # Define the defaults Travis CI/CD if any parameter was unset
-    PG_USER = "django_pint_field"
-    PG_PASSWORD = "django_pint_field"
+    PG_USER = "postgres"
+    PG_PASSWORD = "postgres"
 
 try:
-    from .local import PG_DATABASE
+    from .env import PG_DATABASE
 except ImportError:
-    PG_DATABASE = "django_pint_field"
+    PG_DATABASE = "postgres"
 
 try:
-    from .local import PG_HOST
+    from .env import PG_HOST
 except ImportError:
-    PG_HOST = "localhost"
+    PG_HOST = "postgres"
 
 try:
-    from .local import PG_PORT
+    from .env import PG_PORT
 except ImportError:
-    PG_PORT = "8000"
+    PG_PORT = "5432"
 
 # Try to find guess the correct loading string for the dummy app,
 # which dependes on the PYTHON_PATH (that can differ between local
@@ -101,7 +101,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "quantityfield",
+    "django_pint_field",
+    "django_extensions",
     dummy_app_load_string,
 ]
 ROOT_URLCONF = f"{dummy_app_load_string}.urls"

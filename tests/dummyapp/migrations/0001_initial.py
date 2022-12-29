@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-import quantityfield.fields
+import django_pint_field.fields
 
 
 class Migration(migrations.Migration):
@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.BigIntegerQuantityField(
+                    django_pint_field.fields.BigIntegerPintField(
                         base_units="gram", unit_choices=["gram"]
                     ),
                 ),
@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "weight",
-                    quantityfield.fields.QuantityField(
+                    django_pint_field.fields.PintField(
                         base_units="kilogram", unit_choices=["milligram", "pounds"]
                     ),
                 ),
@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "weight",
-                    quantityfield.fields.IntegerQuantityField(
+                    django_pint_field.fields.IntegerPintField(
                         base_units="kilogram", unit_choices=["milligram", "pounds"]
                     ),
                 ),
@@ -90,7 +90,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "custom_decimal",
-                    quantityfield.fields.DecimalQuantityField(
+                    django_pint_field.fields.DecimalPintField(
                         base_units="custom",
                         decimal_places=2,
                         max_digits=10,
@@ -113,19 +113,19 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "custom",
-                    quantityfield.fields.QuantityField(
+                    django_pint_field.fields.PintField(
                         base_units="custom", unit_choices=["custom"]
                     ),
                 ),
                 (
                     "custom_int",
-                    quantityfield.fields.IntegerQuantityField(
+                    django_pint_field.fields.IntegerPintField(
                         base_units="custom", unit_choices=["custom"]
                     ),
                 ),
                 (
                     "custom_bigint",
-                    quantityfield.fields.BigIntegerQuantityField(
+                    django_pint_field.fields.BigIntegerPintField(
                         base_units="custom", unit_choices=["custom"]
                     ),
                 ),
@@ -146,7 +146,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.DecimalQuantityField(
+                    django_pint_field.fields.DecimalPintField(
                         base_units="gram",
                         decimal_places=2,
                         max_digits=10,
@@ -173,7 +173,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.BigIntegerQuantityField(
+                    django_pint_field.fields.BigIntegerPintField(
                         base_units="gram", null=True, unit_choices=["gram"]
                     ),
                 ),
@@ -194,7 +194,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.DecimalQuantityField(
+                    django_pint_field.fields.DecimalPintField(
                         base_units="gram",
                         decimal_places=2,
                         max_digits=10,
@@ -223,7 +223,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.QuantityField(
+                    django_pint_field.fields.PintField(
                         base_units="gram", null=True, unit_choices=["gram"]
                     ),
                 ),
@@ -244,7 +244,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.IntegerQuantityField(
+                    django_pint_field.fields.IntegerPintField(
                         base_units="gram", null=True, unit_choices=["gram"]
                     ),
                 ),
@@ -265,7 +265,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.PositiveIntegerQuantityField(
+                    django_pint_field.fields.PositiveIntegerPintField(
                         base_units="gram", null=True, unit_choices=["gram"]
                     ),
                 ),
@@ -286,7 +286,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.QuantityField(
+                    django_pint_field.fields.PintField(
                         base_units="gram", unit_choices=["gram"]
                     ),
                 ),
@@ -310,19 +310,19 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.QuantityField(
+                    django_pint_field.fields.PintField(
                         base_units="gram", unit_choices=["gram"]
                     ),
                 ),
                 (
                     "weight_int",
-                    quantityfield.fields.IntegerQuantityField(
+                    django_pint_field.fields.IntegerPintField(
                         base_units="gram", blank=True, null=True, unit_choices=["gram"]
                     ),
                 ),
                 (
                     "weight_bigint",
-                    quantityfield.fields.BigIntegerQuantityField(
+                    django_pint_field.fields.BigIntegerPintField(
                         base_units="gram", blank=True, null=True, unit_choices=["gram"]
                     ),
                 ),
@@ -343,7 +343,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight",
-                    quantityfield.fields.IntegerQuantityField(
+                    django_pint_field.fields.IntegerPintField(
                         base_units="gram", unit_choices=["gram"]
                     ),
                 ),

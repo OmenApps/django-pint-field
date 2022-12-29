@@ -2,9 +2,9 @@ from django.test import TestCase
 
 from pint import DimensionalityError
 
-import quantityfield.fields as fields
-import quantityfield.helper as helper
-from quantityfield.units import ureg
+import django_pint_field.fields as fields
+import django_pint_field.helper as helper
+from django_pint_field.units import ureg
 
 
 class TestMatchingUnitDimensionsHelper(TestCase):
@@ -20,11 +20,11 @@ class TestMatchingUnitDimensionsHelper(TestCase):
 
 class TestEdgeCases(TestCase):
     def test_fix_unit_registry(self):
-        field = fields.IntegerQuantityField("meter")
+        field = fields.IntegerPintField("meter")
         with self.assertRaises(ValueError):
             field.fix_unit_registry(1)
 
     def test_get_prep_value(self):
-        field = fields.IntegerQuantityField("meter")
+        field = fields.IntegerPintField("meter")
         with self.assertRaises(ValueError):
             field.get_prep_value("foobar")

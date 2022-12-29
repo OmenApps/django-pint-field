@@ -1,9 +1,9 @@
 from django import forms
 
-from quantityfield.fields import (
-    DecimalQuantityFormField,
-    IntegerQuantityFormField,
-    QuantityFormField,
+from django_pint_field.fields import (
+    DecimalPintFormField,
+    IntegerPintFormField,
+    PintFormField,
 )
 from tests.dummyapp.models import (
     BigIntFieldSaveModel,
@@ -14,7 +14,7 @@ from tests.dummyapp.models import (
 
 
 class DefaultFormFloat(forms.ModelForm):
-    weight = QuantityFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = PintFormField(base_units="gram", unit_choices=["ounce", "gram"])
 
     class Meta:
         model = FloatFieldSaveModel
@@ -22,7 +22,7 @@ class DefaultFormFloat(forms.ModelForm):
 
 
 class DefaultFormInt(forms.ModelForm):
-    weight = IntegerQuantityFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = IntegerPintFormField(base_units="gram", unit_choices=["ounce", "gram"])
 
     class Meta:
         model = IntFieldSaveModel
@@ -30,7 +30,7 @@ class DefaultFormInt(forms.ModelForm):
 
 
 class DefaultFormBigInt(forms.ModelForm):
-    weight = IntegerQuantityFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = IntegerPintFormField(base_units="gram", unit_choices=["ounce", "gram"])
 
     class Meta:
         model = BigIntFieldSaveModel
@@ -38,7 +38,7 @@ class DefaultFormBigInt(forms.ModelForm):
 
 
 class DefaultFormDecimal(forms.ModelForm):
-    weight = DecimalQuantityFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = DecimalPintFormField(base_units="gram", unit_choices=["ounce", "gram"])
 
     class Meta:
         model = DecimalFieldSaveModel
@@ -78,7 +78,7 @@ class DefaultFormFieldsBigInt(forms.ModelForm):
 
 
 class DefaultWidgetsFormFloat(forms.ModelForm):
-    weight = QuantityFormField(
+    weight = PintFormField(
         base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
@@ -88,7 +88,7 @@ class DefaultWidgetsFormFloat(forms.ModelForm):
 
 
 class DefaultWidgetsFormDecimal(forms.ModelForm):
-    weight = QuantityFormField(
+    weight = PintFormField(
         base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
@@ -98,7 +98,7 @@ class DefaultWidgetsFormDecimal(forms.ModelForm):
 
 
 class DefaultWidgetsFormInt(forms.ModelForm):
-    weight = IntegerQuantityFormField(
+    weight = IntegerPintFormField(
         base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
@@ -108,7 +108,7 @@ class DefaultWidgetsFormInt(forms.ModelForm):
 
 
 class DefaultWidgetsFormBigInt(forms.ModelForm):
-    weight = IntegerQuantityFormField(
+    weight = IntegerPintFormField(
         base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
