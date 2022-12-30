@@ -20,9 +20,9 @@ Quantity = ureg.Quantity
 
 
 class HayBaleForm(forms.ModelForm):
-    weight = PintFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = PintFormField(default_unit="gram", unit_choices=["ounce", "gram"])
     weight_int = IntegerPintFormField(
-        base_units="gram", unit_choices=["ounce", "gram", "kilogram"]
+        default_unit="gram", unit_choices=["ounce", "gram", "kilogram"]
     )
 
     class Meta:
@@ -32,10 +32,10 @@ class HayBaleForm(forms.ModelForm):
 
 class HayBaleFormDefaultWidgets(forms.ModelForm):
     weight = PintFormField(
-        base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
+        default_unit="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
     weight_int = IntegerPintFormField(
-        base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
+        default_unit="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
     class Meta:
@@ -56,12 +56,12 @@ class UnitChoicesDefinedInModelFieldModelFormInt(forms.ModelForm):
 
 
 class NullableWeightForm(forms.Form):
-    weight = PintFormField(base_units="gram", required=False)
+    weight = PintFormField(default_unit="gram", required=False)
 
 
 class UnitChoicesForm(forms.Form):
     distance = PintFormField(
-        base_units="kilometer", unit_choices=["mile", "kilometer", "yard", "feet"]
+        default_unit="kilometer", unit_choices=["mile", "kilometer", "yard", "feet"]
     )
 
 
@@ -118,7 +118,7 @@ class TestWidgets(TestCase):
             )
             self.assertFalse(form.is_valid())
 
-    def test_base_units_is_required_for_form_field(self):
+    def test_default_unit_is_required_for_form_field(self):
         with self.assertRaises(ValueError):
             field = PintFormField()  # noqa: F841
 
@@ -130,8 +130,8 @@ class TestWidgets(TestCase):
         form = UnitChoicesForm(data={"distance_0": 100, "distance_1": "ounce"})
         self.assertFalse(form.is_valid())
 
-    def test_base_units_is_included_by_default(self):
-        field = PintFormField(base_units="mile", unit_choices=["meters", "feet"])
+    def test_default_unit_is_included_by_default(self):
+        field = PintFormField(default_unit="mile", unit_choices=["meters", "feet"])
         self.assertIn("mile", field.units)
 
     def test_widget_field_displays_unit_choices(self):
@@ -171,13 +171,13 @@ class TestWidgets(TestCase):
     def test_unit_choices_must_be_valid_units(self):
         with self.assertRaises(UndefinedUnitError):
             field = PintFormField(
-                base_units="mile", unit_choices=["gunzu"]
+                default_unit="mile", unit_choices=["gunzu"]
             )  # noqa: F841
 
     def test_unit_choices_must_match_base_dimensionality(self):
         with self.assertRaises(DimensionalityError):
             field = PintFormField(
-                base_units="gram", unit_choices=["meter", "ounces"]
+                default_unit="gram", unit_choices=["meter", "ounces"]
             )  # noqa: F841
 
     def test_widget_invalid_float(self):

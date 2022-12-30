@@ -14,7 +14,7 @@ from tests.dummyapp.models import (
 
 
 class DefaultFormFloat(forms.ModelForm):
-    weight = PintFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = PintFormField(default_unit="gram", unit_choices=["ounce", "gram"])
 
     class Meta:
         model = FloatFieldSaveModel
@@ -22,7 +22,7 @@ class DefaultFormFloat(forms.ModelForm):
 
 
 class DefaultFormInt(forms.ModelForm):
-    weight = IntegerPintFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = IntegerPintFormField(default_unit="gram", unit_choices=["ounce", "gram"])
 
     class Meta:
         model = IntFieldSaveModel
@@ -30,7 +30,7 @@ class DefaultFormInt(forms.ModelForm):
 
 
 class DefaultFormBigInt(forms.ModelForm):
-    weight = IntegerPintFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = IntegerPintFormField(default_unit="gram", unit_choices=["ounce", "gram"])
 
     class Meta:
         model = BigIntFieldSaveModel
@@ -38,7 +38,7 @@ class DefaultFormBigInt(forms.ModelForm):
 
 
 class DefaultFormDecimal(forms.ModelForm):
-    weight = DecimalPintFormField(base_units="gram", unit_choices=["ounce", "gram"])
+    weight = DecimalPintFormField(default_unit="gram", unit_choices=["ounce", "gram"])
 
     class Meta:
         model = DecimalFieldSaveModel
@@ -79,7 +79,7 @@ class DefaultFormFieldsBigInt(forms.ModelForm):
 
 class DefaultWidgetsFormFloat(forms.ModelForm):
     weight = PintFormField(
-        base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
+        default_unit="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
     class Meta:
@@ -89,7 +89,7 @@ class DefaultWidgetsFormFloat(forms.ModelForm):
 
 class DefaultWidgetsFormDecimal(forms.ModelForm):
     weight = PintFormField(
-        base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
+        default_unit="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
     class Meta:
@@ -99,7 +99,7 @@ class DefaultWidgetsFormDecimal(forms.ModelForm):
 
 class DefaultWidgetsFormInt(forms.ModelForm):
     weight = IntegerPintFormField(
-        base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
+        default_unit="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
     class Meta:
@@ -109,7 +109,7 @@ class DefaultWidgetsFormInt(forms.ModelForm):
 
 class DefaultWidgetsFormBigInt(forms.ModelForm):
     weight = IntegerPintFormField(
-        base_units="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
+        default_unit="gram", unit_choices=["ounce", "gram"], widget=forms.NumberInput
     )
 
     class Meta:

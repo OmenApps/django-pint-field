@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.BigIntegerPintField(
-                        base_units="gram", unit_choices=["gram"]
+                        default_unit="gram", unit_choices=["gram"]
                     ),
                 ),
             ],
@@ -51,7 +51,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.PintField(
-                        base_units="kilogram", unit_choices=["milligram", "pounds"]
+                        default_unit="kilogram", unit_choices=["milligram", "pounds"]
                     ),
                 ),
             ],
@@ -71,7 +71,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.IntegerPintField(
-                        base_units="kilogram", unit_choices=["milligram", "pounds"]
+                        default_unit="kilogram", unit_choices=["milligram", "pounds"]
                     ),
                 ),
             ],
@@ -91,7 +91,7 @@ class Migration(migrations.Migration):
                 (
                     "custom_decimal",
                     django_pint_field.fields.DecimalPintField(
-                        base_units="custom",
+                        default_unit="custom",
                         decimal_places=2,
                         max_digits=10,
                         unit_choices=["custom"],
@@ -114,19 +114,19 @@ class Migration(migrations.Migration):
                 (
                     "custom",
                     django_pint_field.fields.PintField(
-                        base_units="custom", unit_choices=["custom"]
+                        default_unit="custom", unit_choices=["custom"]
                     ),
                 ),
                 (
                     "custom_int",
                     django_pint_field.fields.IntegerPintField(
-                        base_units="custom", unit_choices=["custom"]
+                        default_unit="custom", unit_choices=["custom"]
                     ),
                 ),
                 (
                     "custom_bigint",
                     django_pint_field.fields.BigIntegerPintField(
-                        base_units="custom", unit_choices=["custom"]
+                        default_unit="custom", unit_choices=["custom"]
                     ),
                 ),
             ],
@@ -147,7 +147,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.DecimalPintField(
-                        base_units="gram",
+                        default_unit="gram",
                         decimal_places=2,
                         max_digits=10,
                         unit_choices=["gram"],
@@ -174,7 +174,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.BigIntegerPintField(
-                        base_units="gram", null=True, unit_choices=["gram"]
+                        default_unit="gram", null=True, unit_choices=["gram"]
                     ),
                 ),
             ],
@@ -195,7 +195,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.DecimalPintField(
-                        base_units="gram",
+                        default_unit="gram",
                         decimal_places=2,
                         max_digits=10,
                         null=True,
@@ -224,7 +224,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.PintField(
-                        base_units="gram", null=True, unit_choices=["gram"]
+                        default_unit="gram", null=True, unit_choices=["gram"]
                     ),
                 ),
             ],
@@ -245,7 +245,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.IntegerPintField(
-                        base_units="gram", null=True, unit_choices=["gram"]
+                        default_unit="gram", null=True, unit_choices=["gram"]
                     ),
                 ),
             ],
@@ -266,7 +266,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.PositiveIntegerPintField(
-                        base_units="gram", null=True, unit_choices=["gram"]
+                        default_unit="gram", null=True, unit_choices=["gram"]
                     ),
                 ),
             ],
@@ -287,7 +287,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.PintField(
-                        base_units="gram", unit_choices=["gram"]
+                        default_unit="gram", unit_choices=["gram"]
                     ),
                 ),
             ],
@@ -311,19 +311,19 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.PintField(
-                        base_units="gram", unit_choices=["gram"]
+                        default_unit="gram", unit_choices=["gram"]
                     ),
                 ),
                 (
                     "weight_int",
                     django_pint_field.fields.IntegerPintField(
-                        base_units="gram", blank=True, null=True, unit_choices=["gram"]
+                        default_unit="gram", blank=True, null=True, unit_choices=["gram"]
                     ),
                 ),
                 (
                     "weight_bigint",
                     django_pint_field.fields.BigIntegerPintField(
-                        base_units="gram", blank=True, null=True, unit_choices=["gram"]
+                        default_unit="gram", blank=True, null=True, unit_choices=["gram"]
                     ),
                 ),
             ],
@@ -344,7 +344,7 @@ class Migration(migrations.Migration):
                 (
                     "weight",
                     django_pint_field.fields.IntegerPintField(
-                        base_units="gram", unit_choices=["gram"]
+                        default_unit="gram", unit_choices=["gram"]
                     ),
                 ),
             ],

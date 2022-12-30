@@ -7,18 +7,18 @@ from .units import ureg
 
 
 class PintWidget(MultiWidget):
-    def __init__(self, *, attrs=None, base_units=None, allowed_types=None):
+    def __init__(self, *, attrs=None, default_unit=None, unit_choices=None):
         self.ureg = ureg
-        choices = self.get_choices(allowed_types)
-        self.base_units = base_units
+        choices = self.get_choices(unit_choices)
+        self.default_unit = default_unit
         attrs = attrs or {}
         attrs.setdefault("step", "any")
         widgets = (NumberInput(attrs=attrs), Select(attrs=attrs, choices=choices))
         super().__init__(widgets, attrs)
 
-    def get_choices(self, allowed_types=None):
-        allowed_types = allowed_types or dir(self.ureg)
-        return [(x, x) for x in allowed_types]
+    def get_choices(self, unit_choices=None):
+        unit_choices = unit_choices or dir(self.ureg)
+        return [(x, x) for x in unit_choices]
 
     def decompress(self, value):
         """This function is called during rendering
@@ -28,8 +28,8 @@ class PintWidget(MultiWidget):
         if isinstance(value, Number):
             # We assume that the given value is a proper number,
             # ready to be rendered
-            return [value, self.base_units]
+            return [value, self.default_unit]
         elif isinstance(value, pint.Quantity):
             return [value.magnitude, value.units]
 
-        return [None, self.base_units]
+        return [None, self.default_unit]

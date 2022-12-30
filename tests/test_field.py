@@ -56,25 +56,25 @@ class BaseMixinTestFieldCreate:
                 "zinghie", **self.DEFAULT_KWARGS
             )
 
-    def test_base_units_is_required(self):
+    def test_default_unit_is_required(self):
         with self.assertRaises(TypeError):
             no_units = self.FIELD(**self.DEFAULT_KWARGS)  # noqa: F841
 
-    def test_base_units_set_with_name(self):
-        okay_units = self.FIELD(base_units="meter", **self.DEFAULT_KWARGS)  # noqa: F841
+    def test_default_unit_set_with_name(self):
+        okay_units = self.FIELD(default_unit="meter", **self.DEFAULT_KWARGS)  # noqa: F841
 
-    def test_base_units_are_invalid(self):
+    def test_default_unit_are_invalid(self):
         with self.assertRaises(ValueError):
             wrong_units = self.FIELD(None, **self.DEFAULT_KWARGS)  # noqa: F841
 
     def test_unit_choices_must_be_valid_units(self):
         with self.assertRaises(UndefinedUnitError):
-            self.FIELD(base_units="mile", unit_choices=["gunzu"], **self.DEFAULT_KWARGS)
+            self.FIELD(default_unit="mile", unit_choices=["gunzu"], **self.DEFAULT_KWARGS)
 
     def test_unit_choices_must_match_base_dimensionality(self):
         with self.assertRaises(DimensionalityError):
             self.FIELD(
-                base_units="gram",
+                default_unit="gram",
                 unit_choices=["meter", "ounces"],
                 **self.DEFAULT_KWARGS
             )
@@ -431,7 +431,7 @@ class FloatLikeFieldSaveTestBase(FieldSaveTestBase):
     OUNCES = Quantity(10 * ureg.ounce)
     OUNCES_IN_GRAM = 283.49523125
 
-    def test_stores_value_in_base_units(self):
+    def test_stores_value_in_default_unit(self):
         self.MODEL.objects.create(weight=self.OUNCES, name="ounce")
         item = self.MODEL.objects.get(name="ounce")
         self.assertEqual(item.weight.units, "gram")

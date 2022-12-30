@@ -7,6 +7,7 @@ from django_pint_field.fields import (
     DecimalPintField,
     IntegerPintField,
     PintField,
+    XYZPintField,
 )
 
 
@@ -24,6 +25,10 @@ class FloatFieldSaveModel(FieldSaveModel):
 
 class IntFieldSaveModel(FieldSaveModel):
     weight = IntegerPintField("gram")
+
+
+class XYZIntFieldSaveModel(FieldSaveModel):
+    weight = XYZPintField("gram", unit_choices=["pound", "ounce"])
 
 
 class BigIntFieldSaveModel(FieldSaveModel):

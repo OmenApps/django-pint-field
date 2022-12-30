@@ -1,6 +1,4 @@
-from django.db import connection
-from django.db import migrations
-
+from django.db import connection, migrations
 
 class Migration(migrations.Migration):
 
@@ -9,9 +7,9 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunSQL(
             sql = [
-                ("CREATE TYPE integer_pint_field as (magnitude integer, unit char)"),
-                ("CREATE TYPE big_integer_pint_field as (magnitude bigint, unit char)"),
-                ("CREATE TYPE decimal_pint_field as (magnitude decimal, unit char)"),
+                ("CREATE TYPE integer_pint_field as (magnitude integer, units text)"),
+                ("CREATE TYPE big_integer_pint_field as (magnitude bigint, units text)"),
+                ("CREATE TYPE decimal_pint_field as (magnitude decimal, units text)"),
             ],
             reverse_sql = [
                 ("DROP TYPE integer_pint_field CASCADE;"),
