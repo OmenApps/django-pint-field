@@ -10,17 +10,13 @@ class ReadOnlyEditing(admin.ModelAdmin):
         return []
 
 
-admin.site.register(BigIntFieldSaveModel, ReadOnlyEditing)
-admin.site.register(ChoicesDefinedInModel, ReadOnlyEditing)
-admin.site.register(ChoicesDefinedInModelInt, ReadOnlyEditing)
-admin.site.register(CustomUregDecimalHayBale, ReadOnlyEditing)
-admin.site.register(CustomUregHayBale, ReadOnlyEditing)
-admin.site.register(DecimalFieldSaveModel, ReadOnlyEditing)
-admin.site.register(EmptyHayBaleBigInt, ReadOnlyEditing)
-admin.site.register(EmptyHayBaleDecimal, ReadOnlyEditing)
-admin.site.register(EmptyHayBaleFloat, ReadOnlyEditing)
-admin.site.register(EmptyHayBaleInt, ReadOnlyEditing)
-admin.site.register(FloatFieldSaveModel, ReadOnlyEditing)
-admin.site.register(HayBale, ReadOnlyEditing)
-admin.site.register(IntFieldSaveModel, ReadOnlyEditing)
-admin.site.register(XYZIntFieldSaveModel)
+admin.site.register(IntegerPintFieldSaveModel)
+admin.site.register(BigIntegerPintFieldSaveModel)
+admin.site.register(DecimalPintFieldSaveModel)
+
+admin.site.register(HayBale)
+admin.site.register(EmptyHayBaleInteger)
+admin.site.register(EmptyHayBaleBigInteger)
+admin.site.register(EmptyHayBaleDecimal)
+admin.site.register(CustomUregHayBale)
+admin.site.register(ChoicesDefinedInModel)

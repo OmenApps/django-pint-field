@@ -1,9 +1,9 @@
 """
-Enables the pint for use with Django
+Enables pint for use with Django
 """
 from django.db import connection
 from psycopg2.extras import register_composite
-from psycopg2.extensions import register_adapter, adapt, AsIs
+from psycopg2.extensions import adapt, AsIs
 
 
 __version__ = "0.0.1"
@@ -25,7 +25,7 @@ def get_DecimalPintDBField():
 
 def integer_pint_field_adapter(value):
     return AsIs(
-        "(%s, %s)::integer_pint_field"
+        "(%s::integer, %s::text)::integer_pint_field"
         % (
             adapt(value.magnitude).getquoted(),
             adapt(str(value.units)).getquoted(),
@@ -35,7 +35,7 @@ def integer_pint_field_adapter(value):
 
 def big_integer_pint_field_adapter(value):
     return AsIs(
-        "(%s, %s)::big_integer_pint_field"
+        "(%s::bigint, %s::text)::big_integer_pint_field"
         % (
             adapt(value.magnitude).getquoted(),
             adapt(str(value.units)).getquoted(),
@@ -45,7 +45,7 @@ def big_integer_pint_field_adapter(value):
 
 def decimal_pint_field_adapter(value):
     return AsIs(
-        "(%s, %s)::decimal_pint_field"
+        "(%s::decimal, %s::text)::decimal_pint_field"
         % (
             adapt(value.magnitude).getquoted(),
             adapt(str(value.units)).getquoted(),
