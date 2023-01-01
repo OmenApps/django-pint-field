@@ -1,8 +1,37 @@
-[build-system]
-# AVOID CHANGING REQUIRES: IT WILL BE UPDATED BY PYSCAFFOLD!
-requires = ["setuptools>=46.1.0", "setuptools_scm[toml]>=5", "wheel"]
-build-backend = "setuptools.build_meta"
+[tool.poetry]
+name = "django-pint-field"
+version = "0.1.0"
+description = "Pint Fields for Django and Postgres"
+authors = ["Jack Linke <jack@watervize.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "django_pint_field"}]
 
-[tool.setuptools_scm]
-# See configuration details in https://github.com/pypa/setuptools_scm
-version_scheme = "no-guess-dev"
+homepage = "https://github.com/jacklinke/django-pint-field"
+repository = "https://github.com/jacklinke/django-pint-field"
+keywords = ["django",]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 3.2",
+    "Framework :: Django :: 4",
+    "Framework :: Django :: 4.0",
+    "Framework :: Django :: 4.1",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+
+[tool.poetry.group.dev.dependencies]
+black = {version = "^23.1a1", allow-prereleases = true}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
