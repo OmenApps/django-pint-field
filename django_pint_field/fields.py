@@ -21,6 +21,7 @@ from . import (
     integer_pint_field_adapter,
     big_integer_pint_field_adapter,
     decimal_pint_field_adapter,
+    get_base_unit_magnitude,
 )
 
 
@@ -337,6 +338,28 @@ class IntegerPintField(models.Field):
 
         see: https://docs.djangoproject.com/en/4.1/howto/custom-model-fields/#converting-python-objects-to-query-values
         """
+
+        def convert_quantity_for_output(quantity_item: Quantity):
+            if not isinstance(quantity_item, Quantity):
+                raise ValueError("quantity_item must be a Quantity")
+
+            check_matching_unit_dimension(
+                self.ureg,
+                self.default_unit,
+                [
+                    str(quantity_item.units),
+                ],
+            )
+
+            IntegerPintDBField = get_IntegerPintDBField()
+            return integer_pint_field_adapter(
+                IntegerPintDBField(
+                    comparator=get_base_unit_magnitude(quantity_item),
+                    magnitude=int(quantity_item.magnitude),
+                    units=str(quantity_item.units),
+                )
+            )
+
         print(f"IntegerPintField get_prep_value > value: {value}, type: {type(value)}")
 
         if value is None:
@@ -347,24 +370,12 @@ class IntegerPintField(models.Field):
             value = self.ureg.Quantity(str(value["magnitude"] * value["units"]))
             print(f"IntegerPintField get_prep_value > CONVERTED value: {value}, type: {type(value)}")
 
-        if not isinstance(value, Quantity):
-            raise ValueError("'value' must be a Quantity")
+        # value may be a tuple of Quantity, for instance if using the `range` Lookup
 
-        check_matching_unit_dimension(
-            self.ureg,
-            self.default_unit,
-            [
-                str(value.units),
-            ],
-        )
+        if isinstance(value, tuple):
+            return [convert_quantity_for_output(item) for item in value]
 
-        IntegerPintDBField = get_IntegerPintDBField()
-        return integer_pint_field_adapter(
-            IntegerPintDBField(
-                magnitude=int(value.magnitude),
-                units=str(value.units),
-            )
-        )
+        return convert_quantity_for_output(value)
 
     def from_db_value(self, value: Any, *args, **kwargs):
         """
@@ -572,6 +583,28 @@ class BigIntegerPintField(models.Field):
 
         see: https://docs.djangoproject.com/en/4.1/howto/custom-model-fields/#converting-python-objects-to-query-values
         """
+
+        def convert_quantity_for_output(quantity_item: Quantity):
+            if not isinstance(quantity_item, Quantity):
+                raise ValueError("quantity_item must be a Quantity")
+
+            check_matching_unit_dimension(
+                self.ureg,
+                self.default_unit,
+                [
+                    str(quantity_item.units),
+                ],
+            )
+
+            BigIntegerPintDBField = get_BigIntegerPintDBField()
+            return big_integer_pint_field_adapter(
+                BigIntegerPintDBField(
+                    comparator=get_base_unit_magnitude(quantity_item),
+                    magnitude=int(quantity_item.magnitude),
+                    units=str(quantity_item.units),
+                )
+            )
+
         print(f"BigIntegerPintField get_prep_value > value: {value}, type: {type(value)}")
 
         if value is None:
@@ -582,24 +615,12 @@ class BigIntegerPintField(models.Field):
             value = self.ureg.Quantity(str(value["magnitude"] * value["units"]))
             print(f"BigIntegerPintField get_prep_value > CONVERTED value: {value}, type: {type(value)}")
 
-        if not isinstance(value, Quantity):
-            raise ValueError("'value' must be a Quantity")
+        # value may be a tuple of Quantity, for instance if using the `range` Lookup
 
-        check_matching_unit_dimension(
-            self.ureg,
-            self.default_unit,
-            [
-                str(value.units),
-            ],
-        )
+        if isinstance(value, tuple):
+            return [convert_quantity_for_output(item) for item in value]
 
-        BigIntegerPintDBField = get_BigIntegerPintDBField()
-        return big_integer_pint_field_adapter(
-            BigIntegerPintDBField(
-                magnitude=int(value.magnitude),
-                units=str(value.units),
-            )
-        )
+        return convert_quantity_for_output(value)
 
     def from_db_value(self, value: Any, *args, **kwargs):
         """
@@ -1022,29 +1043,39 @@ class DecimalPintField(models.Field):
 
         see: https://docs.djangoproject.com/en/4.1/howto/custom-model-fields/#converting-python-objects-to-query-values
         """
+
+        def convert_quantity_for_output(quantity_item: Quantity):
+            if not isinstance(quantity_item, Quantity):
+                raise ValueError("quantity_item must be a Quantity")
+
+            check_matching_unit_dimension(
+                self.ureg,
+                self.default_unit,
+                [
+                    str(quantity_item.units),
+                ],
+            )
+
+            DecimalPintDBField = get_DecimalPintDBField()
+            return decimal_pint_field_adapter(
+                DecimalPintDBField(
+                    comparator=get_base_unit_magnitude(quantity_item),
+                    magnitude=Decimal(str(quantity_item.magnitude)),
+                    units=str(quantity_item.units),
+                )
+            )
+
         print(f"DecimalPintField get_prep_value > value: {value}, type: {type(value)}")
 
         if value is None:
             return value
 
-        if not isinstance(value, Quantity):
-            raise ValueError("'value' must be a Quantity")
+        # value may be a tuple of Quantity, for instance if using the `range` Lookup
 
-        check_matching_unit_dimension(
-            self.ureg,
-            self.default_unit,
-            [
-                str(value.units),
-            ],
-        )
+        if isinstance(value, tuple):
+            return [convert_quantity_for_output(item) for item in value]
 
-        DecimalPintDBField = get_DecimalPintDBField()
-        return decimal_pint_field_adapter(
-            DecimalPintDBField(
-                magnitude=Decimal(str(value.magnitude)),
-                units=str(value.units),
-            )
-        )
+        return convert_quantity_for_output(value)
 
     def get_db_prep_save(self, value, connection) -> Decimal:
         """

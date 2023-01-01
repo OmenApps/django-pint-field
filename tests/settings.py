@@ -94,7 +94,7 @@ custom_ureg = UnitRegistry()
 custom_ureg.define("custom = [custom]")
 custom_ureg.define("kilocustom = 1000 * custom")
 
-DJANGO_PINT_UNIT_REGISTER = custom_ureg
+DJANGO_PINT_FIELD_UNIT_REGISTER = custom_ureg
 
 WSGI_APPLICATION = "tests.dummyapp.wsgi.application"
 
