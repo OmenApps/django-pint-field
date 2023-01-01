@@ -26,7 +26,13 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.9"
-
+django = "^4.1.4"
+pint = "^0.20.1"
+pydantic = "^1.10.4"
+psycopg2-binary = "^2.9.5"
+django-extensions = "^3.2.1"
+werkzeug = "^2.2.2"
+pytest = "^7.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "^23.1a1", allow-prereleases = true}
