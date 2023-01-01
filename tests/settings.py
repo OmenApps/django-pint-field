@@ -25,24 +25,7 @@ try:
 except ImportError:
     PG_PORT = "5432"
 
-# Try to find guess the correct loading string for the dummy app,
-# which dependes on the PYTHON_PATH (that can differ between local
-# testing and a pytest run.
-dummy_app_load_string: str = ""
-try:
-    import tests.dummyapp
-except ImportError:
-    try:
-        import dummyapp
-    except ImportError:
-        raise ImportError(
-            "Neither `tests.dummyapp' nor 'dummyapp' has been "
-            " found in the PYTHON_PATH."
-        )
-    else:
-        dummy_app_load_string = "dummyapp"
-else:
-    dummy_app_load_string = "tests.dummyapp"
+import tests.dummyapp
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -84,7 +67,7 @@ DATABASES = {
 SECRET_KEY = "5tb#evac8q447#b7u8w5#yj$yq3%by!a-5t7$4@vrj$al1-u3c"
 USE_I18N = True
 USE_L10N = True
-# Use common Middleware
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -103,9 +86,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_pint_field",
     "django_extensions",
-    dummy_app_load_string,
+    "tests.dummyapp",
 ]
-ROOT_URLCONF = f"{dummy_app_load_string}.urls"
+ROOT_URLCONF = "tests.dummyapp.urls"
 
 custom_ureg = UnitRegistry()
 custom_ureg.define("custom = [custom]")
@@ -113,7 +96,28 @@ custom_ureg.define("kilocustom = 1000 * custom")
 
 DJANGO_PINT_UNIT_REGISTER = custom_ureg
 
-WSGI_APPLICATION = f"{dummy_app_load_string}.wsgi.application"
+WSGI_APPLICATION = "tests.dummyapp.wsgi.application"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOGGING = {
+    "version": 1,
+    "filters": {
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        }
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "filters": ["require_debug_true"],
+            "class": "logging.StreamHandler",
+        }
+    },
+    "loggers": {
+        "django.db.backends": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+        }
+    },
+}

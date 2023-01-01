@@ -62,8 +62,8 @@ class CustomUregHayBale(models.Model):
 
 
 class ChoicesDefinedInModel(models.Model):
-    weight_int = IntegerPintField("kilogram", unit_choices=["milligram", "pounds"])
-    weight_bigint = BigIntegerPintField("kilogram", unit_choices=["milligram", "pounds"])
+    weight_int = IntegerPintField("kilogram", unit_choices=["kilogram", "milligram", "pounds"])
+    weight_bigint = BigIntegerPintField("kilogram", unit_choices=["milligram", "kilogram", "pounds"])
     weight_decimal = DecimalPintField(
-        "kilogram", unit_choices=["milligram", "pounds"], max_digits=10, decimal_places=2
+        "kilogram", unit_choices=["milligram", "pounds", "kilogram"], max_digits=10, decimal_places=2
     )

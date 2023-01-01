@@ -16,8 +16,8 @@ def check_matching_unit_dimension(ureg: UnitRegistry, default_unit: str, units_t
     for unit_string in units_to_check:
         unit = getattr(ureg, unit_string)
         print(
-            f"check_matching_unit_dimension unit: {unit.dimensionality}, "
-            f"default_unit: {default_unit.dimensionality}, "
+            f"check_matching_unit_dimension unit: {unit} {unit.dimensionality}, "
+            f"default_unit: {default_unit} {default_unit.dimensionality}, "
             f"equal: {unit.dimensionality == default_unit.dimensionality}"
         )
         if not unit.dimensionality == default_unit.dimensionality:
