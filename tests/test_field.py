@@ -11,6 +11,7 @@ from decimal import Decimal
 from pint import DimensionalityError, UndefinedUnitError, UnitRegistry
 from typing import Type, Union
 
+from django_pint_field.exceptions import PintFieldLookupError
 from django_pint_field.fields import (
     BigIntegerPintField,
     DecimalPintField,
@@ -342,10 +343,6 @@ class FieldSaveTestBase:
         qs = self.MODEL.objects.filter(weight__gt=weight)
         self.assertNotIn(self.lightest, qs)
 
-    # def test_comparison_with_quantity_respects_units(self):
-    #     qs = self.MODEL.objects.filter(weight__gt=self.COMPARE_QUANTITY)
-    #     self.assertNotIn(self.lightest, qs)
-
     def test_serialisation(self):
         serialized = serialize(
             "json",
@@ -356,6 +353,78 @@ class FieldSaveTestBase:
         deserialized = json.loads(serialized)
         obj = deserialized[0]["fields"]
         self.assertEqual(obj["weight"], self.DEFAULT_WEIGHT_QUANTITY_STR)
+
+    def test_comparison_with_quantity_gt(self):
+        qs = self.MODEL.objects.filter(weight__gt=self.COMPARE_QUANTITY)
+        self.assertNotIn(self.lightest, qs)
+
+    def test_comparison_with_quantity_lt(self):
+        qs = self.MODEL.objects.filter(weight__lt=self.COMPARE_QUANTITY)
+        self.assertNotIn(self.heaviest, qs)
+
+    def test_comparison_with_quantity_gte(self):
+        qs = self.MODEL.objects.filter(weight__gte=self.COMPARE_QUANTITY)
+        self.assertNotIn(self.lightest, qs)
+
+    def test_comparison_with_quantity_lte(self):
+        qs = self.MODEL.objects.filter(weight__lte=self.COMPARE_QUANTITY)
+        self.assertNotIn(self.heaviest, qs)
+
+    def test_comparison_with_quantity_isnull(self):
+        qs = self.MODEL.objects.filter(weight__isnull=False)
+        self.assertIn(self.lightest, qs)
+        self.assertIn(self.heaviest, qs)
+
+    def test_comparison_with_quantity_range(self):
+        COMPARE_QUANTITY_2 = Quantity(2 * ureg.gram)
+        qs = self.MODEL.objects.filter(weight__range=(self.COMPARE_QUANTITY, COMPARE_QUANTITY_2))
+        self.assertNotIn(self.heaviest, qs)
+
+    def test_comparison_with_invalid_lookups(self):
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__contains=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__icontains=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__in=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__startswith=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__istartswith=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__endswith=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__iendswith=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__date=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__year=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__iso_year=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__month=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__day=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__week=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__week_day=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__iso_week_day=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__quarter=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__time=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__hour=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__minute=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__second=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__regex=self.COMPARE_QUANTITY).first()
+        with self.assertRaises(PintFieldLookupError):
+            self.MODEL.objects.filter(weight__iregex=self.COMPARE_QUANTITY).first()
 
 
 class TestDecimalFieldSave(FieldSaveTestBase, TestCase):
