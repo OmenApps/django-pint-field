@@ -56,6 +56,33 @@ Other lookups will be added in the future. Currently available are:
 - range
 - isnull
 
+
+## Aggregates
+
+A number of aggregates have been implemented for the Django Pint Fields. Functionally they should perform for Pint Fields the same way django's default aggregates work for other field types, and each is prepended with "Pint". The aggregates include:
+
+- PintAvg
+- PintCount
+- PintMax
+- PintMin
+- PintStdDev
+- PintSum
+- PintVariance
+
+### Example usage:
+
+```python
+from django_pint_field.aggregates import PintAvg, PintCount, PintMax, PintMin, PintStdDev, PintSum, PintVariance
+IntegerPintFieldSaveModel.objects.aggregate(PintAvg('weight'))
+IntegerPintFieldSaveModel.objects.aggregate(PintCount('weight'))
+IntegerPintFieldSaveModel.objects.aggregate(PintMax('weight'))
+IntegerPintFieldSaveModel.objects.aggregate(PintMin('weight'))
+IntegerPintFieldSaveModel.objects.aggregate(PintStdDev('weight'))
+IntegerPintFieldSaveModel.objects.aggregate(PintSum('weight'))
+IntegerPintFieldSaveModel.objects.aggregate(PintVariance('weight'))
+```
+
+
 ## Creating your own units
 
 *Will be detailed soon*
