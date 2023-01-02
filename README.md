@@ -85,7 +85,21 @@ IntegerPintFieldSaveModel.objects.aggregate(PintVariance('weight'))
 
 ## Creating your own units
 
-*Will be detailed soon*
+You can [create your own pint units](https://pint.readthedocs.io/en/stable/advanced/defining.html) if the [default units](https://github.com/hgrecco/pint/blob/master/pint/default_en.txt) in pint are not sufficient.
+
+Anywhere within your project (ideally in settings or a file adjacent to settings), define the custom unit registry by importing Pint's default UnitRegistry and extending it:
+
+```python
+from pint import UnitRegistry
+
+custom_ureg = UnitRegistry()
+custom_ureg.define("custom = [custom]")
+custom_ureg.define("kilocustom = 1000 * custom")
+```
+
+Then add the custom registry to settings:
+
+`DJANGO_PINT_FIELD_UNIT_REGISTER = custom_ureg`
 
 
 ## Model Fields
@@ -110,6 +124,13 @@ IntegerPintFieldSaveModel.objects.aggregate(PintVariance('weight'))
   <dt><code>DJANGO_PINT_FIELD_DECIMAL_PRECISION</code></dt>
   <dd>
     Determines whether django_pint_field should automatically set the python decimal precision for the project. If an integer greater than 0 is provided, the decimal context precision for the entire project will be set to that value. Otherwise, the precision remains at the default (usually 28).<br>
+    <em>* Type: int</em>
+    <em>* Default: 0</em>
+  </dd>
+
+  <dt><code>DJANGO_PINT_FIELD_UNIT_REGISTER</code></dt>
+  <dd>
+    The Unit Registry to use in the project. Defaults to pint.UnitRegistry.<br>
     <em>* Type: int</em>
     <em>* Default: 0</em>
   </dd>
