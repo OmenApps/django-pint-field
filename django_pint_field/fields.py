@@ -41,9 +41,9 @@ def is_decimal_or_int(input: str):
         return False
 
 
-def get_base_units(ureg, default_unit):
+def get_base_units(registry, default_unit):
     """Returns the base units, based on a specific Pint registry and a default_unit"""
-    temp_quantity = ureg.Quantity(1 * default_unit)
+    temp_quantity = registry.Quantity(1 * default_unit)
     temp_quantity = temp_quantity.to_base_units()
     return temp_quantity.units
 
@@ -447,6 +447,10 @@ class BasePintField(models.Field):
         if isinstance(value, str):
             print(f"to_python > isinstance(value, str) - value = {value}")
             return self.ureg.Quantity(value)
+
+        if isinstance(value, int):  # For instance if a default int value was used in a model
+            print(f"to_python > isinstance(value, int) - value = {value}")
+            return self.ureg.Quantity(value, self.default_unit)
 
         if value is None:
             return value
@@ -1022,6 +1026,10 @@ class DecimalPintField(models.Field):
         if isinstance(value, str):
             print(f"to_python > isinstance(value, str) - value = {value}")
             return self.ureg.Quantity(value)
+
+        if isinstance(value, Decimal):  # For instance if a default Decimal value was used in a model
+            print(f"to_python > isinstance(value, Decimal) - value = {value}")
+            return self.ureg.Quantity(value, self.default_unit)
 
         if value is None:
             return value
