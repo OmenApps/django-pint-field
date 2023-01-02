@@ -1,11 +1,15 @@
 """
 Enables pint for use with Django
 """
+import logging
 from decimal import Decimal
 from django.db import connection
 from pint import Quantity
 from psycopg2.extras import register_composite
 from psycopg2.extensions import adapt, AsIs
+
+
+logger = logging.getLogger("django_pint_field")
 
 
 def get_base_unit_magnitude(value):
@@ -37,10 +41,23 @@ try:
         "big_integer_pint_field", connection.cursor().cursor, globally=True
     ).type
     DecimalPintDBField = register_composite("decimal_pint_field", connection.cursor().cursor, globally=True).type
-except:
-    IntegerPintDBField = list
-    BigIntegerPintDBField = list
-    DecimalPintDBField = list
+except Exception as e:
+    logger.warning(
+        "One or more types does not exist in the database. "
+        "Run migrations for django_pint_field. If using docker, try restarting. "
+        f"{e}"
+    )
+
+    class NullPintDBField:
+        def __init__(self, comparator, magnitude, units) -> None:
+            pass
+
+        def __str__(self):
+            return ""
+
+    IntegerPintDBField = NullPintDBField
+    BigIntegerPintDBField = NullPintDBField
+    DecimalPintDBField = NullPintDBField
 
 
 def integer_pint_field_adapter(value):
