@@ -6,6 +6,7 @@ Modified from the fantastic [django-pint](https://github.com/CarliJoy/django-pin
 
 Unlike django-pint, in this project we use a composite field to store both the magnitude and value of the field, along with the equivalent value in base units for lookups. For this reason, the project only works with Postgresql databases. It ensures that the units your users want to use are the units they see, while still allowing accurate comparisons of one quantity to another.
 
+
 ## Install
 
 `pip install django_pint_field`
@@ -29,6 +30,33 @@ extra_large = Quantity(10000 * ureg.gram)
 IntegerPintFieldSaveModel.objects.create(name="small", weight=small)
 IntegerPintFieldSaveModel.objects.create(name="large", weight=large)
 
+In [1]: IntegerPintFieldSaveModel.objects.first()
+Out[1]: <IntegerPintFieldSaveModel: small>
+
+In [2]: IntegerPintFieldSaveModel.objects.first().weight
+Out[2]: 10 <Unit('gram')>
+
+In [3]: IntegerPintFieldSaveModel.objects.first().weight.magnitude
+Out[3]: 10
+
+In [4]: IntegerPintFieldSaveModel.objects.first().weight.units
+Out[4]: <Unit('gram')>
+```
+
+
+## Valid Lookups
+
+Other lookups will be added in the future. Currently available are:
+
+- exact
+- gt
+- gte
+- lt
+- lte
+- range
+- isnull
+
+```python
 # Perform some queries
 IntegerPintFieldSaveModel.objects.filter(weight__gt=medium)
 <QuerySet [<IntegerPintFieldSaveModel: large>]>
@@ -41,38 +69,12 @@ IntegerPintFieldSaveModel.objects.filter(weight__gte=small)
 
 IntegerPintFieldSaveModel.objects.filter(weight__range=(small, medium))
 <QuerySet [<IntegerPintFieldSaveModel: small>]>
-
-In [1]: IntegerPintFieldSaveModel.objects.first()
-Out[1]: <IntegerPintFieldSaveModel: small>
-
-In [2]: IntegerPintFieldSaveModel.objects.first().weight
-Out[2]: 10 <Unit('gram')>
-
-In [3]: IntegerPintFieldSaveModel.objects.first().weight.magnitude
-Out[3]: 10
-
-In [4]: IntegerPintFieldSaveModel.objects.first().weight.units
-Out[4]: <Unit('gram')>
-
 ```
-
-## Valid Lookups
-
-Other lookups will be added in the future. Currently available are:
-
-- exact
-- iexact
-- gt
-- gte
-- lt
-- lte
-- range
-- isnull
 
 
 ## Aggregates
 
-A number of aggregates have been implemented for the Django Pint Fields. Functionally they should perform for Pint Fields the same way django's default aggregates work for other field types, and each is prepended with "Pint". The aggregates include:
+A number of aggregates have been implemented for the Django Pint Fields. Functionally they perform for Pint Fields the same way django's default aggregates work for other field types, and each is prepended with "Pint". The aggregates include:
 
 - PintAvg
 - PintCount
@@ -82,19 +84,31 @@ A number of aggregates have been implemented for the Django Pint Fields. Functio
 - PintSum
 - PintVariance
 
-### Example usage:
-
 ```python
 from django_pint_field.aggregates import PintAvg, PintCount, PintMax, PintMin, PintStdDev, PintSum, PintVariance
-IntegerPintFieldSaveModel.objects.aggregate(PintAvg('weight'))
-IntegerPintFieldSaveModel.objects.aggregate(PintCount('weight'))
-IntegerPintFieldSaveModel.objects.aggregate(PintMax('weight'))
-IntegerPintFieldSaveModel.objects.aggregate(PintMin('weight'))
-IntegerPintFieldSaveModel.objects.aggregate(PintStdDev('weight'))
-IntegerPintFieldSaveModel.objects.aggregate(PintSum('weight'))
-IntegerPintFieldSaveModel.objects.aggregate(PintVariance('weight'))
-```
 
+# Perform some queries
+IntegerPintFieldSaveModel.objects.aggregate(PintAvg('weight'))
+{'weight__pintavg': Decimal('0.50500000000000000000') <Unit('kilogram')>}
+
+IntegerPintFieldSaveModel.objects.aggregate(PintCount('weight'))
+{'weight__pintcount': 2}
+
+IntegerPintFieldSaveModel.objects.aggregate(PintMax('weight'))
+{'weight__pintmax': Decimal('1.0') <Unit('kilogram')>}
+
+IntegerPintFieldSaveModel.objects.aggregate(PintMin('weight'))
+{'weight__pintmin': Decimal('0.01') <Unit('kilogram')>}
+
+IntegerPintFieldSaveModel.objects.aggregate(PintStdDev('weight'))
+{'weight__pintstddev': Decimal('0.49500000000000000000') <Unit('kilogram')>}
+
+IntegerPintFieldSaveModel.objects.aggregate(PintSum('weight'))
+{'weight__pintsum': Decimal('1.01') <Unit('kilogram')>}
+
+IntegerPintFieldSaveModel.objects.aggregate(PintVariance('weight'))
+{'weight__pintvariance': Decimal('0.24502500000000000000') <Unit('kilogram')>}
+```
 
 ## Creating your own units
 
@@ -121,10 +135,12 @@ Then add the custom registry to settings:
 - **BigIntegerPintField**: Stores a pint measurement as a big integer (-9223372036854775808 to 9223372036854775807).
 - **DecimalPintField**: Stores a pint measurement as a decimal.
 
+
 ## Form Fields
 
 - **IntegerPintFormField**: Used in forms with IntegerPintField and BigIntegerPintField.
 - **DecimalPintFormField**: Used in forms with DecimalPintField.
+
 
 ## Widgets
 
@@ -179,7 +195,6 @@ Round away from zero if last digit after rounding towards zero would have been 0
 Read more about rounding modes for decimals at the [decimal docs](https://docs.python.org/3/library/decimal.html#rounding-modes)
 
 
-
 ## Use the test app with docker compose
 
 ### Build and bring up
@@ -196,6 +211,7 @@ Navigate to `127.0.0.1:8000`
 ### Test (assuming you have already performed `build`)
 
 `docker compose run django python manage.py test`
+
 
 ## Run psql on the Postgres database
 
