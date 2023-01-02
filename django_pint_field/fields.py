@@ -133,17 +133,12 @@ class IntegerPintFormField(forms.Field):
         super().__init__(*args, **kwargs)
 
     def prepare_value(self, value):
-
-        print(f"IntegerPintFormField prepare_value > value: {value}, type: {type(value)}")
-
         return value
 
     def to_python(self, value):
         """
         Return an ureg.Quantity python object from the input value
         """
-        print(f"IntegerPintFormField to_python > value: {value}, type: {type(value)}")
-
         if not value:
             raise ValidationError(
                 _("Value not provided"),
@@ -157,11 +152,6 @@ class IntegerPintFormField(forms.Field):
                 code="invalid_list",
                 params={"value": type(value)},
             )
-
-        print(
-            "IntegerPintFormField to_python > "
-            f"value[0]: {value[0]}, type(value[0]): {type(value[0])}, value[1]: {value[1]}, type(value[1]): {type(value[1])}"
-        )
 
         if not self.required:
             return value
@@ -223,8 +213,6 @@ class IntegerPintFormField(forms.Field):
         Validate the given value and return its "cleaned" value as an
         appropriate Python object. Raise ValidationError for any errors.
         """
-        print(f"IntegerPintFormField clean > value: {value}, type: {type(value)}")
-
         value = self.to_python(value)
         # value here is a Quantity object. e.g.: <Quantity(3, 'pound')>
         self.validate(value)
@@ -315,7 +303,6 @@ class BasePintField(models.Field):
         kwargs["default_unit"] = self.default_unit
         kwargs["unit_choices"] = self.unit_choices
 
-        print(f"IntegerPintField deconstruct > kwargs: {kwargs}")
         return name, path, args, kwargs
 
     def fix_unit_registry(self, value: Quantity) -> Quantity:
@@ -323,8 +310,6 @@ class BasePintField(models.Field):
         Check if the UnitRegistry from settings is used.
         If not try to fix it but give a warning.
         """
-        print(f"{self.FIELD_NAME} fix_unit_registry > value: {value}, type: {type(value)}")
-
         if isinstance(value, Quantity):
             if not isinstance(value, self.ureg.Quantity):
                 # Could be fatal if different unit registers are used but we assume
@@ -372,16 +357,12 @@ class BasePintField(models.Field):
 
         see: https://docs.djangoproject.com/en/4.1/howto/custom-model-fields/#converting-python-objects-to-query-values
         """
-
-        print(f"{self.FIELD_NAME} get_prep_value > value: {value}, type: {type(value)}")
-
         if value is None:
             return value
 
         # If a dictionary of values was passed in, convert to a Quantity
         if isinstance(value, dict) and is_decimal_or_int(value["magnitude"]) and value["units"] is not None:
             value = self.ureg.Quantity(str(value["magnitude"] * value["units"]))
-            print(f"{self.FIELD_NAME} get_prep_value > CONVERTED value: {value}, type: {type(value)}")
 
         # value may be a tuple of Quantity, for instance if using the `range` Lookup
 
@@ -403,8 +384,6 @@ class BasePintField(models.Field):
         If present for the field subclass, from_db_value() will be called in all circumstances when the data is loaded from
         the database, including in aggregates and values() calls.
         """
-        print(f"{self.FIELD_NAME} from_db_value > value: {value}, type: {type(value)}")
-
         if value is None:
             return value
 
@@ -415,9 +394,6 @@ class BasePintField(models.Field):
                     comparator, magnitude, units = value[1:-1].split(",")
                     comparator = Decimal(comparator)
                     magnitude = int(magnitude)
-                    print(
-                        f"{self.FIELD_NAME} from_db_value > comparator: {comparator}, magnitude: {magnitude}, units: {units}"
-                    )
                     return self.ureg.Quantity(magnitude * getattr(self.ureg, units))
                 except:
                     raise Exception("Could not parse tring from database")
@@ -436,9 +412,6 @@ class BasePintField(models.Field):
         Converts obj to a string. Used to serialize the value of the field.
         """
         value = self.value_from_object(obj)
-
-        print(f"{self.FIELD_NAME} value_to_string > value: {value}, str: {str(value)}")
-
         return str(value)
 
     def to_python(self, value):
@@ -455,18 +428,13 @@ class BasePintField(models.Field):
         None (if the field allows null=True)
         """
 
-        print(f"{self.FIELD_NAME} to_python > value: {value}, type: {type(value)}")
-
         if isinstance(value, Quantity):
-            print(f"to_python > isinstance(value, Quantity) - value = {value}")
             return self.fix_unit_registry(value)
 
         if isinstance(value, str):
-            print(f"to_python > isinstance(value, str) - value = {value}")
             return self.ureg.Quantity(value)
 
         if isinstance(value, int):  # For instance if a default int value was used in a model
-            print(f"to_python > isinstance(value, int) - value = {value}")
             return self.ureg.Quantity(value, self.default_unit)
 
         if value is None:
@@ -482,9 +450,6 @@ class BasePintField(models.Field):
         are only checked against the magnitude as otherwise the default database
         validators will not fail because of comparison errors
         """
-
-        print(f"{self.FIELD_NAME} clean > value: {value}, type: {type(value)}")
-
         value = self.to_python(value)
         check_value = self.get_prep_value(value)
         self.validate(check_value, model_instance)
@@ -595,8 +560,6 @@ class DecimalPintFormField(forms.Field):
         if self.decimal_places is None or not isinstance(self.decimal_places, int):
             raise ValueError("PintFormField requires a decimal_places kwarg")
 
-        print(f"form field self.max_digits: {self.max_digits}, self.decimal_places: {self.decimal_places}")
-
         self.default_unit = kwargs.pop("default_unit", None)
         if self.default_unit is None:
             raise ValueError("PintFormField requires a default_unit kwarg of a single unit type (eg: grams)")
@@ -637,17 +600,12 @@ class DecimalPintFormField(forms.Field):
         super().__init__(*args, **kwargs)
 
     def prepare_value(self, value):
-
-        print(f"DecimalPintFormField prepare_value > value: {value}, type(value): {type(value)}")
-
         if isinstance(value, Quantity):
             # quantize the decimal value so we can validate is is no longer than max_digits after quantization
             quantizing_string = get_quantizing_string(max_digits=self.max_digits, decimal_places=self.decimal_places)
             new_magnitude = Decimal(str(value.magnitude)).quantize(Decimal(quantizing_string))
-            print(f"DecimalPintFormField prepare_value > new_magnitude: {new_magnitude}")
 
             value = self.ureg.Quantity(new_magnitude * getattr(self.ureg, str(value.units)))
-            print(f"DecimalPintFormField prepare_value > quantized value: {value}, type: {type(value)}")
 
         return value
 
@@ -655,8 +613,6 @@ class DecimalPintFormField(forms.Field):
         """
         Return an ureg.Quantity python object from the input value
         """
-        print(f"DecimalPintFormField to_python > value: {value}, type: {type(value)}")
-
         if not value:
             raise ValidationError(
                 _("Value not provided"),
@@ -695,8 +651,6 @@ class DecimalPintFormField(forms.Field):
                 params={"value": value[0]},
             )
 
-        print(f"DecimalPintFormField to_python > value[0]: {value[0]}")
-
         try:
             check_matching_unit_dimension(
                 self.ureg,
@@ -715,7 +669,6 @@ class DecimalPintFormField(forms.Field):
         # quantize the decimal value so we can validate is is no longer than max_digits after quantization
         quantizing_string = get_quantizing_string(max_digits=self.max_digits, decimal_places=self.decimal_places)
         new_magnitude = Decimal(str(value[0])).quantize(Decimal(quantizing_string))
-        print(f"DecimalPintFormField to_python > new_magnitude: {new_magnitude}")
 
         if len(str(new_magnitude)) - 1 > self.max_digits:
             raise ValidationError(
@@ -728,7 +681,6 @@ class DecimalPintFormField(forms.Field):
 
         # python_obj = self.ureg.Quantity(Decimal(str(value[0])) * getattr(self.ureg, value[1]))
         python_obj = self.ureg.Quantity(new_magnitude * getattr(self.ureg, value[1]))
-        print(f"DecimalPintFormField to_python > python_obj: {python_obj}, type: {type(python_obj)}")
 
         return python_obj
 
@@ -737,10 +689,6 @@ class DecimalPintFormField(forms.Field):
         Validate the given value and return its "cleaned" value as an
         appropriate Python object. Raise ValidationError for any errors.
         """
-        print(
-            f"DecimalPintFormField clean > value: {value}, type(value[0]): {type(value[0])}, type(value[1]): {type(value[1])}"
-        )
-
         value = self.to_python(value)
         # value here is a Quantity object. e.g.: <Quantity(3, 'pound')>
         self.validate(value)
@@ -805,9 +753,6 @@ class DecimalPintField(models.Field):
         self.decimal_places = kwargs.pop("decimal_places", None)
         self.max_digits = kwargs.pop("max_digits", None)
 
-        print(f"DecimalPintField init self.decimal_places: {self.decimal_places}")
-        print(f"DecimalPintField init self.max_digits: {self.max_digits}")
-
         # We try to be friendly as default django, if there are missing argument
         # we throw an error early
         if not isinstance(self.max_digits, int) or not isinstance(self.decimal_places, int):
@@ -864,7 +809,6 @@ class DecimalPintField(models.Field):
         kwargs["max_digits"] = self.max_digits
         kwargs["decimal_places"] = self.decimal_places
 
-        print(f"DecimalPintField deconstruct > kwargs: {kwargs}")
         return name, path, args, kwargs
 
     def fix_unit_registry(self, value: Quantity) -> Quantity:
@@ -872,8 +816,6 @@ class DecimalPintField(models.Field):
         Check if the UnitRegistry from settings is used.
         If not try to fix it but give a warning.
         """
-        print(f"DecimalPintField fix_unit_registry > value: {value}, type: {type(value)}")
-
         if isinstance(value, Quantity):
             if not isinstance(value, self.ureg.Quantity):
                 # Could be fatal if different unit registers are used but we assume
@@ -922,8 +864,6 @@ class DecimalPintField(models.Field):
                 )
             )
 
-        print(f"DecimalPintField get_prep_value > value: {value}, type: {type(value)}")
-
         if value is None:
             return value
 
@@ -946,19 +886,9 @@ class DecimalPintField(models.Field):
         if value is None:
             return value
 
-        # Adapt the magnitude value based on max_digits and decimal_places before converting to a pint quantity
-        print(
-            f"DecimalPintField get_db_prep_save > type(value): {type(value)}, self.max_digits: {self.max_digits}, self.decimal_places: {self.decimal_places}"
-        )
-
         # If a dictionary of values was passed in, convert to a Quantity
         if isinstance(value, dict) and is_decimal_or_int(value["magnitude"]) and value["units"] is not None:
-
-            print(
-                f"DecimalPintField get_prep_value > CONVERTING value['magnitude']: {value['magnitude']}, value['units']: {value['units']}"
-            )
             value = self.ureg.Quantity(Decimal(value["magnitude"]) * self.ureg(str(value["units"])))
-            print(f"DecimalPintField get_prep_value > CONVERTED value: {value}, type: {type(value.magnitude)}")
 
         if value and isinstance(value, Quantity):
             quantizing_string = get_quantizing_string(max_digits=self.max_digits, decimal_places=self.decimal_places)
@@ -971,15 +901,9 @@ class DecimalPintField(models.Field):
                 new_magnitude = Decimal(new_magnitude)
             new_magnitude = new_magnitude.quantize(Decimal(quantizing_string))
 
-            print(f"DecimalPintField get_db_prep_save > new_magnitude: {new_magnitude}")
             value = self.ureg.Quantity(new_magnitude * getattr(self.ureg, str(value.units)))
 
         python_obj = self.to_python(value)
-
-        print(
-            f"DecimalPintField get_db_prep_save > python_obj: {python_obj}, python_obj: {type(python_obj)}, "
-            f"magnitude: {type(python_obj.magnitude)}"
-        )
 
         converted_python_obj = self.get_prep_value(python_obj)
 
@@ -998,8 +922,6 @@ class DecimalPintField(models.Field):
         If present for the field subclass, from_db_value() will be called in all circumstances when the data is loaded from
         the database, including in aggregates and values() calls.
         """
-        print(f"DecimalPintField from_db_value > value: {value}, type: {type(value)}")
-
         if value is None:
             return value
 
@@ -1010,9 +932,7 @@ class DecimalPintField(models.Field):
                     comparator, magnitude, units = value[1:-1].split(",")
                     comparator = Decimal(comparator)
                     magnitude = Decimal(magnitude)
-                    print(
-                        f"DecimalPintField from_db_value > comparator: {comparator}, magnitude: {magnitude}, units: {units}"
-                    )
+
                     return self.ureg.Quantity(magnitude * getattr(self.ureg, units))
                 except:
                     raise Exception("Could not parse tring from database")
@@ -1030,8 +950,6 @@ class DecimalPintField(models.Field):
         """
         value = self.value_from_object(obj)
 
-        print(f"DecimalPintField value_to_string > value: {value}, str: {str(value)}")
-
         # ToDo: If using decimal, we need to serialaize and deserialize in a manner that preserves the decimal
         return str(value)
 
@@ -1048,19 +966,13 @@ class DecimalPintField(models.Field):
         A string
         None (if the field allows null=True)
         """
-
-        print(f"DecimalPintField to_python > value: {value}, type: {type(value)}")
-
         if isinstance(value, Quantity):
-            print(f"to_python > isinstance(value, Quantity) - value = {value}")
             return self.fix_unit_registry(value)
 
         if isinstance(value, str):
-            print(f"to_python > isinstance(value, str) - value = {value}")
             return self.ureg.Quantity(value)
 
         if isinstance(value, Decimal):  # For instance if a default Decimal value was used in a model
-            print(f"to_python > isinstance(value, Decimal) - value = {value}")
             return self.ureg.Quantity(value, self.default_unit)
 
         if value is None:
@@ -1076,8 +988,6 @@ class DecimalPintField(models.Field):
         are only checked against the magnitude as otherwise the default database
         validators will not fail because of comparison errors
         """
-
-        print(f"DecimalPintField clean > value: {value}, type: {type(value)}")
 
         value = self.to_python(value)
         check_value = self.get_prep_value(value)

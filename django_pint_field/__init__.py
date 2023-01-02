@@ -14,8 +14,6 @@ def get_base_unit_magnitude(value):
 
     If the input is a float, we round it before converting.
     """
-    print(f"get_base_unit_magnitude() type(value.magnitude): {type(value.magnitude)}")
-
     if not isinstance(value.magnitude, Decimal) and not isinstance(value.magnitude, int):
         # The magnitude may be input as a float, but we want it as only int (or Decimal). If we allow it to be converted
         #   from a float value, we might record a comparator value with more precision than actually desired.
@@ -24,7 +22,6 @@ def get_base_unit_magnitude(value):
 
     comparator_value = value.to_base_units()
 
-    print(f"get_base_unit_magnitude() comparator_value: {comparator_value}")
     return Decimal(str(comparator_value.magnitude))
 
 

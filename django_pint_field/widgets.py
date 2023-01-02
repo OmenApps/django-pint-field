@@ -17,7 +17,6 @@ class PintFieldWidget(MultiWidget):
 
     def get_choices(self, unit_choices=None):
         unit_choices = unit_choices or dir(self.ureg)
-        print(f"PintFieldWidget get_choices > unit_choices: {unit_choices}, type: {type(unit_choices)}")
         return [(x, x) for x in unit_choices]
 
     def decompress(self, value):
@@ -26,7 +25,6 @@ class PintFieldWidget(MultiWidget):
 
         It is responsible for splitting values for the two widgets
         """
-        print(f"PintFieldWidget decompress > value: {value}, type: {type(value)}")
         if isinstance(value, pint.Quantity):
             return [value.magnitude, value.units]
 

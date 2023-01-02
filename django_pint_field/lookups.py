@@ -10,7 +10,6 @@ from psycopg2.extensions import AsIs
 
 def get_comparator_from_rhs(rhs_params):
     def extract_comparator(input):
-        print(f"input: {input}")
         return str(input)[1:].split(":")[0]
 
     if (
@@ -97,15 +96,9 @@ def get_pint_field_lookups():
             lhs, lhs_params = self.process_lhs(compiler, connection)
             rhs, rhs_params = self.process_rhs(compiler, connection)
 
-            print(f"RANGE >> lhs: {lhs}, lhs_params: {lhs_params}, rhs: {rhs}, " f"rhs_params: {rhs_params}")
-
             modified_rhs_params = get_comparator_from_rhs(rhs_params)
             rhs = "BETWEEN %s AND %s"
 
-            print(
-                f"RANGE >> lhs: {lhs}, lhs_params: {lhs_params}, rhs: {rhs}, "
-                f"rhs_params: {rhs_params}, modified_rhs_params: {modified_rhs_params}"
-            )
             params = lhs_params + modified_rhs_params
 
             return "(%s).comparator %s" % (lhs, rhs), params

@@ -24,9 +24,7 @@ def check_migrations_complete():
     out.seek(0)
     for line in out.readlines():
         status, name = line.rsplit(" ", 1)
-        logger.debug(f"Migration '{name}' status: {status}")
         if "[X]" not in status:
-            logger.warning(f"Migration '{name}' incomplete")
             return False
     return True
 
