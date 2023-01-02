@@ -17,7 +17,8 @@ class PintFieldWidget(MultiWidget):
 
     def get_choices(self, unit_choices=None):
         unit_choices = unit_choices or dir(self.ureg)
-        return [(x, x) for x in unit_choices]
+
+        return [(str(ureg(x).units), x) for x in unit_choices]
 
     def decompress(self, value):
         """

@@ -160,7 +160,7 @@ class TestWidgets(TestCase):
                 ("mile", "mile"),
                 ("kilometer", "kilometer"),
                 ("yard", "yard"),
-                ("feet", "feet"),
+                ("foot", "feet"),  # "feet" is converted to "foot", the canonical name
             ],
             form.fields["distance"].widget.widgets[1].choices,
         )
@@ -171,7 +171,7 @@ class TestWidgets(TestCase):
             [
                 ("kilogram", "kilogram"),
                 ("milligram", "milligram"),
-                ("pounds", "pounds"),
+                ("pound", "pounds"),  # "pounds" is converted to "pound", the canonical name
             ],
             form.fields["weight_int"].widget.widgets[1].choices,
         )
@@ -179,7 +179,7 @@ class TestWidgets(TestCase):
             [
                 ("kilogram", "kilogram"),
                 ("milligram", "milligram"),
-                ("pounds", "pounds"),
+                ("pound", "pounds"),  # "pounds" is converted to "pound", the canonical name
             ],
             form.fields["weight_bigint"].widget.widgets[1].choices,
         )
@@ -187,7 +187,7 @@ class TestWidgets(TestCase):
             [
                 ("kilogram", "kilogram"),
                 ("milligram", "milligram"),
-                ("pounds", "pounds"),
+                ("pound", "pounds"),  # "pounds" is converted to "pound", the canonical name
             ],
             form.fields["weight_decimal"].widget.widgets[1].choices,
         )
