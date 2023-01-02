@@ -28,6 +28,7 @@ from tests.dummyapp.models import (
     FieldSaveModel,
     IntegerPintFieldSaveModel,
     DecimalPintFieldSaveModel,
+    DefaultsInModel,
 )
 
 Quantity = ureg.Quantity
@@ -494,3 +495,32 @@ class TestIntFieldSave(IntLikeFieldSaveTestBase, TestCase):
 
 class TestBigIntFieldSave(IntLikeFieldSaveTestBase, TestCase):
     MODEL = BigIntegerPintFieldSaveModel
+
+
+@pytest.mark.django_db
+class TestDefaults(TestCase):
+    def setUp(self):
+        # Default Values can be used in models
+        DefaultsInModel.objects.create(
+            weight_int=5 * ureg.gram,
+            weight_bigint=5 * ureg.gram,
+            weight_decimal=Decimal("5") * ureg.gram,
+        )
+
+    def tearDown(self):
+        DefaultsInModel.objects.all().delete()
+
+    def test_defaults_int(self):
+        obj = DefaultsInModel.objects.first()
+        self.assertIsInstance(obj.weight_int, ureg.Quantity)
+        self.assertEqual(str(obj.weight_int), "5 gram")
+
+    def test_defaults_bigint(self):
+        obj = DefaultsInModel.objects.first()
+        self.assertIsInstance(obj.weight_bigint, ureg.Quantity)
+        self.assertEqual(str(obj.weight_bigint), "5 gram")
+
+    def test_defaults_decimal(self):
+        obj = DefaultsInModel.objects.first()
+        self.assertIsInstance(obj.weight_decimal, ureg.Quantity)
+        self.assertEqual(str(obj.weight_decimal), "5.00 gram")

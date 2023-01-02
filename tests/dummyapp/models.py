@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.db.models import DecimalField
 
@@ -66,4 +67,13 @@ class ChoicesDefinedInModel(models.Model):
     weight_bigint = BigIntegerPintField("kilogram", unit_choices=["milligram", "kilogram", "pounds"])
     weight_decimal = DecimalPintField(
         "kilogram", unit_choices=["milligram", "pounds", "kilogram"], max_digits=10, decimal_places=2
+    )
+
+
+class DefaultsInModel(models.Model):
+    name = models.CharField(max_length=20)
+    weight_int = IntegerPintField("gram", blank=True, null=True, default=1)
+    weight_bigint = BigIntegerPintField("gram", blank=True, null=True, default=1)
+    weight_decimal = DecimalPintField(
+        "gram", blank=True, null=True, max_digits=10, decimal_places=2, default=Decimal("1.0")
     )
