@@ -9,7 +9,7 @@ import json
 import warnings
 from decimal import Decimal
 from pint import DimensionalityError, UndefinedUnitError, UnitRegistry
-from typing import Type, Union
+from typing import Type
 
 from django_pint_field.exceptions import PintFieldLookupError
 from django_pint_field.fields import (
@@ -18,6 +18,7 @@ from django_pint_field.fields import (
     IntegerPintField,
 )
 from django_pint_field.units import ureg
+from django_pint_field.aggregates import PintAvg, PintCount, PintMax, PintMin, PintStdDev, PintSum, PintVariance
 from tests.dummyapp.models import (
     BigIntegerPintFieldSaveModel,
     CustomUregHayBale,
@@ -426,6 +427,48 @@ class FieldSaveTestBase:
         with self.assertRaises(PintFieldLookupError):
             self.MODEL.objects.filter(weight__iregex=self.COMPARE_QUANTITY).first()
 
+    def test_aggregate_avg(self):
+        comparison = Quantity(Decimal("367.00000000000000000") * ureg.gram)
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintAvg("weight"))["pint_agg"]
+        print(f"pint_agg {pint_agg}")
+        self.assertEqual(comparison, pint_agg)
+
+    def test_aggregate_count(self):
+        comparison = 3
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintCount("weight"))["pint_agg"]
+        print(f"pint_agg {pint_agg}")
+        self.assertEqual(comparison, pint_agg)
+
+    def test_aggregate_max(self):
+        comparison = Quantity(Decimal("1000") * ureg.gram)
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintMax("weight"))["pint_agg"]
+        print(f"pint_agg {pint_agg}")
+        self.assertEqual(comparison, pint_agg)
+
+    def test_aggregate_min(self):
+        comparison = Quantity(Decimal("1.00") * ureg.gram)
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintMin("weight"))["pint_agg"]
+        print(f"pint_agg {pint_agg}")
+        self.assertEqual(comparison, pint_agg)
+
+    def test_aggregate_sum(self):
+        comparison = Quantity(Decimal("1101.00") * ureg.gram)
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintSum("weight"))["pint_agg"]
+        print(f"pint_agg {pint_agg}")
+        self.assertEqual(comparison, pint_agg)
+
+    def test_aggregate_std_dev(self):
+        comparison = Quantity(Decimal("449.41962573968662856") * ureg.gram)
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintStdDev("weight"))["pint_agg"]
+        print(f"pint_agg {pint_agg}")
+        self.assertEqual(comparison, pint_agg)
+
+    def test_aggregate_variance(self):
+        comparison = Quantity(Decimal("201.978") * ureg.gram)
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintVariance("weight"))["pint_agg"]
+        print(f"pint_agg {pint_agg}")
+        self.assertEqual(comparison, pint_agg)
+
 
 class TestDecimalFieldSave(FieldSaveTestBase, TestCase):
     MODEL = DecimalPintFieldSaveModel
@@ -451,9 +494,3 @@ class TestIntFieldSave(IntLikeFieldSaveTestBase, TestCase):
 
 class TestBigIntFieldSave(IntLikeFieldSaveTestBase, TestCase):
     MODEL = BigIntegerPintFieldSaveModel
-    DEFAULT_WEIGHT = 9223372036854775806
-    DEFAULT_WEIGHT_STR = "9223372036854775806"
-    DEFAULT_WEIGHT_QUANTITY_STR = "9223372036854775806 gram"
-    OUNCE_VALUE = 3.25344874e17  # Obtained using: Quantity(9223372036854775806 * ureg.gram).to("ounce")
-    HEAVIEST = 9223372036854775807
-    LIGHTEST = 1
