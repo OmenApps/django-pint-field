@@ -8,9 +8,6 @@ from django.utils.translation import gettext_lazy as _
 from io import StringIO
 from psycopg2.extensions import register_adapter
 from . import (
-    get_IntegerPintDBField,
-    get_DecimalPintDBField,
-    get_BigIntegerPintDBField,
     integer_pint_field_adapter,
     big_integer_pint_field_adapter,
     decimal_pint_field_adapter,
@@ -53,14 +50,5 @@ class DjangoPintFieldAppConfig(AppConfig):
 
         if check_migrations_complete():
             from .lookups import get_pint_field_lookups
-
-            # e.g.: x, y = IntegerPintDBField(comparator=1, magnitude=1, units="xyz")
-            IntegerPintDBField = get_IntegerPintDBField()
-            BigIntegerPintDBField = get_BigIntegerPintDBField()
-            DecimalPintDBField = get_DecimalPintDBField()
-
-            register_adapter(IntegerPintDBField, integer_pint_field_adapter)
-            register_adapter(BigIntegerPintDBField, big_integer_pint_field_adapter)
-            register_adapter(DecimalPintDBField, decimal_pint_field_adapter)
 
             get_pint_field_lookups()

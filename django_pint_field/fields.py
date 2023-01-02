@@ -15,9 +15,12 @@ from .helper import check_matching_unit_dimension
 from .units import ureg
 from .widgets import PintFieldWidget
 from . import (
-    get_IntegerPintDBField,
-    get_BigIntegerPintDBField,
-    get_DecimalPintDBField,
+    # get_IntegerPintDBField,
+    # get_BigIntegerPintDBField,
+    # get_DecimalPintDBField,
+    IntegerPintDBField,
+    BigIntegerPintDBField,
+    DecimalPintDBField,
     integer_pint_field_adapter,
     big_integer_pint_field_adapter,
     decimal_pint_field_adapter,
@@ -353,14 +356,14 @@ class BasePintField(models.Field):
             ],
         )
 
-        DjangoPintDBField = get_IntegerPintDBField
-        return integer_pint_field_adapter(
-            DjangoPintDBField(
-                comparator=get_base_unit_magnitude(quantity_item),
-                magnitude=int(quantity_item.magnitude),
-                units=str(quantity_item.units),
-            )
-        )
+        # DjangoPintDBField = get_IntegerPintDBField
+        # return integer_pint_field_adapter(
+        #     DjangoPintDBField(
+        #         comparator=get_base_unit_magnitude(quantity_item),
+        #         magnitude=int(quantity_item.magnitude),
+        #         units=str(quantity_item.units),
+        #     )
+        # )
 
     def get_prep_value(self, value):
         """
@@ -406,10 +409,25 @@ class BasePintField(models.Field):
             return value
 
         if not isinstance(value, Quantity):
-            # If we're dealing with something other than a Quantity here, it's likely an aggregate from the comparator column.
+            if isinstance(value, str):
+                # Expecting database to return a tring like "(0.5669904625000001,20,ounce)"
+                try:
+                    comparator, magnitude, units = value[1:-1].split(",")
+                    comparator = Decimal(comparator)
+                    magnitude = int(magnitude)
+                    print(
+                        f"{self.FIELD_NAME} from_db_value > comparator: {comparator}, magnitude: {magnitude}, units: {units}"
+                    )
+                    return self.ureg.Quantity(magnitude * getattr(self.ureg, units))
+                except:
+                    raise Exception("Could not parse tring from database")
+
+            # If we're dealing with an int, float, or Decimal here, it's likely an aggregate from the comparator column.
             # We need to take the value, convert it to a Quantity using the base units, and return it.
-            if isinstance(value, (int, float, Decimal)):
+            elif isinstance(value, (int, float, Decimal)):
                 return self.ureg.Quantity(value * get_base_units(self.ureg, self.default_unit))
+            else:
+                raise Exception
 
         return self.ureg.Quantity(value.magnitude * getattr(self.ureg, value.units))
 
@@ -419,9 +437,8 @@ class BasePintField(models.Field):
         """
         value = self.value_from_object(obj)
 
-        print(f"{self.FIELD_NAME} value_to_string > value: {value}, type: {type(value)}")
+        print(f"{self.FIELD_NAME} value_to_string > value: {value}, str: {str(value)}")
 
-        # ToDo: If using decimal, we need to sericlaize and deserialize in a manner that preserves the decimal
         return str(value)
 
     def to_python(self, value):
@@ -507,9 +524,10 @@ class IntegerPintField(BasePintField):
             ],
         )
 
-        DjangoPintDBField = get_IntegerPintDBField()
+        # DjangoPintDBField = get_IntegerPintDBField()
         return integer_pint_field_adapter(
-            DjangoPintDBField(
+            # DjangoPintDBField(
+            IntegerPintDBField(
                 comparator=get_base_unit_magnitude(quantity_item),
                 magnitude=int(quantity_item.magnitude),
                 units=str(quantity_item.units),
@@ -538,9 +556,10 @@ class BigIntegerPintField(BasePintField):
             ],
         )
 
-        DjangoPintDBField = get_BigIntegerPintDBField()
+        # DjangoPintDBField = get_BigIntegerPintDBField()
         return big_integer_pint_field_adapter(
-            DjangoPintDBField(
+            # DjangoPintDBField(
+            BigIntegerPintDBField(
                 comparator=get_base_unit_magnitude(quantity_item),
                 magnitude=int(quantity_item.magnitude),
                 units=str(quantity_item.units),
@@ -894,7 +913,7 @@ class DecimalPintField(models.Field):
                 ],
             )
 
-            DecimalPintDBField = get_DecimalPintDBField()
+            # DecimalPintDBField = get_DecimalPintDBField()
             return decimal_pint_field_adapter(
                 DecimalPintDBField(
                     comparator=get_base_unit_magnitude(quantity_item),
@@ -985,6 +1004,19 @@ class DecimalPintField(models.Field):
             return value
 
         if not isinstance(value, Quantity):
+            if isinstance(value, str):
+                # Expecting database to return a tring like "(0.5669904625000001,20,ounce)"
+                try:
+                    comparator, magnitude, units = value[1:-1].split(",")
+                    comparator = Decimal(comparator)
+                    magnitude = Decimal(magnitude)
+                    print(
+                        f"DecimalPintField from_db_value > comparator: {comparator}, magnitude: {magnitude}, units: {units}"
+                    )
+                    return self.ureg.Quantity(magnitude * getattr(self.ureg, units))
+                except:
+                    raise Exception("Could not parse tring from database")
+
             # If we're dealing with something other than a Quantity here, it's likely an aggregate from the comparator column.
             # We need to take the value, convert it to a Quantity using the base units, and return it.
             if isinstance(value, (int, float, Decimal)):
@@ -998,9 +1030,9 @@ class DecimalPintField(models.Field):
         """
         value = self.value_from_object(obj)
 
-        print(f"DecimalPintField value_to_string > value: {value}, type: {type(value)}")
+        print(f"DecimalPintField value_to_string > value: {value}, str: {str(value)}")
 
-        # ToDo: If using decimal, we need to sericlaize and deserialize in a manner that preserves the decimal
+        # ToDo: If using decimal, we need to serialaize and deserialize in a manner that preserves the decimal
         return str(value)
 
     def to_python(self, value):
