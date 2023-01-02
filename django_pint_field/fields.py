@@ -330,25 +330,7 @@ class BasePintField(models.Field):
             raise ValueError(f"Value '{value}' ({type(value)} is not a quantity.")
 
     def convert_quantity_for_output(self, quantity_item: Quantity):
-        if not isinstance(quantity_item, Quantity):
-            raise ValueError("quantity_item must be a Quantity")
-
-        check_matching_unit_dimension(
-            self.ureg,
-            self.default_unit,
-            [
-                str(quantity_item.units),
-            ],
-        )
-
-        # DjangoPintDBField = get_IntegerPintDBField
-        # return integer_pint_field_adapter(
-        #     DjangoPintDBField(
-        #         comparator=get_base_unit_magnitude(quantity_item),
-        #         magnitude=int(quantity_item.magnitude),
-        #         units=str(quantity_item.units),
-        #     )
-        # )
+        raise NotImplementedError("convert_quantity_for_output has not been implemented for this field")
 
     def get_prep_value(self, value):
         """
@@ -396,7 +378,7 @@ class BasePintField(models.Field):
                     magnitude = int(magnitude)
                     return self.ureg.Quantity(magnitude * getattr(self.ureg, units))
                 except:
-                    raise Exception("Could not parse tring from database")
+                    raise Exception("Could not parse string from database")
 
             # If we're dealing with an int, float, or Decimal here, it's likely an aggregate from the comparator column.
             # We need to take the value, convert it to a Quantity using the base units, and return it.
@@ -933,7 +915,7 @@ class DecimalPintField(models.Field):
 
                     return self.ureg.Quantity(magnitude * getattr(self.ureg, units))
                 except:
-                    raise Exception("Could not parse tring from database")
+                    raise Exception("Could not parse string from database")
 
             # If we're dealing with something other than a Quantity here, it's likely an aggregate from the comparator column.
             # We need to take the value, convert it to a Quantity using the base units, and return it.
