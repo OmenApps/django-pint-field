@@ -402,8 +402,6 @@ class BasePintField(models.Field):
             # We need to take the value, convert it to a Quantity using the base units, and return it.
             elif isinstance(value, (int, float, Decimal)):
                 return self.ureg.Quantity(value * get_base_units(self.ureg, self.default_unit))
-            else:
-                raise Exception
 
         return self.ureg.Quantity(value.magnitude * getattr(self.ureg, value.units))
 
