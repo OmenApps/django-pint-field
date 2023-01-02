@@ -41,6 +41,19 @@ IntegerPintFieldSaveModel.objects.filter(weight__gte=small)
 
 IntegerPintFieldSaveModel.objects.filter(weight__range=(small, medium))
 <QuerySet [<IntegerPintFieldSaveModel: small>]>
+
+In [1]: IntegerPintFieldSaveModel.objects.first()
+Out[1]: <IntegerPintFieldSaveModel: small>
+
+In [2]: IntegerPintFieldSaveModel.objects.first().weight
+Out[2]: 10 <Unit('gram')>
+
+In [3]: IntegerPintFieldSaveModel.objects.first().weight.magnitude
+Out[3]: 10
+
+In [4]: IntegerPintFieldSaveModel.objects.first().weight.units
+Out[4]: <Unit('gram')>
+
 ```
 
 ## Valid Lookups
