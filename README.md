@@ -11,6 +11,10 @@ Unlike django-pint, in this project we use a composite field to store both the m
 
 `pip install django_pint_field`
 
+Add `"django_pint_field",` to your list of installed apps.
+
+Run `python manage.py migrate django_pint_field`
+
 
 ## Usage
 
