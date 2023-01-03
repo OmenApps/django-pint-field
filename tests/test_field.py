@@ -1,16 +1,24 @@
-import pytest
+import json
+import warnings
+from decimal import Decimal
+from typing import Type
 
+import pytest
 from django.core.serializers import deserialize, serialize
 from django.db import transaction
 from django.db.models import Field, Model
 from django.test import TestCase
-
-import json
-import warnings
-from decimal import Decimal
 from pint import DimensionalityError, UndefinedUnitError, UnitRegistry
-from typing import Type
 
+from django_pint_field.aggregates import (
+    PintAvg,
+    PintCount,
+    PintMax,
+    PintMin,
+    PintStdDev,
+    PintSum,
+    PintVariance,
+)
 from django_pint_field.exceptions import PintFieldLookupError
 from django_pint_field.models import (
     BigIntegerPintField,
@@ -18,17 +26,16 @@ from django_pint_field.models import (
     IntegerPintField,
 )
 from django_pint_field.units import ureg
-from django_pint_field.aggregates import PintAvg, PintCount, PintMax, PintMin, PintStdDev, PintSum, PintVariance
 from tests.dummyapp.models import (
     BigIntegerPintFieldSaveModel,
     CustomUregHayBale,
+    DecimalPintFieldSaveModel,
+    DefaultsInModel,
     EmptyHayBaleBigInteger,
     EmptyHayBaleDecimal,
     EmptyHayBaleInteger,
     FieldSaveModel,
     IntegerPintFieldSaveModel,
-    DecimalPintFieldSaveModel,
-    DefaultsInModel,
 )
 
 Quantity = ureg.Quantity

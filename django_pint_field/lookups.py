@@ -1,9 +1,9 @@
 from django.db.models import Lookup
 from django.utils.translation import gettext_lazy as _
-from .models import IntegerPintField, BigIntegerPintField, DecimalPintField
-from .exceptions import PintFieldLookupError
 from psycopg2.extensions import AsIs
 
+from .exceptions import PintFieldLookupError
+from .models import BigIntegerPintField, DecimalPintField, IntegerPintField
 
 # ToDo: Find a good way to validate in lookups that the lhs and rhs Quantities use the same dimensionality
 

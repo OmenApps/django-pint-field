@@ -1,5 +1,7 @@
-from django.db.models.base import ModelBase
 from typing import Dict
+
+from django.db.models.base import ModelBase
+
 from .models import *  # noqa: F401, F403
 
 

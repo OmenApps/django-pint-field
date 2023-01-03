@@ -1,9 +1,8 @@
 from django.test import TestCase
-
 from pint import DimensionalityError
 
-import django_pint_field.models as models
 import django_pint_field.helper as helper
+import django_pint_field.models as models
 from django_pint_field.units import ureg
 
 

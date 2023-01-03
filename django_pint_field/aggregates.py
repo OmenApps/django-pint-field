@@ -1,7 +1,7 @@
 from django.db.models import Aggregate
-from django.db.models.functions.mixins import NumericOutputFieldMixin
-from django.db.models.fields import IntegerField
 from django.db.models.expressions import Star
+from django.db.models.fields import IntegerField
+from django.db.models.functions.mixins import NumericOutputFieldMixin
 
 
 class PintAvg(NumericOutputFieldMixin, Aggregate):

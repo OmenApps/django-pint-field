@@ -1,11 +1,10 @@
-import pytest
+from typing import Dict
 
 import django.contrib.admin
+import pytest
 from django.contrib.admin import ModelAdmin
 from django.db.models import Model
 from django.forms import Field, ModelForm
-
-from typing import Dict
 
 from django_pint_field.widgets import PintFieldWidget
 from tests.dummyapp import models

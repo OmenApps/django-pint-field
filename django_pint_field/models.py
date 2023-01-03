@@ -1,28 +1,68 @@
-from django.db import models
-from django.utils.translation import gettext_lazy as _
 import logging
 import typing
 import warnings
 from decimal import Decimal
-from pint import Quantity
 from typing import Any, Callable, List, Optional
 
-from .helper import check_matching_unit_dimension, is_decimal_or_int, get_base_units, get_quantizing_string
+from django.db import connection, models
+from django.utils.translation import gettext_lazy as _
+from pint import Quantity
+from psycopg2.extensions import AsIs, adapt
+from psycopg2.extras import register_composite
 
-from .units import ureg
-from . import (
-    IntegerPintDBField,
-    BigIntegerPintDBField,
-    DecimalPintDBField,
-    integer_pint_field_adapter,
-    big_integer_pint_field_adapter,
-    decimal_pint_field_adapter,
-    get_base_unit_magnitude,
-)
 from .forms import DecimalPintFormField, IntegerPintFormField
-
+from .helper import (
+    check_matching_unit_dimension,
+    get_base_unit_magnitude,
+    get_base_units,
+    get_quantizing_string,
+    is_decimal_or_int,
+)
+from .units import ureg
 
 logger = logging.getLogger("django_pint_field")
+
+
+def integer_pint_field_adapter(value):
+    comparator = adapt(value.comparator)
+    magnitude = adapt(value.magnitude)
+    units = adapt(str(value.units))
+    return AsIs(
+        "(%s::decimal, %s::integer, %s::text)"
+        % (
+            comparator,
+            magnitude,
+            units,
+        )
+    )
+
+
+def big_integer_pint_field_adapter(value):
+    comparator = adapt(value.comparator)
+    magnitude = adapt(value.magnitude)
+    units = adapt(str(value.units))
+    return AsIs(
+        "(%s::decimal, %s::bigint, %s::text)"
+        % (
+            comparator,
+            magnitude,
+            units,
+        )
+    )
+
+
+def decimal_pint_field_adapter(value):
+    comparator = adapt(value.comparator)
+    magnitude = adapt(value.magnitude)
+    units = adapt(str(value.units))
+    return AsIs(
+        "(%s::decimal, %s::decimal, %s::text)"
+        % (
+            comparator,
+            magnitude,
+            units,
+        )
+    )
 
 
 class BasePintField(models.Field):
@@ -274,9 +314,9 @@ class IntegerPintField(BasePintField):
             ],
         )
 
-        # DjangoPintDBField = get_IntegerPintDBField()
+        IntegerPintDBField = register_composite("integer_pint_field", connection.cursor().cursor, globally=True).type
+
         return integer_pint_field_adapter(
-            # DjangoPintDBField(
             IntegerPintDBField(
                 comparator=get_base_unit_magnitude(quantity_item),
                 magnitude=int(quantity_item.magnitude),
@@ -306,9 +346,10 @@ class BigIntegerPintField(BasePintField):
             ],
         )
 
-        # DjangoPintDBField = get_BigIntegerPintDBField()
+        BigIntegerPintDBField = register_composite(
+            "big_integer_pint_field", connection.cursor().cursor, globally=True
+        ).type
         return big_integer_pint_field_adapter(
-            # DjangoPintDBField(
             BigIntegerPintDBField(
                 comparator=get_base_unit_magnitude(quantity_item),
                 magnitude=int(quantity_item.magnitude),
@@ -476,7 +517,10 @@ class DecimalPintField(models.Field):
                 ],
             )
 
-            # DecimalPintDBField = get_DecimalPintDBField()
+            DecimalPintDBField = register_composite(
+                "decimal_pint_field", connection.cursor().cursor, globally=True
+            ).type
+
             return decimal_pint_field_adapter(
                 DecimalPintDBField(
                     comparator=get_base_unit_magnitude(quantity_item),

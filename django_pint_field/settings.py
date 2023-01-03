@@ -1,5 +1,4 @@
 from django.conf import settings
-
 from pint import UnitRegistry, set_application_registry
 
 # Define default unit register

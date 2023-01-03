@@ -1,20 +1,14 @@
 # flake8: noqa: F841
+from decimal import Decimal
+
 from django import forms
 from django.test import TestCase
-
-from decimal import Decimal
 from pint import DimensionalityError, UndefinedUnitError
 
-from django_pint_field.forms import (
-    IntegerPintFormField,
-    DecimalPintFormField,
-)
+from django_pint_field.forms import DecimalPintFormField, IntegerPintFormField
 from django_pint_field.units import ureg
 from django_pint_field.widgets import PintFieldWidget
-from tests.dummyapp.models import (
-    ChoicesDefinedInModel,
-    HayBale,
-)
+from tests.dummyapp.models import ChoicesDefinedInModel, HayBale
 
 Quantity = ureg.Quantity
 

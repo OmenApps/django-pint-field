@@ -1,9 +1,6 @@
 from django import forms
 
-from django_pint_field.forms import (
-    DecimalPintFormField,
-    IntegerPintFormField,
-)
+from django_pint_field.forms import DecimalPintFormField, IntegerPintFormField
 from tests.dummyapp.models import (
     BigIntegerPintFieldSaveModel,
     DecimalPintFieldSaveModel,

@@ -1,5 +1,10 @@
+from decimal import Decimal
 from pint import DimensionalityError
 from typing import List
+
+from .units import ureg
+
+Quantity = ureg.Quantity
 
 
 def check_matching_unit_dimension(registry, default_unit: str, units_to_check: List[str]) -> None:
@@ -31,6 +36,23 @@ def get_base_units(registry, default_unit):
     temp_quantity = registry.Quantity(1 * default_unit)
     temp_quantity = temp_quantity.to_base_units()
     return temp_quantity.units
+
+
+def get_base_unit_magnitude(value):
+    """
+    Provided a value (of type=Quantity), returns the magnitude of that quantity, converted to base units
+
+    If the input is a float, we round it before converting.
+    """
+    if not isinstance(value.magnitude, Decimal) and not isinstance(value.magnitude, int):
+        # The magnitude may be input as a float, but we want it as only int (or Decimal). If we allow it to be converted
+        #   from a float value, we might record a comparator value with more precision than actually desired.
+        int_magnitude = round(value.magnitude)
+        value = Quantity(int_magnitude * value.units)
+
+    comparator_value = value.to_base_units()
+
+    return Decimal(str(comparator_value.magnitude))
 
 
 def get_quantizing_string(max_digits=1, decimal_places=0):

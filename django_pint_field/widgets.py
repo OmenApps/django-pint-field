@@ -1,6 +1,5 @@
-from django.forms.widgets import MultiWidget, NumberInput, Select
-
 import pint
+from django.forms.widgets import MultiWidget, NumberInput, Select
 
 from .units import ureg
 

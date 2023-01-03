@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from pint import UnitRegistry
 
 PG_USER = "postgres"
