@@ -7,14 +7,38 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunSQL(
             sql=[
-                (f"CREATE TYPE integer_pint_field as (comparator decimal, magnitude integer, units text)"),
-                (f"CREATE TYPE big_integer_pint_field as (comparator decimal, magnitude bigint, units text)"),
-                (f"CREATE TYPE decimal_pint_field as (comparator decimal, magnitude decimal, units text)"),
+                (
+                    """
+                    DO $$ BEGIN
+                        CREATE TYPE integer_pint_field AS (comparator decimal, magnitude integer, units text);
+                    EXCEPTION
+                        WHEN duplicate_object THEN null;
+                    END $$;
+                    """
+                ),
+                (
+                    """
+                    DO $$ BEGIN
+                        CREATE TYPE big_integer_pint_field as (comparator decimal, magnitude bigint, units text);
+                    EXCEPTION
+                        WHEN duplicate_object THEN null;
+                    END $$;
+                    """
+                ),
+                (
+                    """
+                    DO $$ BEGIN
+                        CREATE TYPE decimal_pint_field as (comparator decimal, magnitude decimal, units text);
+                    EXCEPTION
+                        WHEN duplicate_object THEN null;
+                    END $$;
+                    """
+                ),
             ],
-            reverse_sql=[
-                ("DROP TYPE integer_pint_field CASCADE;"),
-                ("DROP TYPE big_integer_pint_field CASCADE;"),
-                ("DROP TYPE decimal_pint_field CASCADE;"),
-            ],
+            # reverse_sql=[
+            #     ("DROP TYPE integer_pint_field CASCADE;"),
+            #     ("DROP TYPE big_integer_pint_field CASCADE;"),
+            #     ("DROP TYPE decimal_pint_field CASCADE;"),
+            # ],
         )
     ]

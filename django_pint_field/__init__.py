@@ -7,9 +7,42 @@ from django.db import connection
 from pint import Quantity
 from psycopg2.extras import register_composite
 from psycopg2.extensions import adapt, AsIs
+from decimal import Decimal
+
+from django.db import connection
 
 
 logger = logging.getLogger("django_pint_field")
+
+
+with connection.cursor() as curs:
+    curs.execute(
+        """
+        DO $$ BEGIN
+            CREATE TYPE integer_pint_field AS (comparator decimal, magnitude integer, units text);
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+        """
+    )
+    curs.execute(
+        """
+        DO $$ BEGIN
+            CREATE TYPE big_integer_pint_field as (comparator decimal, magnitude bigint, units text);
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+        """
+    )
+    curs.execute(
+        """
+        DO $$ BEGIN
+            CREATE TYPE decimal_pint_field as (comparator decimal, magnitude decimal, units text);
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+        """
+    )
 
 
 def get_base_unit_magnitude(value):
@@ -33,31 +66,9 @@ def get_base_unit_magnitude(value):
 # In [1]: IntegerPintDBField(comparator=Decimal("1.00"), magnitude=1, units="xyz")
 # Out[1]: integer_pint_field(comparator=Decimal('1.00'), magnitude=1, units='xyz')
 
-
-# If migrations have not yet run, we cannot map to the new postgres composite fields, so we cheat
-try:
-    IntegerPintDBField = register_composite("integer_pint_field", connection.cursor().cursor, globally=True).type
-    BigIntegerPintDBField = register_composite(
-        "big_integer_pint_field", connection.cursor().cursor, globally=True
-    ).type
-    DecimalPintDBField = register_composite("decimal_pint_field", connection.cursor().cursor, globally=True).type
-except Exception as e:
-    logger.warning(
-        "One or more types does not exist in the database. "
-        "Run migrations for django_pint_field. If using docker, try restarting. "
-        f"{e}"
-    )
-
-    class NullPintDBField:
-        def __init__(self, comparator, magnitude, units) -> None:
-            pass
-
-        def __str__(self):
-            return ""
-
-    IntegerPintDBField = NullPintDBField
-    BigIntegerPintDBField = NullPintDBField
-    DecimalPintDBField = NullPintDBField
+IntegerPintDBField = register_composite("integer_pint_field", connection.cursor().cursor, globally=True).type
+BigIntegerPintDBField = register_composite("big_integer_pint_field", connection.cursor().cursor, globally=True).type
+DecimalPintDBField = register_composite("decimal_pint_field", connection.cursor().cursor, globally=True).type
 
 
 def integer_pint_field_adapter(value):
