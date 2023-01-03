@@ -1,29 +1,11 @@
 from pathlib import Path
 from pint import UnitRegistry
 
-# Allow user specific postgres credentials to be provided
-# in a local.py file
-try:
-    from .env import PG_PASSWORD, PG_USER
-except ImportError:
-    # Define the defaults Travis CI/CD if any parameter was unset
-    PG_USER = "postgres"
-    PG_PASSWORD = "postgres"
-
-try:
-    from .env import PG_DATABASE
-except ImportError:
-    PG_DATABASE = "postgres"
-
-try:
-    from .env import PG_HOST
-except ImportError:
-    PG_HOST = "postgres"
-
-try:
-    from .env import PG_PORT
-except ImportError:
-    PG_PORT = "5432"
+PG_USER = "postgres"
+PG_PASSWORD = "postgres"
+PG_DATABASE = "postgres"
+PG_HOST = "postgres"
+PG_PORT = "5432"
 
 import tests.dummyapp
 
