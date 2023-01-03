@@ -2,7 +2,7 @@ from decimal import Decimal
 from django.db import models
 from django.db.models import DecimalField
 
-from django_pint_field.fields import (
+from django_pint_field.models import (
     IntegerPintField,
     BigIntegerPintField,
     DecimalPintField,

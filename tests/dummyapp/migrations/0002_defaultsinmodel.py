@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 from django.db import migrations, models
-import django_pint_field.fields
+import django_pint_field.models
 
 
 class Migration(migrations.Migration):
@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=20)),
                 (
                     "weight_int",
-                    django_pint_field.fields.IntegerPintField(
+                    django_pint_field.models.IntegerPintField(
                         blank=True,
                         default=1,
                         default_unit="gram",
@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "weight_bigint",
-                    django_pint_field.fields.BigIntegerPintField(
+                    django_pint_field.models.BigIntegerPintField(
                         blank=True,
                         default=1,
                         default_unit="gram",
@@ -48,7 +48,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "weight_decimal",
-                    django_pint_field.fields.DecimalPintField(
+                    django_pint_field.models.DecimalPintField(
                         blank=True,
                         decimal_places=2,
                         default=Decimal("1.0"),

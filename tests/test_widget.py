@@ -1,13 +1,11 @@
 # flake8: noqa: F841
-import pytest
-
 from django import forms
 from django.test import TestCase
 
 from decimal import Decimal
 from pint import DimensionalityError, UndefinedUnitError
 
-from django_pint_field.fields import (
+from django_pint_field.forms import (
     IntegerPintFormField,
     DecimalPintFormField,
 )

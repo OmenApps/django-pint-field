@@ -2,7 +2,7 @@ from django.test import TestCase
 
 from pint import DimensionalityError
 
-import django_pint_field.fields as fields
+import django_pint_field.models as models
 import django_pint_field.helper as helper
 from django_pint_field.units import ureg
 
@@ -18,11 +18,11 @@ class TestMatchingUnitDimensionsHelper(TestCase):
 
 class TestEdgeCases(TestCase):
     def test_fix_unit_registry(self):
-        field = fields.IntegerPintField("meter")
+        field = models.IntegerPintField("meter")
         with self.assertRaises(ValueError):
             field.fix_unit_registry(1)
 
     def test_get_prep_value(self):
-        field = fields.IntegerPintField("meter")
+        field = models.IntegerPintField("meter")
         with self.assertRaises(ValueError):
             field.get_prep_value("foobar")

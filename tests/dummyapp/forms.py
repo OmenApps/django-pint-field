@@ -1,6 +1,6 @@
 from django import forms
 
-from django_pint_field.fields import (
+from django_pint_field.forms import (
     DecimalPintFormField,
     IntegerPintFormField,
 )

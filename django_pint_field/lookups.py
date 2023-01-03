@@ -1,6 +1,6 @@
 from django.db.models import Lookup
 from django.utils.translation import gettext_lazy as _
-from .fields import IntegerPintField, BigIntegerPintField, DecimalPintField
+from .models import IntegerPintField, BigIntegerPintField, DecimalPintField
 from .exceptions import PintFieldLookupError
 from psycopg2.extensions import AsIs
 

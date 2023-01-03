@@ -12,7 +12,7 @@ from pint import DimensionalityError, UndefinedUnitError, UnitRegistry
 from typing import Type
 
 from django_pint_field.exceptions import PintFieldLookupError
-from django_pint_field.fields import (
+from django_pint_field.models import (
     BigIntegerPintField,
     DecimalPintField,
     IntegerPintField,

@@ -65,7 +65,7 @@ def integer_pint_field_adapter(value):
     magnitude = adapt(value.magnitude)
     units = adapt(str(value.units))
     return AsIs(
-        "(%s::decimal, %s::integer, %s::text)::integer_pint_field"
+        "(%s::decimal, %s::integer, %s::text)"
         % (
             comparator,
             magnitude,
@@ -79,7 +79,7 @@ def big_integer_pint_field_adapter(value):
     magnitude = adapt(value.magnitude)
     units = adapt(str(value.units))
     return AsIs(
-        "(%s::decimal, %s::bigint, %s::text)::big_integer_pint_field"
+        "(%s::decimal, %s::bigint, %s::text)"
         % (
             comparator,
             magnitude,
@@ -93,7 +93,7 @@ def decimal_pint_field_adapter(value):
     magnitude = adapt(value.magnitude)
     units = adapt(str(value.units))
     return AsIs(
-        "(%s::decimal, %s::decimal, %s::text)::decimal_pint_field"
+        "(%s::decimal, %s::decimal, %s::text)"
         % (
             comparator,
             magnitude,

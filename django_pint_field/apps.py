@@ -1,20 +1,13 @@
 import logging
-from decimal import Decimal, getcontext
+from decimal import getcontext
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.management import call_command
-from django.db.models import Lookup
 from django.utils.translation import gettext_lazy as _
 from io import StringIO
-from psycopg2.extensions import register_adapter
-from . import (
-    integer_pint_field_adapter,
-    big_integer_pint_field_adapter,
-    decimal_pint_field_adapter,
-)
 
 
-logger = logging.getLogger("watervize.entities_flags")
+logger = logging.getLogger("django_pint_field")
 
 
 def check_migrations_complete():
@@ -25,6 +18,7 @@ def check_migrations_complete():
     for line in out.readlines():
         status, name = line.rsplit(" ", 1)
         if "[X]" not in status:
+            print(status, name)
             return False
     return True
 
