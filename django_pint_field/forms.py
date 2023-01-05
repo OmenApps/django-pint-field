@@ -1,5 +1,4 @@
 import datetime
-import logging
 from decimal import Decimal
 from typing import Any, Callable, Dict, Sequence, Union
 
@@ -17,8 +16,6 @@ from .helper import (
 )
 from .units import ureg
 from .widgets import PintFieldWidget
-
-logger = logging.getLogger("django_pint_field")
 
 
 DJANGO_JSON_SERIALIZABLE_BASE = Union[None, bool, str, int, float, complex, datetime.datetime]
