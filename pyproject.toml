@@ -33,6 +33,9 @@ psycopg2-binary = "^2.9.5"
 django-extensions = "^3.2.1"
 werkzeug = "^2.2.2"
 pytest = "^7.2.0"
+django-cachalot = "^2.5.2"
+django-redis = "^5.2.0"
+redis = { version = "^4.4", extras = ["hiredis"] }
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "^23.1a1", allow-prereleases = true}

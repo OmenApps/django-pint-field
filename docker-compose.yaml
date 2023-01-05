@@ -5,6 +5,13 @@ volumes:
   local_postgres_data_backups: {}
 
 services:
+  # Used with django-cachalot
+  redis:
+    image: redis:7-alpine
+    command: --port 6379
+    expose:
+      - 6379
+
   django:
     build:
       context: .
@@ -12,6 +19,7 @@ services:
     image: django_pint_field_django
     container_name: django
     depends_on:
+      - redis
       - postgres
     volumes:
       - .:/app:z
@@ -38,4 +46,3 @@ services:
       - PASSWORD=postgres
       - HOST=postgres
       - PORT=5432
-

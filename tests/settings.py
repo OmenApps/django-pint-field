@@ -46,6 +46,33 @@ DATABASES = {
     },
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://rediscelery:6379/0",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,
+            "MAX_ENTRIES": 5000,
+            "CULL_FREQUENCY": 10,  # The fraction of entries (1 / CULL_FREQUENCY) culled when MAX_ENTRIES is reached
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            "PARSER_CLASS": "redis.connection.HiredisParser",
+        },
+        "VERSION": 1,
+        "TIMEOUT": 60 * 60,  # The default timeout, in seconds, to use for the cache.
+    }
+}
+
+# Which tables to cache using django-cachalot
+CACHALOT_ONLY_CACHABLE_TABLES = frozenset(
+    (
+        "dummyapp_integerpintfieldcachedmodel",
+        "dummyapp_bigintegerpintfieldcachedmodel",
+        "dummyapp_decimalpintfieldcachedmodel",
+    )
+)
+
+
 # not very secret in tests
 SECRET_KEY = "5tb#evac8q447#b7u8w5#yj$yq3%by!a-5t7$4@vrj$al1-u3c"
 USE_I18N = True
@@ -70,7 +97,9 @@ INSTALLED_APPS = [
     "django_pint_field",
     "django_extensions",
     "tests.dummyapp",
+    "cachalot",
 ]
+
 ROOT_URLCONF = "tests.dummyapp.urls"
 
 custom_ureg = UnitRegistry()

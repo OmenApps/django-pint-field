@@ -78,3 +78,15 @@ class DefaultsInModel(models.Model):
     weight_decimal = DecimalPintField(
         "gram", blank=True, null=True, max_digits=10, decimal_places=2, default=Decimal("1.0")
     )
+
+
+class IntegerPintFieldCachedModel(FieldSaveModel):
+    weight = IntegerPintField("gram")
+
+
+class BigIntegerPintFieldCachedModel(FieldSaveModel):
+    weight = BigIntegerPintField("gram")
+
+
+class DecimalPintFieldCachedModel(FieldSaveModel):
+    weight = DecimalPintField("gram", max_digits=5, decimal_places=2)
