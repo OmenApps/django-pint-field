@@ -1,10 +1,12 @@
 # django-pint-field
 
-Use pint with Django's ORM
+Use [pint](https://pint.readthedocs.io/en/stable/) with Django's ORM.
 
-Modified from the fantastic [django-pint](https://github.com/CarliJoy/django-pint) with different goals.
+If you want to store quantities (1 gram, 3 miles, 8.120391 angstroms, etc) in a model, edit them in forms, and have the ability to convert to other quantities in your django projects, this is the package for you!
 
-Unlike django-pint, in this project we use a composite field to store both the magnitude and value of the field, along with the equivalent value in base units for lookups. For this reason, the project only works with Postgresql databases. It ensures that the units your users want to use are the units they see, while still allowing accurate comparisons of one quantity to another.
+This package is modified from the fantastic [django-pint](https://github.com/CarliJoy/django-pint) with different goals. Unlike django-pint, in this project we use a composite Postgres field to store both the magnitude and the user's desired units, along with the equivalent value in base units. This third piece of date - the base units - makes it possible to conduct lookups comparing one instance that might be specified in "grams" with another that may be specified in "pounds", but display each instance in the units that the user desires. The units your users want to use are the units they see, while still allowing accurate comparisons of one quantity to another.
+
+For this reason, the project only works with Postgresql databases.
 
 
 ## Install
