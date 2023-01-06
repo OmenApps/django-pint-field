@@ -389,51 +389,115 @@ class FieldSaveTestBase:
         qs = self.MODEL.objects.filter(weight__range=(self.COMPARE_QUANTITY, COMPARE_QUANTITY_2))
         self.assertNotIn(self.heaviest, qs)
 
-    def test_comparison_with_invalid_lookups(self):
+    def test_comparison_with_invalid_lookup_contains(self):
+        x = self.MODEL.objects.filter(weight__contains=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__contains=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_icontains(self):
+        x = self.MODEL.objects.filter(weight__icontains=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__icontains=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_in(self):
+        x = self.MODEL.objects.filter(weight__in=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__in=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_startswith(self):
+        x = self.MODEL.objects.filter(weight__startswith=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__startswith=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_istartswith(self):
+        x = self.MODEL.objects.filter(weight__istartswith=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__istartswith=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_endswith(self):
+        x = self.MODEL.objects.filter(weight__endswith=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__endswith=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_iendswith(self):
+        x = self.MODEL.objects.filter(weight__iendswith=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__iendswith=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_date(self):
+        x = self.MODEL.objects.filter(weight__date=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__date=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_year(self):
+        x = self.MODEL.objects.filter(weight__year=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__year=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_iso_year(self):
+        x = self.MODEL.objects.filter(weight__iso_year=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__iso_year=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_month(self):
+        x = self.MODEL.objects.filter(weight__month=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__month=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_day(self):
+        x = self.MODEL.objects.filter(weight__day=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__day=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_week(self):
+        x = self.MODEL.objects.filter(weight__week=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__week=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_week_day(self):
+        x = self.MODEL.objects.filter(weight__week_day=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__week_day=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_iso_week_day(self):
+        x = self.MODEL.objects.filter(weight__iso_week_day=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__iso_week_day=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_quarter(self):
+        x = self.MODEL.objects.filter(weight__quarter=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__quarter=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_time(self):
+        x = self.MODEL.objects.filter(weight__time=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__time=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_hour(self):
+        x = self.MODEL.objects.filter(weight__hour=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__hour=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_minute(self):
+        x = self.MODEL.objects.filter(weight__minute=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__minute=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_second(self):
+        x = self.MODEL.objects.filter(weight__second=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__second=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_regex(self):
+        x = self.MODEL.objects.filter(weight__regex=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__regex=self.COMPARE_QUANTITY).first()
+            x.first()
+
+    def test_comparison_with_invalid_lookup_iregex(self):
+        x = self.MODEL.objects.filter(weight__iregex=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            self.MODEL.objects.filter(weight__iregex=self.COMPARE_QUANTITY).first()
+            x.first()
 
     def test_aggregate_avg(self):
         comparison = Quantity(Decimal("367.00000000000000000") * ureg.gram)
@@ -524,3 +588,57 @@ class TestDefaults(TestCase):
         obj = DefaultsInModel.objects.first()
         self.assertIsInstance(obj.weight_decimal, ureg.Quantity)
         self.assertEqual(str(obj.weight_decimal), "5.00 gram")
+
+
+class FieldUpdateTestBase:
+    MODEL: Type[FieldSaveModel]
+    EXPECTED_TYPE: Type = int
+    DEFAULT_WEIGHT = Quantity(2 * ureg.gram)
+    DEFAULT_WEIGHT_QUANTITY_STR = "2 gram"
+    NEW_WEIGHT = Quantity(2 * ureg.ounce)
+    NEW_WEIGHT_QUANTITY_STR = "2 ounce"
+
+    def setUp(self):
+        self.MODEL.objects.create(
+            weight=self.DEFAULT_WEIGHT,
+            name="grams",
+        )
+
+    def tearDown(self):
+        self.MODEL.objects.all().delete()
+
+    def test_value_updated(self):
+        obj = self.MODEL.objects.first()
+        self.assertEqual(str(obj.weight), self.DEFAULT_WEIGHT_QUANTITY_STR)
+
+        new_weight = self.NEW_WEIGHT
+        obj.weight = new_weight
+        obj.save(
+            update_fields=[
+                "weight",
+            ]
+        )
+
+        self.assertIsInstance(obj.weight, Quantity)
+        self.assertEqual(str(obj.weight), self.NEW_WEIGHT_QUANTITY_STR)
+
+        obj.refresh_from_db()
+        self.assertIsInstance(obj.weight, Quantity)
+        self.assertEqual(str(obj.weight), self.NEW_WEIGHT_QUANTITY_STR)
+
+
+class TestDecimalFieldUpdate(FieldUpdateTestBase, TestCase):
+    MODEL = DecimalPintFieldSaveModel
+    EXPECTED_TYPE = Decimal
+    DEFAULT_WEIGHT = Quantity(Decimal("2.00") * ureg.gram)
+    DEFAULT_WEIGHT_QUANTITY_STR = "2.00 gram"
+    NEW_WEIGHT = Quantity(Decimal("2.00") * ureg.ounce)
+    NEW_WEIGHT_QUANTITY_STR = "2.00 ounce"
+
+
+class TestIntFieldUpdate(FieldUpdateTestBase, TestCase):
+    MODEL = IntegerPintFieldSaveModel
+
+
+class TestBigIntFieldUpdate(FieldUpdateTestBase, TestCase):
+    MODEL = BigIntegerPintFieldSaveModel
