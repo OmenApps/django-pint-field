@@ -103,7 +103,7 @@ def get_pint_field_lookups():
 
             return "(%s).comparator %s" % (lhs, rhs), params
 
-    class BaseInvalidIExact(Lookup):
+    class BaseInvalidLookup(Lookup):
         """Base for invalid Lookups"""
 
         def as_sql(self, compiler, connection):
@@ -112,131 +112,119 @@ def get_pint_field_lookups():
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidContains(BaseInvalidIExact):
+    class PintInvalidContains(BaseInvalidLookup):
         lookup_name = "contains"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidIcontains(BaseInvalidIExact):
+    class PintInvalidIContains(BaseInvalidLookup):
         lookup_name = "icontains"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidIn(BaseInvalidIExact):
+    class PintInvalidIn(BaseInvalidLookup):
         lookup_name = "in"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidStartswith(BaseInvalidIExact):
+    class PintInvalidStartsWith(BaseInvalidLookup):
         lookup_name = "startswith"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidIstartswith(BaseInvalidIExact):
+    class PintInvalidIStartsWith(BaseInvalidLookup):
         lookup_name = "istartswith"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidEndswith(BaseInvalidIExact):
+    class PintInvalidEndsWith(BaseInvalidLookup):
         lookup_name = "endswith"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidIendswith(BaseInvalidIExact):
+    class PintInvalidIEndsWith(BaseInvalidLookup):
         lookup_name = "iendswith"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidDate(BaseInvalidIExact):
+    class PintInvalidTruncDate(BaseInvalidLookup):
         lookup_name = "date"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidYear(BaseInvalidIExact):
+    class PintInvalidExtractYear(BaseInvalidLookup):
         lookup_name = "year"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidIso_year(BaseInvalidIExact):
+    class PintInvalidExtractIsoYear(BaseInvalidLookup):
         lookup_name = "iso_year"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidMonth(BaseInvalidIExact):
+    class PintInvalidExtractMonth(BaseInvalidLookup):
         lookup_name = "month"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidDay(BaseInvalidIExact):
+    class PintInvalidExtractDay(BaseInvalidLookup):
         lookup_name = "day"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidWeek(BaseInvalidIExact):
+    class PintInvalidExtractWeek(BaseInvalidLookup):
         lookup_name = "week"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidWeek_day(BaseInvalidIExact):
-        lookup_name = "week_day"
-
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidIso_week_day(BaseInvalidIExact):
+    class PintInvalidExtractIsoWeekDay(BaseInvalidLookup):
         lookup_name = "iso_week_day"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidQuarter(BaseInvalidIExact):
+    class PintInvalidExtractWeekDay(BaseInvalidLookup):
+        lookup_name = "week_day"
+
+    @IntegerPintField.register_lookup
+    @BigIntegerPintField.register_lookup
+    @DecimalPintField.register_lookup
+    class PintInvalidExtractQuarter(BaseInvalidLookup):
         lookup_name = "quarter"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidTime(BaseInvalidIExact):
+    class PintInvalidTruncTime(BaseInvalidLookup):
         lookup_name = "time"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidHour(BaseInvalidIExact):
+    class PintInvalidExtractHour(BaseInvalidLookup):
         lookup_name = "hour"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidMinute(BaseInvalidIExact):
+    class PintInvalidExtractMinute(BaseInvalidLookup):
         lookup_name = "minute"
 
     @IntegerPintField.register_lookup
     @BigIntegerPintField.register_lookup
     @DecimalPintField.register_lookup
-    class PintInvalidSecond(BaseInvalidIExact):
+    class PintInvalidExtractSecond(BaseInvalidLookup):
         lookup_name = "second"
-
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidRegex(BaseInvalidIExact):
-        lookup_name = "regex"
-
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidIregex(BaseInvalidIExact):
-        lookup_name = "iregex"

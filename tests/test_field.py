@@ -390,113 +390,103 @@ class FieldSaveTestBase:
         self.assertNotIn(self.heaviest, qs)
 
     def test_comparison_with_invalid_lookup_contains(self):
-        x = self.MODEL.objects.filter(weight__contains=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__contains=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_icontains(self):
-        x = self.MODEL.objects.filter(weight__icontains=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__icontains=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_in(self):
-        x = self.MODEL.objects.filter(weight__in=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__in=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_startswith(self):
-        x = self.MODEL.objects.filter(weight__startswith=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__startswith=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_istartswith(self):
-        x = self.MODEL.objects.filter(weight__istartswith=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__istartswith=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_endswith(self):
-        x = self.MODEL.objects.filter(weight__endswith=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__endswith=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_iendswith(self):
-        x = self.MODEL.objects.filter(weight__iendswith=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__iendswith=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_date(self):
-        x = self.MODEL.objects.filter(weight__date=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__date=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_year(self):
-        x = self.MODEL.objects.filter(weight__year=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__year=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_iso_year(self):
-        x = self.MODEL.objects.filter(weight__iso_year=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__iso_year=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_month(self):
-        x = self.MODEL.objects.filter(weight__month=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__month=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_day(self):
-        x = self.MODEL.objects.filter(weight__day=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__day=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_week(self):
-        x = self.MODEL.objects.filter(weight__week=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__week=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_week_day(self):
-        x = self.MODEL.objects.filter(weight__week_day=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__week_day=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_iso_week_day(self):
-        x = self.MODEL.objects.filter(weight__iso_week_day=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__iso_week_day=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_quarter(self):
-        x = self.MODEL.objects.filter(weight__quarter=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__quarter=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_time(self):
-        x = self.MODEL.objects.filter(weight__time=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__time=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_hour(self):
-        x = self.MODEL.objects.filter(weight__hour=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__hour=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_minute(self):
-        x = self.MODEL.objects.filter(weight__minute=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__minute=self.COMPARE_QUANTITY)
             x.first()
 
     def test_comparison_with_invalid_lookup_second(self):
-        x = self.MODEL.objects.filter(weight__second=self.COMPARE_QUANTITY)
         with self.assertRaises(PintFieldLookupError):
-            x.first()
-
-    def test_comparison_with_invalid_lookup_regex(self):
-        x = self.MODEL.objects.filter(weight__regex=self.COMPARE_QUANTITY)
-        with self.assertRaises(PintFieldLookupError):
-            x.first()
-
-    def test_comparison_with_invalid_lookup_iregex(self):
-        x = self.MODEL.objects.filter(weight__iregex=self.COMPARE_QUANTITY)
-        with self.assertRaises(PintFieldLookupError):
+            x = self.MODEL.objects.filter(weight__second=self.COMPARE_QUANTITY)
             x.first()
 
     def test_aggregate_avg(self):
