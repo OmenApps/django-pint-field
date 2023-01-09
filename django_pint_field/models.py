@@ -47,7 +47,10 @@ class BasePintField(models.Field):
                              dimension like the default_unit
         """
         if not isinstance(default_unit, str):
-            raise ValueError('PintField must be defined with a default_unit, eg: "gram"')
+            raise ValueError(
+                "Djngo Pint Fields must be defined with a default_unit, eg: 'gram', "
+                f"but default_value of type: {type(default_unit)} was provided"
+            )
 
         self.ureg = ureg
 
@@ -128,26 +131,26 @@ class BasePintField(models.Field):
             else:
                 return value
         else:
-            raise ValueError(f"Value '{value}' ({type(value)} is not a quantity.")
+            raise ValueError(f"value '{value}' is type {type(value)}, not a Quantity.")
 
-    def convert_quantity_for_integer_output(self, quantity_item: Quantity):
-        if not isinstance(quantity_item, Quantity):
-            raise ValueError("quantity_item must be a Quantity")
+    def convert_quantity_for_integer_output(self, value: Quantity):
+        if not isinstance(value, Quantity):
+            raise ValueError(f"value '{value}' is type {type(value)}, not a Quantity.")
 
         check_matching_unit_dimension(
             self.ureg,
             self.default_unit,
             [
-                str(quantity_item.units),
+                str(value.units),
             ],
         )
 
         return AsIs(
             "(%s::decimal, %s::integer, '%s'::text)"
             % (
-                get_base_unit_magnitude(quantity_item),
-                int(quantity_item.magnitude),
-                quantity_item.units,
+                get_base_unit_magnitude(value),
+                int(value.magnitude),
+                value.units,
             )
         )
 
@@ -287,24 +290,24 @@ class BigIntegerPintField(BasePintField):
     def db_type(self, connection):
         return "big_integer_pint_field"
 
-    def convert_quantity_for_big_integer_output(self, quantity_item: Quantity):
-        if not isinstance(quantity_item, Quantity):
-            raise ValueError("quantity_item must be a Quantity")
+    def convert_quantity_for_big_integer_output(self, value: Quantity):
+        if not isinstance(value, Quantity):
+            raise ValueError(f"value '{value}' is type {type(value)}, not a Quantity.")
 
         check_matching_unit_dimension(
             self.ureg,
             self.default_unit,
             [
-                str(quantity_item.units),
+                str(value.units),
             ],
         )
 
         return AsIs(
             "(%s::decimal, %s::bigint, '%s'::text)"
             % (
-                get_base_unit_magnitude(quantity_item),
-                int(quantity_item.magnitude),
-                quantity_item.units,
+                get_base_unit_magnitude(value),
+                int(value.magnitude),
+                value.units,
             )
         )
 
@@ -354,7 +357,10 @@ class DecimalPintField(models.Field):
                              dimension like the default_unit
         """
         if not isinstance(default_unit, str):
-            raise ValueError('PintField must be defined with a default_unit, eg: "gram"')
+            raise ValueError(
+                "Djngo Pint Fields must be defined with a default_unit, eg: 'gram', "
+                f"but default_value of type: {type(default_unit)} was provided"
+            )
 
         self.ureg = ureg
 
@@ -391,8 +397,8 @@ class DecimalPintField(models.Field):
         if not isinstance(self.max_digits, int) or not isinstance(self.decimal_places, int):
             raise ValueError(
                 _(
-                    "Invalid initialization for DecimalPintField! "
-                    "We expect max_digits and decimal_places to be set as integers. "
+                    "Invalid initialization for DecimalPintField. "
+                    "max_digits and decimal_places must be provided as integers. "
                     f"max_digits: {self.max_digits}, decimal_places: {self.decimal_places}."
                 )
             )
@@ -400,8 +406,8 @@ class DecimalPintField(models.Field):
         if self.decimal_places < 0 or self.max_digits < 1 or self.decimal_places > self.max_digits:
             raise ValueError(
                 _(
-                    "Invalid initialization for DecimalPintField! "
-                    "max_digits and decimal_places need to positive and max_digits"
+                    "Invalid initialization for DecimalPintField. "
+                    "max_digits and decimal_places need to positive, and max_digits"
                     "needs to be larger than decimal_places and at least 1. "
                     f"So max_digits={self.max_digits} and "
                     f"decimal_plactes={self.decimal_places} "
@@ -468,24 +474,24 @@ class DecimalPintField(models.Field):
         else:
             raise ValueError(f"Value '{value}' ({type(value)} is not a quantity.")
 
-    def convert_quantity_for_decimal_output(self, quantity_item: Quantity):
-        if not isinstance(quantity_item, Quantity):
-            raise ValueError("quantity_item must be a Quantity")
+    def convert_quantity_for_decimal_output(self, value: Quantity):
+        if not isinstance(value, Quantity):
+            raise ValueError(f"value '{value}' is type {type(value)}, not a Quantity.")
 
         check_matching_unit_dimension(
             self.ureg,
             self.default_unit,
             [
-                str(quantity_item.units),
+                str(value.units),
             ],
         )
 
         return AsIs(
             "(%s::decimal, %s::decimal, '%s'::text)"
             % (
-                get_base_unit_magnitude(quantity_item),
-                quantity_item.magnitude,
-                quantity_item.units,
+                get_base_unit_magnitude(value),
+                value.magnitude,
+                value.units,
             )
         )
 
