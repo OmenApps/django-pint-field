@@ -207,20 +207,23 @@ class BasePintField(models.Field):
 
         As a general rule, to_python() should deal gracefully with any of the following arguments:
 
-        An instance of the correct type (e.g., Hand in our ongoing example).
-        A string
-        None (if the field allows null=True)
+        - An instance of the correct type
+        - A string
+        - None (if the field allows null=True)
         """
-        if isinstance(value, Quantity):
-            return self.fix_unit_registry(value)
 
         if isinstance(value, str):
             if is_decimal_or_int(value):
-                return self.ureg.Quantity(Decimal(value), self.default_unit)
-            return self.ureg.Quantity(value)
+                # A decimal or integer string
+                value = self.ureg.Quantity(Decimal(value), self.default_unit)
+            # If a string unit name was passed in, will default to `1 <Unit('default_unit')>`
+            value = self.ureg.Quantity(value)
 
         if isinstance(value, int):  # For instance if a default int value was used in a model
-            return self.ureg.Quantity(value, self.default_unit)
+            value = self.ureg.Quantity(value, self.default_unit)
+
+        if isinstance(value, Quantity):
+            return self.fix_unit_registry(value)
 
         if value is None:
             return value
@@ -593,32 +596,37 @@ class DecimalPintField(models.Field):
         """
         value = self.value_from_object(obj)
 
-        # ToDo: If using decimal, we need to serialaize and deserialize in a manner that preserves the decimal
+        # ToDo: If using decimal, we need to serialize and deserialize in a manner that preserves the decimal
         return str(value)
 
     def to_python(self, value):
         """
         Converts the value into the correct Python object. It acts as the reverse of value_to_string(), and is also called in clean().
 
-
         to_python() is called by deserialization and during the clean() method used from forms.
 
         As a general rule, to_python() should deal gracefully with any of the following arguments:
 
-        An instance of the correct type (e.g., Hand in our ongoing example).
-        A string
-        None (if the field allows null=True)
+        - An instance of the correct type
+        - A string
+        - None (if the field allows null=True)
         """
-        if isinstance(value, Quantity):
-            return self.fix_unit_registry(value)
 
         if isinstance(value, str):
             if is_decimal_or_int(value):
-                return self.ureg.Quantity(Decimal(value), self.default_unit)
-            return self.ureg.Quantity(value)
+                # A decimal or integer string
+                value = self.ureg.Quantity(Decimal(value), self.default_unit)
+            # If a string unit name was passed in, will default to `Decimal('1') <Unit('default_unit')>`
+            value = self.ureg.Quantity(value)
+
+        if isinstance(value, (float, int)):
+            value = self.ureg.Quantity(Decimal(str(value)), self.default_unit)
 
         if isinstance(value, Decimal):  # For instance if a default Decimal value was used in a model
-            return self.ureg.Quantity(value, self.default_unit)
+            value = self.ureg.Quantity(value, self.default_unit)
+
+        if isinstance(value, Quantity):
+            return self.fix_unit_registry(value)
 
         if value is None:
             return value
@@ -638,6 +646,7 @@ class DecimalPintField(models.Field):
         check_value = self.get_prep_value(value)
         self.validate(check_value, model_instance)
         self.run_validators(check_value)
+        print(f"value in clean: {value} of type: {type(value)}")
         return value
 
     def formfield(self, **kwargs):
