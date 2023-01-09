@@ -34,9 +34,11 @@ class DjangoPintFieldAppConfig(AppConfig):
     name = "django_pint_field"
 
     def ready(self):
+        from .lookups import get_pint_field_lookups
+
+        get_pint_field_lookups()
+
         set_decimal_precision()
 
         if check_migrations_complete():
-            from .lookups import get_pint_field_lookups
-
-            get_pint_field_lookups()
+            pass
