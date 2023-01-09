@@ -215,6 +215,8 @@ class BasePintField(models.Field):
             return self.fix_unit_registry(value)
 
         if isinstance(value, str):
+            if is_decimal_or_int(value):
+                return self.ureg.Quantity(Decimal(value), self.default_unit)
             return self.ureg.Quantity(value)
 
         if isinstance(value, int):  # For instance if a default int value was used in a model
@@ -611,6 +613,8 @@ class DecimalPintField(models.Field):
             return self.fix_unit_registry(value)
 
         if isinstance(value, str):
+            if is_decimal_or_int(value):
+                return self.ureg.Quantity(Decimal(value), self.default_unit)
             return self.ureg.Quantity(value)
 
         if isinstance(value, Decimal):  # For instance if a default Decimal value was used in a model
