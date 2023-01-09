@@ -275,6 +275,9 @@ class IntegerPintField(BasePintField):
         if value is None:
             return value
 
+        if isinstance(value, (int, float)):
+            value = self.ureg.Quantity(value * self.default_unit)
+
         # If a dictionary of values was passed in, convert to a Quantity
         if isinstance(value, dict) and is_decimal_or_int(value["magnitude"]) and value["units"] is not None:
             value = self.ureg.Quantity(str(value["magnitude"] * value["units"]))
@@ -325,6 +328,9 @@ class BigIntegerPintField(BasePintField):
         """
         if value is None:
             return value
+
+        if isinstance(value, (int, float)):
+            value = self.ureg.Quantity(value * self.default_unit)
 
         # If a dictionary of values was passed in, convert to a Quantity
         if isinstance(value, dict) and is_decimal_or_int(value["magnitude"]) and value["units"] is not None:
@@ -513,6 +519,9 @@ class DecimalPintField(models.Field):
         # If a dictionary of values was passed in, convert to a Quantity
         if isinstance(value, dict) and is_decimal_or_int(value["magnitude"]) and value["units"] is not None:
             value = self.ureg.Quantity(str(value["magnitude"] * value["units"]))
+
+        if isinstance(value, Decimal):
+            value = self.ureg.Quantity(value * self.default_unit)
 
         # value may be a tuple of Quantity, for instance if using the `range` Lookup
         if isinstance(value, tuple):
