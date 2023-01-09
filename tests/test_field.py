@@ -4,12 +4,13 @@ from decimal import Decimal
 from typing import Type
 
 import pytest
+from django.core.exceptions import ValidationError
 from django.core.serializers import deserialize, serialize
 from django.db import transaction
 from django.db.models import Field, Model
 from django.test import TestCase
 from pint import DimensionalityError, UndefinedUnitError, UnitRegistry
-
+from pint.errors import UndefinedUnitError
 from django_pint_field.aggregates import (
     PintAvg,
     PintCount,
@@ -39,6 +40,79 @@ from tests.dummyapp.models import (
 )
 
 Quantity = ureg.Quantity
+
+
+class DecimalPintFieldTests(TestCase):
+    def test_to_python(self):
+        default_decimal_text = "1234.1234"
+        default_decimal_value = Decimal(default_decimal_text)
+        default_quantity = ureg.Quantity(default_decimal_value * ureg.gram)
+        bad_quantity = ureg.Quantity(Decimal(1234.1234) * ureg.gram)
+
+        field = DecimalPintField(
+            "gram",
+            default=default_decimal_value,
+            unit_choices=["ounce", "gram", "pound", "kilogram"],
+            max_digits=10,
+            decimal_places=6,
+        )
+
+        # Verify to_python works with a good Quantity input value
+        self.assertEqual(field.to_python(default_quantity), ureg.Quantity(Decimal("1.2341234") * ureg.kilogram))
+
+        # When Decimal is initialized as a float, it is unable to accurately store the exact value
+        self.assertLess(field.to_python(bad_quantity), ureg.Quantity(Decimal("1.2341234") * ureg.kilogram))
+
+        # Check what happens when a Decimal is provided. Should use the Decimal and the default_unit
+        self.assertEqual(field.to_python(default_decimal_value), default_quantity)
+
+        # Check what happens when a decimal string is provided. Should convert to Decimal and use the default_unit
+        self.assertEqual(field.to_python(default_decimal_text), default_quantity)
+
+        # Check what happens when a decimal string is provided. Should convert to Decimal and use the default_unit
+        self.assertEqual(field.to_python("gram"), ureg.Quantity("gram"))
+
+    def test_invaid_registry_value_for_default(self):
+        field = DecimalPintField(default_unit="gram", max_digits=4, decimal_places=2)
+        tests = [
+            "non-registry string",
+        ]
+        for value in tests:
+            with self.subTest(value):
+                with self.assertRaises(UndefinedUnitError):
+                    field.clean(value, None)
+
+    def test_empty_and_invalid_value(self):
+        field = DecimalPintField(default_unit="gram", max_digits=4, decimal_places=2)
+        msg = "This field cannot be null."
+        tests = [
+            1,
+            1.1,
+            (),
+            [],
+            {},
+            set(),
+            object(),
+            complex(),
+            b"non-numeric byte-string",
+        ]
+        for value in tests:
+            with self.subTest(value):
+                with self.assertRaisesMessage(ValidationError, msg):
+                    field.clean(value, None)
+
+    def test_get_prep_value(self):
+        quantity = ureg.Quantity(Decimal("1234.1234") * ureg.gram)
+        quantity_list = [quantity, quantity]
+        field = DecimalPintField(
+            "ounce",
+            default=Decimal("1.23456789"),
+            unit_choices=["ounce", "gram", "pound", "kilogram"],
+            max_digits=10,
+            decimal_places=6,
+        )
+        self.assertIsNone(field.get_prep_value(None))
+        self.assertEqual(str(field.get_prep_value(quantity)), "(1.2341234::decimal, 1234.1234::decimal, 'gram'::text)")
 
 
 class BaseMixinTestFieldCreate:
