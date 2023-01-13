@@ -1,5 +1,4 @@
 import logging
-
 from decimal import Decimal
 from typing import Type
 
@@ -7,10 +6,10 @@ from django.test import TestCase
 
 from django_pint_field.units import ureg
 from tests.dummyapp.models import (
-    FieldSaveModel,
-    IntegerPintFieldCachedModel,
     BigIntegerPintFieldCachedModel,
     DecimalPintFieldCachedModel,
+    FieldSaveModel,
+    IntegerPintFieldCachedModel,
 )
 
 logger = logging.getLogger("django_pint_field")

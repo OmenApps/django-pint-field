@@ -1,8 +1,9 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from decimal import Decimal
-from .units import ureg
 
+from .units import ureg
 
 Quantity = ureg.Quantity
 

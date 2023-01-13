@@ -17,7 +17,6 @@ from .helper import (
 from .units import ureg
 from .widgets import PintFieldWidget
 
-
 DJANGO_JSON_SERIALIZABLE_BASE = Union[None, bool, str, int, float, complex, datetime.datetime]
 DJANGO_JSON_SERIALIZABLE = Union[Sequence[DJANGO_JSON_SERIALIZABLE_BASE], Dict[str, DJANGO_JSON_SERIALIZABLE_BASE]]
 NUMBER_TYPE = Union[int, float, Decimal]

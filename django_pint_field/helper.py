@@ -1,6 +1,7 @@
 from decimal import Decimal
-from pint import DimensionalityError
 from typing import List
+
+from pint import DimensionalityError
 
 from .units import ureg
 

@@ -1,11 +1,15 @@
 from decimal import Decimal
-from rest_framework import serializers
+
 from django.test import SimpleTestCase
+from rest_framework import serializers
 
-from django_pint_field.units import ureg
 from django_pint_field.rest import DecimalPintRestField, IntegerPintRestField
-
-from tests.dummyapp.models import EmptyHayBaleDecimal, EmptyHayBaleBigInteger, EmptyHayBaleInteger
+from django_pint_field.units import ureg
+from tests.dummyapp.models import (
+    EmptyHayBaleBigInteger,
+    EmptyHayBaleDecimal,
+    EmptyHayBaleInteger,
+)
 
 Quantity = ureg.Quantity
 

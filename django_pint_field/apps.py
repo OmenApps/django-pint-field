@@ -1,9 +1,10 @@
 from decimal import getcontext
+from io import StringIO
+
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.management import call_command
 from django.utils.translation import gettext_lazy as _
-from io import StringIO
 
 
 def check_migrations_complete():

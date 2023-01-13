@@ -1,12 +1,10 @@
-import typing
 import warnings
 from decimal import Decimal
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Iterable, List, Optional
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from pint import Quantity
-
 from psycopg2.extensions import AsIs
 
 from .forms import DecimalPintFormField, IntegerPintFormField
@@ -35,7 +33,7 @@ class BasePintField(models.Field):
         self,
         default_unit: str,
         *args,
-        unit_choices: Optional[typing.Iterable[str]] = None,
+        unit_choices: Optional[Iterable[str]] = None,
         verbose_name: str = None,
         name: str = None,
         **kwargs,
@@ -655,7 +653,6 @@ class DecimalPintField(models.Field):
         check_value = self.get_prep_value(value)
         self.validate(check_value, model_instance)
         self.run_validators(check_value)
-        print(f"value in clean: {value} of type: {type(value)}")
         return value
 
     def formfield(self, **kwargs):

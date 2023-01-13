@@ -11,6 +11,7 @@ from django.db.models import Field, Model
 from django.test import TestCase
 from pint import DimensionalityError, UndefinedUnitError, UnitRegistry
 from pint.errors import UndefinedUnitError
+
 from django_pint_field.aggregates import (
     PintAvg,
     PintCount,
