@@ -116,6 +116,23 @@ IntegerPintFieldSaveModel.objects.aggregate(PintVariance('weight'))
 {'weight__pintvariance': Decimal('0.24502500000000000000') <Unit('kilogram')>}
 ```
 
+
+## Use with Django Rest Framework
+
+
+```python
+from django_pint_field.rest import IntegerPintRestField
+
+class DjangoPintFieldSerializer(serializers.ModelSerializer):
+    # Let DRF know which type of serializer field to use
+    weight = IntegerPintRestField()
+
+    class Meta:
+        model = IntegerPintFieldSaveModel
+        fields = ["name", "weight"]
+```
+
+
 ## Creating your own units
 
 You can [create your own pint units](https://pint.readthedocs.io/en/stable/advanced/defining.html) if the [default units](https://github.com/hgrecco/pint/blob/master/pint/default_en.txt) in pint are not sufficient.
@@ -151,6 +168,12 @@ Then add the custom registry to settings:
 ## Widgets
 
 - **PintFieldWidget**: Default widget for all django pint field types.
+
+
+## DRF Serializer Fields
+
+- **IntegerPintRestField**: Used in DRF with IntegerPintField and BigIntegerPintField.
+- **DecimalPintRestField**: Used in DRF with DecimalPintField.
 
 
 ## Settings
