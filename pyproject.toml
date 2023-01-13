@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-pint-field"
-version = "0.2.5"
+version = "0.3.0"
 description = "Pint Fields for Django and Postgres"
 authors = ["Jack Linke <jack@watervize.com>"]
 license = "MIT"
