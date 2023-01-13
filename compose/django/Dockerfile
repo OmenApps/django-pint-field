@@ -9,15 +9,15 @@ ENV BUILD_ENV ${BUILD_ENVIRONMENT}
 
 # Install apt packages
 RUN apt-get update && apt-get install --no-install-recommends -y \
-  # dependencies for building Python packages
-  build-essential \
-  # psycopg2 dependencies
-  libpq-dev \
-  # needed for psql
-  postgresql postgresql-contrib postgresql-client \
-  # cleaning up unused files
-  && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
-  && rm -rf /var/lib/apt/lists/*
+    # dependencies for building Python packages
+    build-essential \
+    # psycopg2 dependencies
+    libpq-dev \
+    # needed for psql
+    postgresql postgresql-contrib postgresql-client \
+    # cleaning up unused files
+    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install psycopg2-binary ipdb poetry
 
@@ -26,7 +26,7 @@ COPY poetry.lock pyproject.toml ${APP_HOME}
 COPY ./django_pint_field/* ${APP_HOME}
 
 # Project initialization:
-RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi --no-root
+RUN poetry config virtualenvs.create false && poetry install --with dev --no-interaction --no-ansi --no-root
 
 # copy application files
 COPY ./manage.py ${APP_HOME}
