@@ -30,7 +30,7 @@ from django.db.models import DecimalField
 from django_pint_field.models import IntegerPintField
 
 
-class IntegerPintFieldSaveModel(FieldSaveModel):
+class IntegerPintFieldSaveModel(models.Model):
     name = models.CharField(max_length=20)
     weight = IntegerPintField("gram")
 
