@@ -20,9 +20,32 @@ Run `python manage.py migrate django_pint_field`
 
 ## Usage
 
+Assuming we are starting with the following model:
+
+```python
+from decimal import Decimal
+from django.db import models
+from django.db.models import DecimalField
+
+from django_pint_field.models import IntegerPintField
+
+
+class IntegerPintFieldSaveModel(FieldSaveModel):
+    name = models.CharField(max_length=20)
+    weight = IntegerPintField("gram")
+
+    def __str__(self):
+        return str(self.name)
+```
+
+We can do the following:
+
 ```python
 from decimal import Decimal
 from django_pint_field.units import ureg
+
+from .models import IntegerPintFieldSaveModel
+
 Quantity = ureg.Quantity
 
 # Start by creating a few Pint Quantity objects
@@ -147,7 +170,7 @@ custom_ureg.define("custom = [custom]")
 custom_ureg.define("kilocustom = 1000 * custom")
 ```
 
-Then add the custom registry to settings:
+Then add the custom registry to your app's settings.py:
 
 `DJANGO_PINT_FIELD_UNIT_REGISTER = custom_ureg`
 
@@ -156,7 +179,7 @@ Then add the custom registry to settings:
 
 - **IntegerPintField**: Stores a pint measurement as an integer (-2147483648 to 2147483647).
 - **BigIntegerPintField**: Stores a pint measurement as a big integer (-9223372036854775808 to 9223372036854775807).
-- **DecimalPintField**: Stores a pint measurement as a decimal.
+- **DecimalPintField**: Stores a pint measurement as a decimal. Like Django's DecimalField, DecimalPintField takes required `max_digits` and `decimal_places` parameters.
 
 
 ## Form Fields
@@ -226,6 +249,23 @@ Read more about rounding modes for decimals at the [decimal docs](https://docs.p
 
 ## Use the test app with docker compose
 
+### Set up a virtual environment (recommended)
+
+Make a virtual environment named `.venv`:
+
+`python3 -m venv .venv`
+    
+Activate the new environment:
+
+`source .venv/bin/activate`
+
+
+### Install dependencies
+
+*Requires [poetry](https://python-poetry.org/). If you do not yet have it installed, run `pip install poetry`.*
+
+`poetry install --with dev`
+
 ### Build and bring up
 
 ```
@@ -248,6 +288,6 @@ Navigate to `127.0.0.1:8000`
 
 
 ## ToDos:
-- If a unit_choices value is an alias (e.g. pounds vs pound), the form widget will show the incorrect item selected. The correct value is saved in db, though.
 - Implement rounding modes
-- 
+- Think through what it would take to build range types for these fields
+- Add extensible widget template
