@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_pint_field",
     "django_extensions",
+    "rest_framework",
     "tests.dummyapp",
     "cachalot",
 ]
