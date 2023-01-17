@@ -3,6 +3,7 @@ from decimal import Decimal
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from .helper import is_decimal_or_int
 from .units import ureg
 
 Quantity = ureg.Quantity
@@ -15,7 +16,10 @@ class IntegerPintRestField(serializers.Field):
 
     def to_representation(self, value):
         """Converts to string"""
-        return str(value.magnitude)
+        if isinstance(value, Quantity):
+            return str(value)
+
+        raise ValidationError(f"value of type {type(value)} passed to to_representation, but expected type Quantity.")
 
     def to_internal_value(self, data):
         """Converts back to a Quantity"""
@@ -26,10 +30,13 @@ class IntegerPintRestField(serializers.Field):
         if isinstance(data, str):
             if data.find(" ") and len(data) >= 3:
                 magnitude, units = data.split(" ")
-                magnitude = int(magnitude)
-                return Quantity(magnitude, units)
+                if is_decimal_or_int(magnitude):
+                    magnitude = int(magnitude)
+                    return Quantity(magnitude, units)
 
-        raise ValidationError("Incorrect type passed to to_internal_value")
+        raise ValidationError(
+            f"data of type {type(data)} passed to to_internal_value, but expected type str or Quantity."
+        )
 
 
 class DecimalPintRestField(serializers.Field):
@@ -39,7 +46,10 @@ class DecimalPintRestField(serializers.Field):
 
     def to_representation(self, value):
         """Converts to string"""
-        return "Quantity(%s, %s)" % (value.magnitude, value.units)
+        if isinstance(value, Quantity):
+            return f"Quantity({str(value)})"
+
+        raise ValidationError(f"value of type {type(value)} passed to to_representation, but expected type Quantity.")
 
     def to_internal_value(self, data):
         """Converts back to a Quantity"""
@@ -50,7 +60,10 @@ class DecimalPintRestField(serializers.Field):
         if isinstance(data, str):
             if data.find(" ") and len(data) >= 3:
                 magnitude, units = data.split(" ")
-                magnitude = Decimal(magnitude)
-                return Quantity(magnitude, units)
+                if is_decimal_or_int(magnitude):
+                    magnitude = Decimal(magnitude)
+                    return Quantity(magnitude, units)
 
-        raise ValidationError("Incorrect type passed to to_internal_value")
+        raise ValidationError(
+            f"data of type {type(data)} passed to to_internal_value, but expected type str or Quantity."
+        )
