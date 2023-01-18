@@ -249,6 +249,7 @@ class BasePintField(models.Field):
             "unit_choices": self.unit_choices,
             "min_value": -self.MAX_VAL - 1,
             "max_value": self.MAX_VAL,
+            "label": self.name.capitalize(),
         }
         defaults.update(kwargs)
         return super().formfield(**defaults)
@@ -662,6 +663,7 @@ class DecimalPintField(models.Field):
             "decimal_places": self.decimal_places,
             "default_unit": self.default_unit,
             "unit_choices": self.unit_choices,
+            "label": self.name.capitalize(),
         }
         defaults.update(kwargs)
         return super().formfield(**defaults)
