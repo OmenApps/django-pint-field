@@ -95,6 +95,14 @@ def serializer_test_factory(Model, SerializerField, quantity, expected_represent
             with self.assertRaises(ValidationError):
                 weight.to_representation(value=1)
 
+        if SerializerField == DecimalPintRestField:
+
+            def test_good_serializer_to_representation_with_decimal_parameters(self):
+                weight = SerializerField(max_digits=3, decimal_places=1)
+                weight.to_representation(value=Quantity(Decimal("1.0"), ureg.ounce))
+                representation = weight.to_representation(value=Quantity(quantity, ureg.ounce))
+                self.assertEqual(representation, expected_representation)
+
     return DjangoPintFieldSerializerTest
 
 
