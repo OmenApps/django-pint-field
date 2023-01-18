@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -43,6 +44,20 @@ class DecimalPintRestField(serializers.Field):
     """
     Serializes DecimalPintField objects as `Quantity(1.0,ounce)`.
     """
+
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ):
+        # Throw out unexpected kwargs if encountered
+        self.max_digits = kwargs.pop("max_digits", None)
+        self.decimal_places = kwargs.pop("decimal_places", None)
+
+        super().__init__(
+            *args,
+            **kwargs,
+        )
 
     def to_representation(self, value):
         """Converts to string"""
