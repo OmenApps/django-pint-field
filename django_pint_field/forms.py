@@ -102,7 +102,7 @@ class IntegerPintFormField(forms.Field):
                 params={"value": type(value)},
             )
 
-        if not self.required:
+        if not self.required and value[0] == "":
             return value
 
         if not value[0] or not value[1]:
@@ -206,32 +206,8 @@ class DecimalPintFormField(forms.Field):
 
         check_matching_unit_dimension(self.ureg, self.default_unit, self.unit_choices)
 
-        def is_special_admin_widget(widget) -> bool:
-            """
-            There are some special django admin widgets, defined
-            in django/contrib/admin/options.py in the variable
-            FORMFIELD_FOR_DBFIELD_DEFAULTS
-            The intention for Decimal and BigDecimalField is only to
-            define the width.
-
-            They are set through a complicated process of the
-            modelform_factory setting formfield_callback to
-            ModelForm.formfield_to_dbfield
-
-            As they will overwrite our Widget we check for them and
-            will ignore them, if they are set as attribute.
-
-            We still will allow subclasses, so the end user has still
-            the possibility to use this widget.
-            """
-            WIDGETS_TO_IGNORE = [
-                FORMFIELD_FOR_DBFIELD_DEFAULTS[models.DecimalField],
-            ]
-            classes_to_ignore = [ignored_widget["widget"].__name__ for ignored_widget in WIDGETS_TO_IGNORE]
-            return getattr(widget, "__name__") in classes_to_ignore
-
         widget = kwargs.get("widget", None)
-        if widget is None or is_special_admin_widget(widget):
+        if widget is None:
             widget = PintFieldWidget(default_unit=self.default_unit, unit_choices=self.unit_choices)
         kwargs["widget"] = widget
         super().__init__(*args, **kwargs)
@@ -263,7 +239,7 @@ class DecimalPintFormField(forms.Field):
                 params={"value": type(value)},
             )
 
-        if not self.required:
+        if not self.required and value[0] == "":
             return value
 
         if not value[0] or not value[1]:
