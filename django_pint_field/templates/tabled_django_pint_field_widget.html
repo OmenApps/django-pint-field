@@ -1,0 +1,20 @@
+{% spaceless %}{% for widget in widget.subwidgets %}{% include widget.template_name %}{% endfor %}{% endspaceless %}
+
+{% if values_list %}
+    <table style="margin:20px;">
+        <tr>
+            <th>Unit</th>
+            <th>Value</th>
+        </tr>
+        {% for value_item in values_list %}
+            <tr>
+                <td>{{ value_item.units }}</td>
+                <td style="text-align:right">
+                    {{ value_item.magnitude|floatformat:6 }}
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <br>
+{% endif %}

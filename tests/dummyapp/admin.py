@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import *  # noqa: F401, F403
+from .forms import DjangoPintFieldWidgetComparisonAdminForm
 
 
 class ReadOnlyEditing(admin.ModelAdmin):
@@ -20,3 +21,8 @@ admin.site.register(EmptyHayBaleBigInteger)
 admin.site.register(EmptyHayBaleDecimal)
 admin.site.register(CustomUregHayBale)
 admin.site.register(ChoicesDefinedInModel)
+
+
+@admin.register(DjangoPintFieldWidgetComparisonModel)
+class DjangoPintFieldWidgetComparisonAdmin(admin.ModelAdmin):
+    form = DjangoPintFieldWidgetComparisonAdminForm

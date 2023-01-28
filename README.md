@@ -1,3 +1,4 @@
+
 # django-pint-field
 
 Use [pint](https://pint.readthedocs.io/en/stable/) with Django's ORM.
@@ -191,7 +192,48 @@ Then add the custom registry to your app's settings.py:
 ## Widgets
 
 - **PintFieldWidget**: Default widget for all django pint field types.
+- **TabledPintFieldWidget**: Provides a table showing conversion to each of the `unit_choices`.
 
+![TabledPintFieldWidget](https://raw.githubusercontent.com/jacklinke/django-pint-field/main/media/TabledPintFieldWidget.png)
+
+
+Example usage:
+
+```python
+class WeightModel(models.Model):
+    decimal_weight = DecimalPintField(
+        "gram",
+        blank=True,
+        null=True,
+        max_digits=10,
+        decimal_places=2,
+        unit_choices=[
+            "kilogram",
+            "milligram",
+            "pounds"
+        ],
+    )
+
+class TabledWeightForm(forms.ModelForm):
+    class Meta:
+        model = WeightModel
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # If we want to use the tabled widget, we need to pass the 
+        #   default_unit and unit_choices to the new widget
+        default_unit = self.fields["decimal_weight"].default_unit
+        unit_choices = self.fields["decimal_weight"].unit_choices
+        self.fields["decimal_weight"].widget = TabledPintFieldWidget(
+            default_unit=default_unit, unit_choices=unit_choices
+        )
+```
+
+The template for this widget is located at https://github.com/jacklinke/django-pint-field/blob/main/django_pint_field/templates/tabled_django_pint_field_widget.html
+
+If you want to override the template, add your own template in your project at: "templates/django_pint_field/tabled_django_pint_field_widget.html"
 
 ## DRF Serializer Fields
 

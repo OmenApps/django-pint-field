@@ -1,10 +1,13 @@
 from django import forms
 
 from django_pint_field.forms import DecimalPintFormField, IntegerPintFormField
-from tests.dummyapp.models import (
+from django_pint_field.widgets import TabledPintFieldWidget, PintFieldWidget
+
+from .models import (
     BigIntegerPintFieldSaveModel,
     DecimalPintFieldSaveModel,
     IntegerPintFieldSaveModel,
+    DjangoPintFieldWidgetComparisonModel,
 )
 
 
@@ -30,3 +33,24 @@ class DefaultFormDecimal(forms.ModelForm):
     class Meta:
         model = DecimalPintFieldSaveModel
         fields = "__all__"
+
+
+class DjangoPintFieldWidgetComparisonAdminForm(forms.ModelForm):
+    class Meta:
+        model = DjangoPintFieldWidgetComparisonModel
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        default_unit = self.fields["tabled_weight_int"].default_unit
+        unit_choices = self.fields["tabled_weight_int"].unit_choices
+        self.fields["tabled_weight_int"].widget = TabledPintFieldWidget(
+            default_unit=default_unit, unit_choices=unit_choices
+        )
+        self.fields["tabled_weight_bigint"].widget = TabledPintFieldWidget(
+            default_unit=default_unit, unit_choices=unit_choices
+        )
+        self.fields["tabled_weight_decimal"].widget = TabledPintFieldWidget(
+            default_unit=default_unit, unit_choices=unit_choices
+        )

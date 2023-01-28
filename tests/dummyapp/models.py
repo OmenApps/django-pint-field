@@ -9,6 +9,8 @@ from django_pint_field.models import (
     IntegerPintField,
 )
 
+unit_choices_list = ["kilogram", "milligram", "pounds"]
+
 
 class FieldSaveModel(models.Model):
     name = models.CharField(max_length=20)
@@ -64,11 +66,9 @@ class CustomUregHayBale(models.Model):
 
 
 class ChoicesDefinedInModel(models.Model):
-    weight_int = IntegerPintField("kilogram", unit_choices=["kilogram", "milligram", "pounds"])
-    weight_bigint = BigIntegerPintField("kilogram", unit_choices=["milligram", "kilogram", "pounds"])
-    weight_decimal = DecimalPintField(
-        "kilogram", unit_choices=["milligram", "pounds", "kilogram"], max_digits=10, decimal_places=2
-    )
+    weight_int = IntegerPintField("kilogram", unit_choices=unit_choices_list)
+    weight_bigint = BigIntegerPintField("kilogram", unit_choices=unit_choices_list)
+    weight_decimal = DecimalPintField("kilogram", unit_choices=unit_choices_list, max_digits=10, decimal_places=2)
 
 
 class DefaultsInModel(models.Model):
@@ -90,3 +90,46 @@ class BigIntegerPintFieldCachedModel(FieldSaveModel):
 
 class DecimalPintFieldCachedModel(FieldSaveModel):
     weight = DecimalPintField("gram", max_digits=5, decimal_places=2)
+
+
+class DjangoPintFieldWidgetComparisonModel(models.Model):
+    weight_int = IntegerPintField(
+        "gram",
+        blank=True,
+        null=True,
+        unit_choices=unit_choices_list,
+    )
+    weight_bigint = BigIntegerPintField(
+        "gram",
+        blank=True,
+        null=True,
+        unit_choices=unit_choices_list,
+    )
+    weight_decimal = DecimalPintField(
+        "gram",
+        blank=True,
+        null=True,
+        max_digits=10,
+        decimal_places=2,
+        unit_choices=unit_choices_list,
+    )
+    tabled_weight_int = IntegerPintField(
+        "gram",
+        blank=True,
+        null=True,
+        unit_choices=unit_choices_list,
+    )
+    tabled_weight_bigint = BigIntegerPintField(
+        "gram",
+        blank=True,
+        null=True,
+        unit_choices=unit_choices_list,
+    )
+    tabled_weight_decimal = DecimalPintField(
+        "gram",
+        blank=True,
+        null=True,
+        max_digits=10,
+        decimal_places=2,
+        unit_choices=unit_choices_list,
+    )
