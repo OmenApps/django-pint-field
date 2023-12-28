@@ -5,7 +5,7 @@ Use [pint](https://pint.readthedocs.io/en/stable/) with Django's ORM.
 
 If you want to store quantities (1 gram, 3 miles, 8.120391 angstroms, etc) in a model, edit them in forms, and have the ability to convert to other quantities in your django projects, this is the package for you!
 
-This package is modified from the fantastic [django-pint](https://github.com/CarliJoy/django-pint) with different goals. Unlike django-pint, in this project we use a composite Postgres field to store both the magnitude and the user's desired units, along with the equivalent value in base units. This third piece of date - the base units - makes it possible to conduct lookups comparing one instance that might be specified in "grams" with another that may be specified in "pounds", but display each instance in the units that the user desires. The units your users want to use are the units they see, while still allowing accurate comparisons of one quantity to another.
+This package is modified from the fantastic [django-pint](https://github.com/CarliJoy/django-pint) with different goals. Unlike django-pint, in this project we use a composite Postgres field to store both the magnitude and the user's desired units, along with the equivalent value in base units. This third piece of data - the base units - makes it possible to conduct lookups comparing one instance that might be specified in "grams" with another that may be specified in "pounds", but display each instance in the units that the user desires. The units your users want to use are the units they see, while still allowing accurate comparisons of one quantity to another.
 
 For this reason, the project only works with Postgresql databases.
 
@@ -18,15 +18,17 @@ Add `"django_pint_field",` to your list of installed apps.
 
 Run `python manage.py migrate django_pint_field`
 
+```{caution}
+Failure to run this migration will result in errors for any model making use of django-pint-field when its migrations are run.
+```
+
 
 ## Usage
 
 Assuming we are starting with the following model:
 
 ```python
-from decimal import Decimal
 from django.db import models
-from django.db.models import DecimalField
 
 from django_pint_field.models import IntegerPintField
 
@@ -42,7 +44,6 @@ class IntegerPintFieldSaveModel(models.Model):
 We can do the following:
 
 ```python
-from decimal import Decimal
 from django_pint_field.units import ureg
 
 from .models import IntegerPintFieldSaveModel
@@ -287,6 +288,93 @@ Round away from zero.
 Round away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise round towards zero.
 
 Read more about rounding modes for decimals at the [decimal docs](https://docs.python.org/3/library/decimal.html#rounding-modes)
+
+
+## More Details on the Composite Field
+
+The composite field stores three pieces of data:
+
+1. **comparator**: The magnitude of the quantity in base units, always stored as numeric type (aka: decimal)
+2. **magnitude**: The magnitude of the quantity in the units specified by the user, with type determined by the model field type
+3. **units**: The units of the quantity specified by the user, stored as a string
+
+The first piece of data is mainly for internal use, and makes it possible to conduct lookups and comparisons between quantities that are 
+specified in different units. For instance, we can perform aggregations for one model instance specified in nautical miles and another 
+specified in light years, or compare which instance has the greater length. This is performed directly in the database, because the two 
+instances share the same base units (meter). 
+
+The second and third pieces of data are mainly user-facing, and are used for display.
+
+Assuming we have the following model:
+
+```python
+from django.db import models
+
+from django_pint_field.models import BigIntegerPintField
+
+
+class GalaxyComparison(models.Model):
+    name = models.CharField(max_length=20)
+    length = BigIntegerPintField("meter")
+
+    def __str__(self):
+        return str(self.name)
+```
+
+We can do the following:
+
+```python
+from django_pint_field.aggregates import PintAvg, PintCount, PintMax, PintMin, PintStdDev, PintSum, PintVariance
+from django_pint_field.units import ureg
+
+from .models import GalaxyComparison
+
+Quantity = ureg.Quantity
+
+# Start by creating a few Pint Quantity objects
+quantity_dict = {
+    "me_to_refrigerator": Quantity(4_000_000_000 * ureg.micron),
+    "seattle_to_dc": Quantity(4_421_000_000 * ureg.millimeter),
+    "earth_to_moon": Quantity(384_398_905 * ureg.meter),
+    "earth_to_sun": Quantity(14_712_000_000_000 * ureg.centimeter),
+    "earth_to_alpha_centauri": Quantity(23_218_142_548_596 * ureg.nautical_mile),
+}
+
+# Create GalaxyComparison instance for each quantity in the dictionary
+for key, value in quantity_dict.items():
+    GalaxyComparison.objects.create(name=key, length=value)
+    print(f"{key}: {int(value.to(ureg.meter).magnitude):_}")
+
+# Output:
+# me_to_refrigerator: 4_000 meter
+# seattle_to_dc: 4_421_000 meter
+# earth_to_moon: 384_398_905 meter
+# earth_to_sun: 147_120_000_000 meter
+# earth_to_alpha_centauri: 42_999_999_999_999_792 meter
+
+
+# --- Following are some examples of lookups and comparisons --- #
+
+# Annotate each instance in the queryset with length in the base unit (meters)
+GalaxyComparison.objects.annotate(length_in_meters=F("length__comparator")).values("name", "length_in_meters")
+<QuerySet [{'name': 'me_to_refrigerator', 'length_in_meters': Decimal('4000')}, {'name': 'seattle_to_dc', 'length_in_meters': Decimal('4421000')}, {'name': 'earth_to_moon', 'length_in_meters': Decimal('384398905')}, {'name': 'earth_to_sun', 'length_in_meters': Decimal('147120000000')}, {'name': 'earth_to_alpha_centauri', 'length_in_meters': Decimal('42999999999999792')}]>
+
+# Filter for instances with a length greater than 1 billion meters
+GalaxyComparison.objects.filter(length__gt=Quantity(1_000_000_000 * ureg.meter))
+<QuerySet [<GalaxyComparison: earth_to_alpha_centauri>, <GalaxyComparison: earth_to_sun>]>
+
+# Get the aggregate average length in the base unit (meters)
+GalaxyComparison.objects.aggregate(PintAvg("length"))
+{'length__pintavg': Decimal('8600029501763940.200000') <Unit('meter')>}
+
+# Get the aggregate max length in the base unit (meters)
+GalaxyComparison.objects.aggregate(PintMax("length"))
+{'length__pintmax': Decimal('42999999999999792') <Unit('meter')>}
+
+# Get the aggregate min length in the base unit (meters)
+GalaxyComparison.objects.aggregate(PintMin("length"))
+{'length__pintmin': Decimal('4.000000') <Unit('meter')>}
+```
 
 
 ## Use the test app with docker compose
