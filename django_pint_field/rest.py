@@ -51,8 +51,8 @@ class DecimalPintRestField(serializers.Field):
         **kwargs,
     ):
         # Throw out unexpected kwargs if encountered
-        self.max_digits = kwargs.pop("max_digits", None)
-        self.decimal_places = kwargs.pop("decimal_places", None)
+        kwargs.pop("max_digits", None)
+        kwargs.pop("decimal_places", None)
 
         super().__init__(
             *args,

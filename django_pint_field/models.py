@@ -1,4 +1,5 @@
 import warnings
+import decimal
 from decimal import Decimal
 from typing import Any, Callable, Iterable, List, Optional
 
@@ -356,6 +357,7 @@ class DecimalPintField(models.Field):
         default_unit: str,
         *args,
         unit_choices: Optional[List[str]] = None,
+        rounding=None,
         verbose_name: str = None,
         name: str = None,
         **kwargs,
@@ -433,6 +435,15 @@ class DecimalPintField(models.Field):
             *args,
             **kwargs,
         )
+
+        # Borrowed from DRF's DecimalField
+        if rounding is not None:
+            valid_roundings = [v for k, v in vars(decimal).items() if k.startswith("ROUND_")]
+            assert rounding in valid_roundings, "Invalid rounding option %s. Valid values for rounding are: %s" % (
+                rounding,
+                valid_roundings,
+            )
+        self.rounding = rounding
 
     def db_type(self, connection):
         return "decimal_pint_field"
@@ -581,7 +592,7 @@ class DecimalPintField(models.Field):
 
         if not isinstance(value, Quantity):
             if isinstance(value, str):
-                # Expecting database to return a tring like "(0.5669904625000001,20,ounce)"
+                # Expecting database to return a string like "(0.5669904625000001,20,ounce)"
                 try:
                     comparator, magnitude, units = value[1:-1].split(",")
                     comparator = Decimal(comparator)
