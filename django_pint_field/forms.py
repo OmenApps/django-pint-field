@@ -79,7 +79,12 @@ class IntegerPintFormField(forms.Field):
         widget = kwargs.get("widget", None)
         if widget is None or is_special_admin_widget(widget):
             widget = PintFieldWidget(default_unit=self.default_unit, unit_choices=self.unit_choices)
-        kwargs["widget"] = widget
+        else:
+            if not hasattr(widget, 'default_unit') or widget.default_unit is None:
+                widget.default_unit = self.default_unit
+            if not hasattr(widget, 'unit_choices') or not widget.unit_choices:
+                widget.unit_choices = self.unit_choices
+
         super().__init__(*args, **kwargs)
 
     def prepare_value(self, value):
@@ -207,9 +212,14 @@ class DecimalPintFormField(forms.Field):
         check_matching_unit_dimension(self.ureg, self.default_unit, self.unit_choices)
 
         widget = kwargs.get("widget", None)
-        if widget is None:
+        if widget is None or is_special_admin_widget(widget):
             widget = PintFieldWidget(default_unit=self.default_unit, unit_choices=self.unit_choices)
-        kwargs["widget"] = widget
+        else:
+            if not hasattr(widget, 'default_unit') or widget.default_unit is None:
+                widget.default_unit = self.default_unit
+            if not hasattr(widget, 'unit_choices') or not widget.unit_choices:
+                widget.unit_choices = self.unit_choices
+
         super().__init__(*args, **kwargs)
 
     def prepare_value(self, value):
