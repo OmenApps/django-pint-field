@@ -1,18 +1,9 @@
 import functools
 
-from django.db import connections, migrations
+from django.contrib.postgres.signals import get_type_oids
+from django.db import migrations
 
-
-def get_type_oids(connection_alias, type_name):
-    # From: https://github.com/django/django/blob/main/django/contrib/postgres/signals.py
-    with connections[connection_alias].cursor() as cursor:
-        cursor.execute("SELECT oid, typarray FROM pg_type WHERE typname = %s", (type_name,))
-        oids = []
-        array_oids = []
-        for row in cursor:
-            oids.append(row[0])
-            array_oids.append(row[1])
-        return tuple(oids), tuple(array_oids)
+# See: https://github.com/django/django/blob/main/django/contrib/postgres/signals.py
 
 
 @functools.lru_cache
@@ -34,7 +25,7 @@ def get_decimal_pint_field_oids(connection_alias):
 
 
 def clear_oids(apps, schema_editor):
-    # Clear cached, stale oids.
+    """Clear cached, stale oids."""
     get_integer_pint_field_oids.cache_clear()
     get_big_integer_pint_field_oids.cache_clear()
     get_decimal_pint_field_oids.cache_clear()

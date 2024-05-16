@@ -1,3 +1,1 @@
-"""
-Enables pint for use with Django
-"""
+"""Enables pint for use with Django."""

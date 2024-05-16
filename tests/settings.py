@@ -12,7 +12,7 @@ import tests.demoapp
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "0.0.0.0"]
 DEBUG = True
 STATIC_URL = "/static/"
 
@@ -56,7 +56,7 @@ CACHES = {
             "MAX_ENTRIES": 5000,
             "CULL_FREQUENCY": 10,  # The fraction of entries (1 / CULL_FREQUENCY) culled when MAX_ENTRIES is reached
             "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
-            "PARSER_CLASS": "redis.connection.HiredisParser",
+            "PARSER_CLASS": "redis.connection._HiredisParser",
         },
         "VERSION": 1,
         "TIMEOUT": 60 * 60,  # The default timeout, in seconds, to use for the cache.

@@ -1,6 +1,7 @@
+"""Field classes for Django Rest Framework serializers."""
+
 from decimal import Decimal
 
-from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -11,9 +12,7 @@ Quantity = ureg.Quantity
 
 
 class IntegerPintRestField(serializers.Field):
-    """
-    Serializes IntegerPintField and IntegerPintField objects as `Quantity(1,ounce)`.
-    """
+    """Serializes IntegerPintField and IntegerPintField objects as `Quantity(1,ounce)`."""
 
     def to_representation(self, value):
         """Converts to string"""
@@ -41,9 +40,7 @@ class IntegerPintRestField(serializers.Field):
 
 
 class DecimalPintRestField(serializers.Field):
-    """
-    Serializes DecimalPintField objects as `Quantity(1.0,ounce)`.
-    """
+    """Serializes DecimalPintField objects as `Quantity(1.0,ounce)`."""
 
     def __init__(
         self,

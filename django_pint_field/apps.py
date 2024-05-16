@@ -1,14 +1,15 @@
+"""AppConfig for the django_pint_field app."""
+
 from decimal import getcontext
 from io import StringIO
 
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.management import call_command
-from django.utils.translation import gettext_lazy as _
 
 
 def check_migrations_complete():
-    """Runs the showmigrations command, and returns false if any have not been run yet"""
+    """Runs the showmigrations command, and returns false if any have not been run yet."""
     out = StringIO()
     call_command("showmigrations", format="plan", stdout=out)
     out.seek(0)
@@ -21,7 +22,8 @@ def check_migrations_complete():
 
 
 def set_decimal_precision():
-    """
+    """Sets the decimal precision for the project.
+
     If `DJANGO_PINT_FIELD_DECIMAL_PRECISION` is set to an int value greater than 0, the project's
       decimalprecision will be set to that value. Otherwise, it is left as default.
     """
@@ -32,10 +34,13 @@ def set_decimal_precision():
 
 
 class DjangoPintFieldAppConfig(AppConfig):
+    """AppConfig for the django_pint_field app."""
+
     name = "django_pint_field"
 
     def ready(self):
-        from .lookups import get_pint_field_lookups
+        """Runs when the app is ready."""
+        from .lookups import get_pint_field_lookups  # pylint: disable=C0415
 
         get_pint_field_lookups()
 

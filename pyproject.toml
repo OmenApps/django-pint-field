@@ -1,15 +1,15 @@
 [tool.poetry]
 name = "django-pint-field"
-version = "0.3.5"
+version = "2024.5.1a1"
 description = "Pint Fields for Django and Postgres"
 authors = ["Jack Linke <jack@watervize.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "django_pint_field"}]
+packages = [{ include = "django_pint_field" }]
 
 homepage = "https://github.com/OmenApps/django-pint-field"
 repository = "https://github.com/OmenApps/django-pint-field"
-keywords = ["django",]
+keywords = ["django"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Web Environment",

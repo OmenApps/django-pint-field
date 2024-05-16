@@ -343,7 +343,7 @@ quantity_dict = {
 # Create GalaxyComparison instance for each quantity in the dictionary
 for key, value in quantity_dict.items():
     GalaxyComparison.objects.create(name=key, length=value)
-    print(f"{key}: {int(value.to(ureg.meter).magnitude):_}")
+    print(f"{key}: {int(value.to(ureg.meter).magnitude):_} meter")
 
 # Output:
 # me_to_refrigerator: 4_000 meter
@@ -401,15 +401,22 @@ Activate the new environment:
 ```
 docker compose build
 docker compose run django python manage.py migrate
-docker compose run django python manage.py createsuperuser
 docker compose up -d
 ```
 
-Navigate to `127.0.0.1:8000`
+### Create superuser
+
+```python
+docker compose exec django python manage.py createsuperuser
+```
+
+Navigate to admin `127.0.0.1:8000/admin` and log in with the superuser credentials you just created.
 
 ### Test (assuming you have already performed `build`)
 
-`docker compose run django python manage.py test`
+`docker compose exec django python manage.py test`
+or
+`docker compose exec django pytest --create-db`
 
 
 ## Run psql on the Postgres database

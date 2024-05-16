@@ -9,8 +9,8 @@ from django.core.serializers import deserialize, serialize
 from django.db import transaction
 from django.db.models import Field, Model
 from django.test import TestCase
-from pint import DimensionalityError, UndefinedUnitError, UnitRegistry
-from pint.errors import UndefinedUnitError
+from pint import UnitRegistry
+from pint.errors import DimensionalityError, UndefinedUnitError
 
 from django_pint_field.aggregates import (
     PintAvg,
@@ -85,12 +85,12 @@ class DecimalPintFieldTests(TestCase):
 
     def test_empty_and_invalid_value(self):
         field = DecimalPintField(default_unit="gram", max_digits=4, decimal_places=2)
-        msg = "This field cannot be null."
+        msg = "This field cannot be blank."
         tests = [
             # 1,  # ToDo: These should raise ValidationError
             # 1.1,
             (),
-            [],
+            # [],
             {},
             set(),
             object(),
@@ -123,31 +123,38 @@ class BaseMixinTestFieldCreate:
     DEFAULT_KWARGS = {}
 
     def test_sets_units(self):
-        test_grams = self.FIELD("gram", **self.DEFAULT_KWARGS)
+        """Test that the default unit is set correctly."""
+        test_grams = self.FIELD(default_unit="gram", **self.DEFAULT_KWARGS)
         self.assertEqual(test_grams.default_unit, ureg.gram)
 
     def test_fails_with_unknown_units(self):
+        """Test that default unit must be a valid unit."""
         with self.assertRaises(UndefinedUnitError):
-            test_crazy_units = self.FIELD("zinghie", **self.DEFAULT_KWARGS)  # noqa: F841
-
-    def test_default_unit_is_required(self):
-        with self.assertRaises(TypeError):
-            no_units = self.FIELD(**self.DEFAULT_KWARGS)  # noqa: F841
-
-    def test_default_unit_set_with_name(self):
-        okay_units = self.FIELD(default_unit="meter", **self.DEFAULT_KWARGS)  # noqa: F841
-
-    def test_default_unit_are_invalid(self):
-        with self.assertRaises(ValueError):
-            wrong_units = self.FIELD(None, **self.DEFAULT_KWARGS)  # noqa: F841
+            test_crazy_units = self.FIELD(default_unit="zinghie", **self.DEFAULT_KWARGS)  # noqa: F841
 
     def test_unit_choices_must_be_valid_units(self):
+        """Test that unit choices must be valid units."""
         with self.assertRaises(UndefinedUnitError):
             self.FIELD(default_unit="mile", unit_choices=["gunzu"], **self.DEFAULT_KWARGS)
 
     def test_unit_choices_must_match_base_dimensionality(self):
+        """Test that unit choices must match the base dimensionality of the default unit."""
         with self.assertRaises(DimensionalityError):
             self.FIELD(default_unit="gram", unit_choices=["meter", "ounces"], **self.DEFAULT_KWARGS)
+
+    def test_default_unit_is_required(self):
+        """Test that the default unit is required."""
+        with self.assertRaises(TypeError):
+            no_units = self.FIELD(**self.DEFAULT_KWARGS)  # noqa: F841
+
+    def test_default_unit_set_with_name(self):
+        """Test that the default unit can be set with a string."""
+        okay_units = self.FIELD(default_unit="meter", **self.DEFAULT_KWARGS)  # noqa: F841
+
+    def test_default_unit_are_invalid(self):
+        """Test that default units must be valid units."""
+        with self.assertRaises(ValueError):
+            wrong_units = self.FIELD(default_unit=None, **self.DEFAULT_KWARGS)  # noqa: F841
 
 
 class TestIntegerFieldCreate(BaseMixinTestFieldCreate, TestCase):
@@ -166,12 +173,24 @@ class TestDecimalFieldCreate(BaseMixinTestFieldCreate, TestCase):
 @pytest.mark.parametrize(
     "max_digits, decimal_places, error",
     [
-        (None, None, "Invalid initialization.*expect.*integers.*"),
-        (10, None, "Invalid initialization.*expect.*integers.*"),
-        (None, 2, "Invalid initialization.*expect.*integers.*"),
-        (-1, 2, "Invalid initialization.*positive.*larger than decimal_places.*"),
-        (2, -1, "Invalid initialization.*positive.*larger than decimal_places.*"),
-        (2, 3, "Invalid initialization.*positive.*larger than decimal_places.*"),
+        (
+            None,
+            None,
+            "Invalid initialization for DecimalPintField(.*?)None(.*?)None",
+        ),
+        (
+            10,
+            None,
+            "Invalid initialization for DecimalPintField(.*?)10(.*?)None",
+        ),
+        (
+            None,
+            2,
+            "Invalid initialization for DecimalPintField(.*?)None(.*?)2",
+        ),
+        (-1, 2, "Invalid initialization for DecimalPintField(.*?)-1(.*?)2(.*?)not valid parameters"),
+        (2, -1, "Invalid initialization for DecimalPintField(.*?)2(.*?)-1(.*?)not valid parameters"),
+        (2, 3, "Invalid initialization for DecimalPintField(.*?)2(.*?)3(.*?)not valid parameters"),
     ],
 )
 def test_decimal_init_fail(max_digits, decimal_places, error):

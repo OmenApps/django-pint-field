@@ -1,3 +1,5 @@
+"""Helper functions for the django_pint_field app."""
+
 from decimal import Decimal
 from typing import List
 
@@ -9,10 +11,9 @@ Quantity = ureg.Quantity
 
 
 def check_matching_unit_dimension(registry, default_unit: str, units_to_check: List[str]) -> None:
-    """
-    Check if all units_to_check have the same Dimension like the default_unit
-    If not
-    :raise DimensionalityError
+    """Check if all units_to_check have the same Dimension as the default_unit.
+
+    If not, raise DimensionalityError.
     """
 
     default_unit = getattr(registry, default_unit)
@@ -24,9 +25,10 @@ def check_matching_unit_dimension(registry, default_unit: str, units_to_check: L
             raise DimensionalityError(default_unit, unit)
 
 
-def is_decimal_or_int(input: str):
+def is_decimal_or_int(value: str):
+    """Tries to convert value to a float, which would work for an int, float, or Decimal value."""
     try:
-        float(input)
+        float(value)
         return True
     except ValueError:
         return False
@@ -40,8 +42,7 @@ def get_base_units(registry, default_unit):
 
 
 def get_base_unit_magnitude(value):
-    """
-    Provided a value (of type=Quantity), returns the magnitude of that quantity, converted to base units
+    """Provided a value (of type=Quantity), returns the magnitude of that quantity, converted to base units.
 
     If the input is a float, we round it before converting.
     """
@@ -57,8 +58,7 @@ def get_base_unit_magnitude(value):
 
 
 def get_quantizing_string(max_digits=1, decimal_places=0):
-    """_summary_
-    Builds a string that can be used to quantize a decimal.Decimal value
+    """Builds a string that can be used to quantize a decimal.Decimal value.
 
     Args:
         max_digits (int, optional): _description_. Defaults to 1.
