@@ -28,7 +28,7 @@ from django_pint_field.models import (
     IntegerPintField,
 )
 from django_pint_field.units import ureg
-from tests.dummyapp.models import (
+from tests.demoapp.models import (
     BigIntegerPintFieldSaveModel,
     CustomUregHayBale,
     DecimalPintFieldSaveModel,

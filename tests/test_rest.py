@@ -5,9 +5,10 @@ from django.test import SimpleTestCase
 from pint import UndefinedUnitError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+
 from django_pint_field.rest import DecimalPintRestField, IntegerPintRestField
 from django_pint_field.units import ureg
-from tests.dummyapp.models import (
+from tests.demoapp.models import (
     EmptyHayBaleBigInteger,
     EmptyHayBaleDecimal,
     EmptyHayBaleInteger,

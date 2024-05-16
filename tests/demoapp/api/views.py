@@ -1,8 +1,16 @@
 from rest_framework import viewsets
 from rest_framework.pagination import PageNumberPagination
 
-from tests.dummyapp.api.serializers import IntegerModelSerializer, BigIntegerModelSerializer, DecimalModelSerializer
-from tests.dummyapp.models import IntegerPintFieldSaveModel, BigIntegerPintFieldSaveModel, DecimalPintFieldSaveModel
+from tests.demoapp.api.serializers import (
+    BigIntegerModelSerializer,
+    DecimalModelSerializer,
+    IntegerModelSerializer,
+)
+from tests.demoapp.models import (
+    BigIntegerPintFieldSaveModel,
+    DecimalPintFieldSaveModel,
+    IntegerPintFieldSaveModel,
+)
 
 
 class IntegerModelViewSet(viewsets.ReadOnlyModelViewSet):

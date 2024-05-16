@@ -14,7 +14,7 @@ def get_test_models() -> Dict[str, ModelBase]:
         if not name.startswith("_"):
             if isinstance(obj, ModelBase):
                 if not obj._meta.abstract:
-                    if obj._meta.app_config.name.endswith("dummyapp"):
+                    if obj._meta.app_config.name.endswith("demoapp"):
                         result[name] = obj
     return result
 

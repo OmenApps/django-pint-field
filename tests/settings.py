@@ -8,7 +8,7 @@ PG_DATABASE = "postgres"
 PG_HOST = "postgres"
 PG_PORT = "5432"
 
-import tests.dummyapp
+import tests.demoapp
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -66,9 +66,9 @@ CACHES = {
 # Which tables to cache using django-cachalot
 CACHALOT_ONLY_CACHABLE_TABLES = frozenset(
     (
-        "dummyapp_integerpintfieldcachedmodel",
-        "dummyapp_bigintegerpintfieldcachedmodel",
-        "dummyapp_decimalpintfieldcachedmodel",
+        "demoapp_integerpintfieldcachedmodel",
+        "demoapp_bigintegerpintfieldcachedmodel",
+        "demoapp_decimalpintfieldcachedmodel",
     )
 )
 
@@ -97,11 +97,11 @@ INSTALLED_APPS = [
     "django_pint_field",
     "django_extensions",
     "rest_framework",
-    "tests.dummyapp",
+    "tests.demoapp",
     "cachalot",
 ]
 
-ROOT_URLCONF = "tests.dummyapp.urls"
+ROOT_URLCONF = "tests.demoapp.urls"
 
 custom_ureg = UnitRegistry()
 custom_ureg.define("custom = [custom]")
@@ -109,7 +109,7 @@ custom_ureg.define("kilocustom = 1000 * custom")
 
 DJANGO_PINT_FIELD_UNIT_REGISTER = custom_ureg
 
-WSGI_APPLICATION = "tests.dummyapp.wsgi.application"
+WSGI_APPLICATION = "tests.demoapp.wsgi.application"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

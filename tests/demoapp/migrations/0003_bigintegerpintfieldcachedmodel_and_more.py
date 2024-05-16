@@ -7,7 +7,7 @@ import django_pint_field.models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("dummyapp", "0002_defaultsinmodel"),
+        ("demoapp", "0002_defaultsinmodel"),
     ]
 
     operations = [

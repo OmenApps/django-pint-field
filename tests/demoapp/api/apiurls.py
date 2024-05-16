@@ -1,7 +1,11 @@
 from django.conf import settings
 from rest_framework import routers
 
-from tests.dummyapp.api.views import IntegerModelViewSet, BigIntegerModelViewSet, DecimalModelViewSet
+from tests.demoapp.api.views import (
+    BigIntegerModelViewSet,
+    DecimalModelViewSet,
+    IntegerModelViewSet,
+)
 
 router = routers.DefaultRouter()
 

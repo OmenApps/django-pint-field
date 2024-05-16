@@ -7,7 +7,7 @@ from django.db.models import Model
 from django.forms import Field, ModelForm
 
 from django_pint_field.widgets import PintFieldWidget
-from tests.dummyapp import models
+from tests.demoapp import models
 
 
 @pytest.mark.parametrize(

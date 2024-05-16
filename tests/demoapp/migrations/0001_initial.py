@@ -8,7 +8,9 @@ import django_pint_field.models
 class Migration(migrations.Migration):
     initial = True
 
-    dependencies = []
+    dependencies = [
+        ("django_pint_field", "0001_create_composite_fields"),
+    ]
 
     operations = [
         migrations.CreateModel(

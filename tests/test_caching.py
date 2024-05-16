@@ -5,7 +5,7 @@ from typing import Type
 from django.test import TestCase
 
 from django_pint_field.units import ureg
-from tests.dummyapp.models import (
+from tests.demoapp.models import (
     BigIntegerPintFieldCachedModel,
     DecimalPintFieldCachedModel,
     FieldSaveModel,

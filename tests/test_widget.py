@@ -8,7 +8,7 @@ from pint import DimensionalityError, UndefinedUnitError
 from django_pint_field.forms import DecimalPintFormField, IntegerPintFormField
 from django_pint_field.units import ureg
 from django_pint_field.widgets import PintFieldWidget
-from tests.dummyapp.models import ChoicesDefinedInModel, HayBale
+from tests.demoapp.models import ChoicesDefinedInModel, HayBale
 
 Quantity = ureg.Quantity
 

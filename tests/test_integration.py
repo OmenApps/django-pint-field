@@ -4,7 +4,7 @@ import pytest
 from django import forms
 from django.test import TestCase
 
-from tests.dummyapp.forms import (
+from tests.demoapp.forms import (
     DefaultFormBigInteger,
     DefaultFormDecimal,
     DefaultFormInteger,
