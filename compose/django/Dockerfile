@@ -29,6 +29,7 @@ COPY ./django_pint_field/* ${APP_HOME}
 RUN poetry config virtualenvs.create false && poetry install --with dev --no-interaction --no-ansi --no-root
 
 # copy application files
+COPY ./pytest.ini ${APP_HOME}
 COPY ./manage.py ${APP_HOME}
 COPY ./tests/* ${APP_HOME}
 COPY ./compose/* ${APP_HOME}
