@@ -8,13 +8,16 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV BUILD_ENV ${BUILD_ENVIRONMENT}
 
 # Install apt packages
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt update \
+    && apt-get --no-install-recommends install -y \
     # dependencies for building Python packages
     build-essential \
     # psycopg2 dependencies
     libpq-dev \
     # needed for psql
-    postgresql postgresql-contrib postgresql-client \
+    postgresql-client \
     # cleaning up unused files
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf /var/lib/apt/lists/*
@@ -26,7 +29,8 @@ COPY poetry.lock pyproject.toml ${APP_HOME}
 COPY ./django_pint_field/* ${APP_HOME}
 
 # Project initialization:
-RUN poetry config virtualenvs.create false && poetry install --with dev --no-interaction --no-ansi --no-root
+RUN --mount=type=cache,target=/root/.cache/poetry \
+    poetry config virtualenvs.create false && poetry install --with dev --no-interaction --no-ansi --no-root
 
 # copy application files
 COPY ./pytest.ini ${APP_HOME}
