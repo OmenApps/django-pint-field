@@ -16,7 +16,6 @@ classifiers = [
     "Framework :: Django",
     "Framework :: Django :: 4",
     "Framework :: Django :: 4.2",
-    "Framework :: Django :: 5",
     "Framework :: Django :: 5.0",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -49,6 +48,7 @@ pytest-cov = "^5.0"
 pytest-django = "^4.8"
 redis = { version = "^5", extras = ["hiredis"] }
 ruff = "^0.4"
+twine = "^5.0"
 werkzeug = "^2.2"
 
 [tool.ruff]
