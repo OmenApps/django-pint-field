@@ -17,12 +17,12 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Install apt packages
 RUN apt-get update
-RUN apt-get install -y \
+RUN apt-get install -y --no-install-recommends \
     # Some basic tools and libraries
     bash curl wget git make gcc libc6 \
     build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
     libsqlite3-dev llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev \
-    libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev python3-pip
+    libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev python3-pip postgresql-client-15
 
 # Update pip
 RUN pip install --upgrade pip cffi

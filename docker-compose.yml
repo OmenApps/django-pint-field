@@ -8,11 +8,13 @@ services:
       dockerfile: ./compose/django/Dockerfile
     image: django_pint_field
     container_name: django_test
-
+    volumes:
+      - ./example_project:/app/example_project
+      - ./src:/app/src
     env_file:
       - ./compose/django/.django
     ports:
-      - "8111:8111"
+      - "8115:8115"
     command: /start
 
   postgres:
@@ -22,3 +24,7 @@ services:
       - "5437:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
