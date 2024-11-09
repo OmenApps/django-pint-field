@@ -79,9 +79,18 @@ autodoc_default_options = {
     "special-members": "__init__",
     "exclude-members": "__weakref__",
 }
+
 autodoc_mock_imports = [
     "django",
     "psycopg",
+    "django_crispy_forms",
+    "crispy_bootstrap5",
+    "django_extensions",
+    "pint",
+    "django_cachalot",
+    "djangorestframework",
+    "redis",
+    "django_redis",
 ]  # Add any modules that might cause import errors during doc building
 
 # Intersphinx settings
