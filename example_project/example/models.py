@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.db import models
 from django.db.models import DecimalField
 
+from django_pint_field.indexes import PintFieldComparatorIndex
 from django_pint_field.models import BigIntegerPintField
 from django_pint_field.models import DecimalPintField
 from django_pint_field.models import IntegerPintField
@@ -26,6 +27,7 @@ class FieldSaveModel(models.Model):
         abstract = True
 
     def __str__(self):
+        """Return the name of the model."""
         return str(self.name)
 
 
@@ -33,6 +35,21 @@ class IntegerPintFieldSaveModel(FieldSaveModel):
     """Model for testing IntegerPintField."""
 
     weight = IntegerPintField(default_unit="gram")
+
+
+class IntegerPintFieldSaveWithIndexModel(FieldSaveModel):
+    """Model for testing IntegerPintField."""
+
+    weight = IntegerPintField(default_unit="gram")
+    weight_two = IntegerPintField(default_unit="kilogram")
+
+    class Meta:
+        """Meta class for IntegerPintFieldSaveWithIndexModel."""
+
+        indexes = [
+            PintFieldComparatorIndex(fields=["weight"], name="weight_idx"),
+            PintFieldComparatorIndex(fields=["weight", "weight_two"], name="weight_weight_two_idx"),
+        ]
 
 
 class BigIntegerPintFieldSaveModel(FieldSaveModel):

@@ -58,16 +58,17 @@ class DjangoPintFieldWidgetComparisonAdminForm(forms.ModelForm):
         fields = "__all__"
 
     def __init__(self, *args, **kwargs):
+        """Initialize the form."""
         super().__init__(*args, **kwargs)
 
         default_unit = self.fields["tabled_weight_int"].default_unit
         unit_choices = self.fields["tabled_weight_int"].unit_choices
         self.fields["tabled_weight_int"].widget = TabledPintFieldWidget(
-            default_unit=default_unit, unit_choices=unit_choices
+            default_unit=default_unit, unit_choices=unit_choices, floatformat=0
         )
         self.fields["tabled_weight_bigint"].widget = TabledPintFieldWidget(
-            default_unit=default_unit, unit_choices=unit_choices
+            default_unit=default_unit, unit_choices=unit_choices, floatformat=2
         )
         self.fields["tabled_weight_decimal"].widget = TabledPintFieldWidget(
-            default_unit=default_unit, unit_choices=unit_choices
+            default_unit=default_unit, unit_choices=unit_choices, floatformat=10
         )

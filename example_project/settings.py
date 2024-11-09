@@ -144,8 +144,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = "users.User"
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -166,3 +164,29 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# django-pint-field settings
+# https://django-pint-field.readthedocs.io/en/latest/
+custom_ureg = UnitRegistry()
+custom_ureg.define("custom = [custom]")
+custom_ureg.define("kilocustom = 1000 * custom")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER = custom_ureg
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django.db.backends": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+        },
+    },
+}

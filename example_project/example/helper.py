@@ -1,13 +1,11 @@
 """Helper functions for the example project."""
 
-from typing import Dict
-
 from django.db.models.base import ModelBase
 
 from .models import *  # noqa: F401, F403
 
 
-def get_test_models() -> Dict[str, ModelBase]:
+def get_test_models() -> dict[str, ModelBase]:
     """Get a list of all Test models."""
     result = {}
     for name, obj in globals().items():
