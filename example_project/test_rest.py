@@ -1,197 +1,309 @@
-"""Test the rest framework integration."""
+"""Test cases for REST framework integration."""
 
-from collections import OrderedDict
 from decimal import Decimal
 
 import pytest
-from pint import UndefinedUnitError
-from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from django_pint_field.rest import DecimalPintRestField
 from django_pint_field.rest import IntegerPintRestField
+from django_pint_field.rest import PintRestField
 from django_pint_field.units import ureg
-from example_project.example.models import EmptyHayBaleBigInteger
-from example_project.example.models import EmptyHayBaleDecimal
-from example_project.example.models import EmptyHayBaleInteger
+from example_project.example.models import BigIntegerPintFieldSaveModel
+from example_project.example.models import DecimalPintFieldSaveModel
+from example_project.example.models import IntegerPintFieldSaveModel
 
 
-# Constants
-INTEGER_QUANTITY = ureg.Quantity(1 * ureg.ounce)
-DECIMAL_QUANTITY = ureg.Quantity(Decimal("1.0") * ureg.ounce)
+Quantity = ureg.Quantity
 
 
-@pytest.fixture
-def serializer_class():
-    """Create a basic serializer class for testing."""
+@pytest.mark.django_db
+class TestPintRestField:
+    """Test cases for the PintRestField (dictionary-based serialization)."""
 
-    def _create_serializer(field_class, model=None):
-        if model:
+    @pytest.fixture(autouse=True)
+    def setup_class(self, request):
+        """Set up test parameters."""
+        if request.param == "integer":
+            self.MODEL = IntegerPintFieldSaveModel
+            self.DEFAULT_WEIGHT = 100
+        elif request.param == "big_integer":
+            self.MODEL = BigIntegerPintFieldSaveModel
+            self.DEFAULT_WEIGHT = 100
+        else:  # decimal
+            self.MODEL = DecimalPintFieldSaveModel
+            self.DEFAULT_WEIGHT = Decimal("100")
 
-            class TestSerializer(serializers.ModelSerializer):
-                """Test serializer."""
+        self.DEFAULT_UNIT = "gram"
+        self.UNIT_CHOICES = ["gram", "kilogram", "ounce", "pound"]
 
-                weight = field_class()
+    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    def test_serializer_to_representation(self):
+        """Test dictionary representation of Quantity objects."""
+        quantity = Quantity(self.DEFAULT_WEIGHT, self.DEFAULT_UNIT)
+        serializer = PintRestField()
+        result = serializer.to_representation(quantity)
 
-                class Meta:
-                    """Meta class."""
+        assert isinstance(result, dict)
+        assert result["magnitude"] == self.DEFAULT_WEIGHT
+        assert result["units"] == self.DEFAULT_UNIT
 
-                    model = model
-                    fields = ["name", "weight"]
+    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    def test_serializer_to_internal_value_valid(self):
+        """Test conversion from valid dictionary to Quantity."""
+        input_data = {"magnitude": self.DEFAULT_WEIGHT, "units": self.DEFAULT_UNIT}
+        serializer = PintRestField()
+        result = serializer.to_internal_value(input_data)
 
-        else:
+        assert isinstance(result, Quantity)
+        assert result.magnitude == self.DEFAULT_WEIGHT
+        assert str(result.units) == self.DEFAULT_UNIT
 
-            class TestSerializer(serializers.Serializer):
-                """Test serializer."""
-
-                weight = field_class()
-
-        return TestSerializer
-
-    return _create_serializer
-
-
-@pytest.fixture
-def field_params():
-    """Parameters for different field types."""
-    return {
-        "integer": {
-            "model": EmptyHayBaleInteger,
-            "field": IntegerPintRestField,
-            "quantity": INTEGER_QUANTITY,
-            "expected_repr": "1 ounce",
-        },
-        "biginteger": {
-            "model": EmptyHayBaleBigInteger,
-            "field": IntegerPintRestField,
-            "quantity": INTEGER_QUANTITY,
-            "expected_repr": "1 ounce",
-        },
-        "decimal": {
-            "model": EmptyHayBaleDecimal,
-            "field": DecimalPintRestField,
-            "quantity": DECIMAL_QUANTITY,
-            "expected_repr": "Quantity(1.0 ounce)",
-        },
-    }
+    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    def test_serializer_none_value(self):
+        """Test handling of None values."""
+        serializer = PintRestField()
+        result = serializer.to_representation(None)
+        assert result is None
 
 
-class TestPintFieldSerializer:
-    """Test the PintField serializers."""
+@pytest.mark.django_db
+class TestIntegerPintRestField:
+    """Test cases for the IntegerPintRestField (string-based serialization)."""
 
-    @pytest.mark.parametrize("field_type", ["integer", "biginteger", "decimal"])
-    def test_blank_field(self, serializer_class, field_params, field_type):
-        """Test serializer with blank field."""
-        params = field_params[field_type]
-        TestSerializer = serializer_class(params["field"], params["model"])
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Set up test parameters."""
+        self.DEFAULT_WEIGHT = 100
+        self.DEFAULT_UNIT = "gram"
+        self.serializer = IntegerPintRestField()
 
-        data = {"name": "any"}
-        serializer = TestSerializer(data=data)
+    def test_to_representation(self):
+        """Test string representation of integer Quantity."""
+        quantity = Quantity(self.DEFAULT_WEIGHT, self.DEFAULT_UNIT)
+        result = self.serializer.to_representation(quantity)
+        assert result == f"{self.DEFAULT_WEIGHT} {self.DEFAULT_UNIT}"
 
-        assert not serializer.is_valid()
-        assert serializer.data == {"name": "any"}
+    def test_to_representation_wrapped(self):
+        """Test string representation of integer Quantity."""
+        quantity = Quantity(self.DEFAULT_WEIGHT, self.DEFAULT_UNIT)
+        serializer = IntegerPintRestField(wrap=True)
+        result = serializer.to_representation(quantity)
+        assert result == f"Quantity({self.DEFAULT_WEIGHT} {self.DEFAULT_UNIT})"
 
-    @pytest.mark.parametrize("field_type", ["integer", "biginteger", "decimal"])
-    def test_quantity(self, serializer_class, field_params, field_type):
-        """Test serializer with quantity."""
-        params = field_params[field_type]
-        TestSerializer = serializer_class(params["field"])
+    def test_to_internal_value_from_string(self):
+        """Test conversion from string to Quantity."""
+        input_str = f"{self.DEFAULT_WEIGHT} {self.DEFAULT_UNIT}"
+        result = self.serializer.to_internal_value(input_str)
 
-        data = {"name": "any", "weight": params["quantity"]}
-        serializer = TestSerializer(data=data)
+        assert isinstance(result, Quantity)
+        assert result.magnitude == self.DEFAULT_WEIGHT
+        assert str(result.units) == self.DEFAULT_UNIT
 
-        assert serializer.is_valid()
-        assert serializer.validated_data == OrderedDict([("weight", params["quantity"])])
+    def test_to_internal_value_from_quantity(self):
+        """Test handling of Quantity input."""
+        input_quantity = Quantity(self.DEFAULT_WEIGHT, self.DEFAULT_UNIT)
+        result = self.serializer.to_internal_value(input_quantity)
 
-    @pytest.mark.parametrize("field_type", ["integer", "biginteger", "decimal"])
-    def test_empty_required(self, field_params, field_type):
-        """Test serializer with empty required field."""
-        params = field_params[field_type]
+        assert result == input_quantity
 
-        class TestSerializer(serializers.Serializer):
-            weight = params["field"](allow_null=False)
+    def test_float_to_int_conversion(self):
+        """Test that float values are properly converted to integers."""
+        input_str = "100.6 gram"
+        result = self.serializer.to_internal_value(input_str)
 
-        serializer = TestSerializer(data={"name": "any", "weight": None})
-        assert not serializer.is_valid()
-        assert serializer.validated_data == {}
+        assert isinstance(result.magnitude, int)
+        assert result.magnitude == 100  # Rounds down
 
-    @pytest.mark.parametrize("field_type", ["integer", "biginteger", "decimal"])
-    def test_empty_optional(self, field_params, field_type):
-        """Test serializer with empty optional field."""
-        params = field_params[field_type]
+    def test_invalid_string_format(self):
+        """Test handling of invalid string formats."""
+        invalid_inputs = [
+            "100",  # Missing unit
+            "gram",  # Missing magnitude
+            "100 gram extra",  # Extra content
+            " gram",  # Missing magnitude
+            "abc gram",  # Invalid magnitude
+            "100 ",  # Missing unit
+        ]
 
-        class TestSerializer(serializers.Serializer):
-            """Test serializer."""
+        for invalid_input in invalid_inputs:
+            with pytest.raises(ValidationError):
+                self.serializer.to_internal_value(invalid_input)
 
-            weight = params["field"](allow_null=True)
-
-        serializer = TestSerializer(data={"name": "any", "weight": None})
-        assert serializer.is_valid()
-
-    @pytest.mark.parametrize(
-        "field_type,input_data,expected",
-        [
-            ("integer", "1 ounce", INTEGER_QUANTITY),
-            ("biginteger", "1 ounce", INTEGER_QUANTITY),
-            ("decimal", "1 ounce", DECIMAL_QUANTITY),
-        ],
-    )
-    def test_good_data_to_internal_value(self, field_params, field_type, input_data, expected):
-        """Test to_internal_value with good data."""
-        params = field_params[field_type]
-        field = params["field"]()
-        assert field.to_internal_value(input_data) == expected
-
-    @pytest.mark.parametrize("field_type", ["integer", "biginteger", "decimal"])
-    def test_bad_units_to_internal_value(self, field_params, field_type):
-        """Test to_internal_value with bad units."""
-        field = field_params[field_type]["field"]()
-        with pytest.raises(UndefinedUnitError):
-            field.to_internal_value("1 elephants")
-
-    @pytest.mark.parametrize(
-        "field_type,bad_value",
-        [
-            ("integer", "large ounce"),
-            ("biginteger", "large ounce"),
-            ("decimal", "large ounce"),
-        ],
-    )
-    def test_bad_magnitude_to_internal_value(self, field_params, field_type, bad_value):
-        """Test to_internal_value with bad magnitude."""
-        field = field_params[field_type]["field"]()
+    def test_invalid_units(self):
+        """Test handling of invalid units."""
         with pytest.raises(ValidationError):
-            field.to_internal_value(bad_value)
+            self.serializer.to_internal_value("100 invalid_unit")
 
-    @pytest.mark.parametrize("field_type", ["integer", "biginteger", "decimal"])
-    def test_good_to_representation(self, field_params, field_type):
-        """Test to_representation with good data."""
-        params = field_params[field_type]
-        field = params["field"]()
+    def test_none_value(self):
+        """Test handling of None values."""
+        result = self.serializer.to_representation(None)
+        assert result is None
 
-        representation = field.to_representation(params["quantity"])
-        assert representation == params["expected_repr"]
 
-    @pytest.mark.parametrize(
-        "field_type,bad_value",
-        [
-            ("integer", "string"),
-            ("biginteger", "string"),
-            ("decimal", "string"),
-            ("integer", 1),
-            ("biginteger", 1),
-            ("decimal", 1),
-        ],
-    )
-    def test_bad_value_to_representation(self, field_params, field_type, bad_value):
-        """Test to_representation with bad values."""
-        field = field_params[field_type]["field"]()
+@pytest.mark.django_db
+class TestDecimalPintRestField:
+    """Test cases for the DecimalPintRestField (string-based serialization with Quantity wrapper)."""
+
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Set up test parameters."""
+        self.DEFAULT_WEIGHT = Decimal("100.5")
+        self.DEFAULT_UNIT = "gram"
+        self.serializer = DecimalPintRestField()
+
+    def test_to_representation(self):
+        """Test string representation of decimal Quantity."""
+        quantity = Quantity(self.DEFAULT_WEIGHT, self.DEFAULT_UNIT)
+        result = self.serializer.to_representation(quantity)
+        assert result == f"{self.DEFAULT_WEIGHT} {self.DEFAULT_UNIT}"
+
+    def test_to_representation_wrapped(self):
+        """Test string representation of decimal Quantity."""
+        quantity = Quantity(self.DEFAULT_WEIGHT, self.DEFAULT_UNIT)
+        serializer = DecimalPintRestField(wrap=True)
+        result = serializer.to_representation(quantity)
+        assert result == f"Quantity({self.DEFAULT_WEIGHT} {self.DEFAULT_UNIT})"
+
+    def test_to_internal_value_from_string(self):
+        """Test conversion from string to Quantity."""
+        test_cases = [
+            f"{self.DEFAULT_WEIGHT} {self.DEFAULT_UNIT}",
+            f"Quantity({self.DEFAULT_WEIGHT} {self.DEFAULT_UNIT})",
+        ]
+
+        for input_str in test_cases:
+            result = self.serializer.to_internal_value(input_str)
+            assert isinstance(result, Quantity)
+            assert result.magnitude == self.DEFAULT_WEIGHT
+            assert str(result.units) == self.DEFAULT_UNIT
+
+    def test_to_internal_value_from_quantity(self):
+        """Test handling of Quantity input."""
+        input_quantity = Quantity(self.DEFAULT_WEIGHT, self.DEFAULT_UNIT)
+        result = self.serializer.to_internal_value(input_quantity)
+        assert result == input_quantity
+
+    def test_decimal_precision(self):
+        """Test that decimal precision is maintained."""
+        precise_value = Decimal("100.12345")
+        quantity = Quantity(precise_value, self.DEFAULT_UNIT)
+        result = self.serializer.to_internal_value(self.serializer.to_representation(quantity))
+
+        assert result.magnitude == precise_value
+        assert isinstance(result.magnitude, Decimal)
+
+    def test_invalid_string_format(self):
+        """Test handling of invalid string formats."""
+        invalid_inputs = [
+            "100.5",  # Missing unit
+            "gram",  # Missing magnitude
+            "100.5 gram extra",  # Extra content
+            " gram",  # Missing magnitude
+            "abc gram",  # Invalid magnitude
+            "100.5 ",  # Missing unit
+            "Quantity()",  # Empty Quantity
+            "Quantity(100.5)",  # Missing unit in Quantity
+            "Quantity(gram)",  # Missing magnitude in Quantity
+        ]
+
+        for invalid_input in invalid_inputs:
+            with pytest.raises(ValidationError):
+                self.serializer.to_internal_value(invalid_input)
+
+    def test_invalid_units(self):
+        """Test handling of invalid units."""
         with pytest.raises(ValidationError):
-            field.to_representation(bad_value)
+            self.serializer.to_internal_value("100.5 invalid_unit")
 
-    def test_decimal_field_with_parameters(self, field_params):
-        """Test DecimalPintRestField with decimal parameters."""
-        field = DecimalPintRestField(max_digits=3, decimal_places=1)
-        value = ureg.Quantity(Decimal("1.0"), ureg.ounce)
-        representation = field.to_representation(value)
-        assert representation == "Quantity(1.0 ounce)"
+    def test_none_value(self):
+        """Test handling of None values."""
+        result = self.serializer.to_representation(None)
+        assert result is None
+
+    def test_constructor_ignores_decimal_kwargs(self):
+        """Test that decimal-specific kwargs are properly ignored."""
+        serializer = DecimalPintRestField(max_digits=10, decimal_places=2)
+        quantity = Quantity(Decimal("100.5"), self.DEFAULT_UNIT)
+        result = serializer.to_representation(quantity)
+        assert result == f"{quantity}"
+
+    def test_wrapped_constructor_ignores_decimal_kwargs(self):
+        """Test that decimal-specific kwargs are properly ignored in wrapped representation."""
+        serializer = DecimalPintRestField(max_digits=10, decimal_places=2, wrap=True)
+        quantity = Quantity(Decimal("100.5"), self.DEFAULT_UNIT)
+        result = serializer.to_representation(quantity)
+        assert result == f"Quantity({quantity})"
+
+
+@pytest.mark.django_db
+class TestErrorMessages:
+    """Test error messages for all serializer types."""
+
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Set up test parameters."""
+        self.dict_serializer = PintRestField()
+        self.int_serializer = IntegerPintRestField()
+        self.decimal_serializer = DecimalPintRestField()
+
+    def test_pintfield_serializer_errors(self):
+        """Test error messages from PintRestField."""
+        with pytest.raises(ValidationError, match="Invalid format"):
+            self.dict_serializer.to_internal_value("not a dict")
+
+        with pytest.raises(ValidationError, match="Both magnitude and units are required"):
+            self.dict_serializer.to_internal_value({"magnitude": 100})
+
+    def test_integer_field_errors(self):
+        """Test error messages from IntegerPintRestField."""
+        with pytest.raises(ValidationError, match="Invalid magnitude"):
+            self.int_serializer.to_internal_value("invalid format")
+
+        with pytest.raises(ValidationError, match="Expected string or Quantity"):
+            self.int_serializer.to_internal_value(123)
+
+    def test_decimal_field_errors(self):
+        """Test error messages from DecimalPintRestField."""
+        with pytest.raises(ValidationError, match="Invalid magnitude"):
+            self.decimal_serializer.to_internal_value("invalid format")
+
+        with pytest.raises(ValidationError, match="Expected string or Quantity"):
+            self.decimal_serializer.to_internal_value(123.45)
+
+
+@pytest.mark.django_db
+class TestEdgeCases:
+    """Test edge cases for all serializer types."""
+
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Set up test parameters."""
+        self.dict_serializer = PintRestField()
+        self.int_serializer = IntegerPintRestField()
+        self.decimal_serializer = DecimalPintRestField()
+
+    def test_zero_values(self):
+        """Test handling of zero values."""
+        quantity = Quantity(0, "gram")
+
+        assert self.dict_serializer.to_representation(quantity) == {"magnitude": 0, "units": "gram"}
+        assert self.int_serializer.to_representation(quantity) == "0 gram"
+        assert self.decimal_serializer.to_representation(quantity) == "0 gram"
+
+    def test_negative_values(self):
+        """Test handling of negative values."""
+        quantity = Quantity(-100, "gram")
+
+        assert self.dict_serializer.to_representation(quantity) == {"magnitude": -100, "units": "gram"}
+        assert self.int_serializer.to_representation(quantity) == "-100 gram"
+        assert self.decimal_serializer.to_representation(quantity) == "-100 gram"
+
+    def test_very_large_values(self):
+        """Test handling of very large values."""
+        large_value = 10**20
+        quantity = Quantity(large_value, "gram")
+
+        assert self.dict_serializer.to_representation(quantity)["magnitude"] == large_value
+        assert self.int_serializer.to_representation(quantity) == f"{large_value} gram"
+        assert self.decimal_serializer.to_representation(quantity) == f"{large_value} gram"

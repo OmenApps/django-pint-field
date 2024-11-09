@@ -1,654 +1,404 @@
-"""Test cases for forms in the example project."""
+"""Test cases for form fields."""
 
-import json
-import warnings
 from decimal import Decimal
-from typing import Type
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.core.serializers import deserialize
-from django.core.serializers import serialize
-from django.core.validators import EMPTY_VALUES
-from django.db import transaction
-from django.db.models import Field
-from django.db.models import Model
-from django.test import TestCase
-from pint import UnitRegistry
-from pint.errors import DimensionalityError
-from pint.errors import UndefinedUnitError
+from django.forms import ModelForm
 
-from django_pint_field.aggregates import PintAvg
-from django_pint_field.aggregates import PintCount
-from django_pint_field.aggregates import PintMax
-from django_pint_field.aggregates import PintMin
-from django_pint_field.aggregates import PintStdDev
-from django_pint_field.aggregates import PintSum
-from django_pint_field.aggregates import PintVariance
-from django_pint_field.exceptions import PintFieldLookupError
-from django_pint_field.models import BigIntegerPintField
-from django_pint_field.models import DecimalPintField
-from django_pint_field.models import IntegerPintField
+from django_pint_field.forms import BasePintFormField
+from django_pint_field.forms import DecimalPintFormField
+from django_pint_field.forms import IntegerPintFormField
 from django_pint_field.units import ureg
-from example_project.example.models import BigIntegerPintFieldSaveModel
-from example_project.example.models import CustomUregHayBale
+from django_pint_field.widgets import PintFieldWidget
+from example_project.example.forms import DefaultFormDecimal
+from example_project.example.forms import DefaultFormInteger
 from example_project.example.models import DecimalPintFieldSaveModel
-from example_project.example.models import DefaultsInModel
-from example_project.example.models import EmptyHayBaleBigInteger
-from example_project.example.models import EmptyHayBaleDecimal
-from example_project.example.models import EmptyHayBaleInteger
-from example_project.example.models import FieldSaveModel
 from example_project.example.models import IntegerPintFieldSaveModel
 
 
 Quantity = ureg.Quantity
 
 
-class DecimalPintFieldTests(TestCase):
-    """Tests for the DecimalPintField."""
+class TestBasePintFormField:
+    """Test the base form field functionality."""
 
-    def test_to_python(self):
-        """Test the to_python method."""
-        default_decimal_text = "1234.1234"
-        default_decimal_value = Decimal(default_decimal_text)
-        default_quantity = ureg.Quantity(default_decimal_value * ureg.gram)
-        bad_quantity = ureg.Quantity(Decimal(1234.1234) * ureg.gram)
+    def test_init_with_invalid_default_unit(self):
+        """Test initialization with invalid default unit raises error."""
+        with pytest.raises(ValidationError):
+            BasePintFormField(default_unit="invalid_unit")
 
-        field = DecimalPintField(
-            default_unit="gram",
-            default=default_decimal_value,
-            unit_choices=["ounce", "gram", "pound", "kilogram"],
-            max_digits=10,
-            decimal_places=6,
-        )
+    def test_init_with_invalid_unit_choices(self):
+        """Test initialization with incompatible unit choices raises error."""
+        with pytest.raises(ValidationError):
+            BasePintFormField(default_unit="gram", unit_choices=["meter", "gram"])
 
-        # Verify to_python works with a good Quantity input value
-        self.assertEqual(field.to_python(default_quantity), ureg.Quantity(Decimal("1.2341234") * ureg.kilogram))
+    def test_widget_initialization(self):
+        """Test widget is properly initialized."""
+        field = BasePintFormField(default_unit="gram")
+        assert isinstance(field.widget, PintFieldWidget)
+        assert field.widget.default_unit == "gram"
+        assert "gram" in field.widget.unit_choices
 
-        # When Decimal is initialized as a float, it is unable to accurately store the exact value
-        self.assertLess(field.to_python(bad_quantity), ureg.Quantity(Decimal("1.2341234") * ureg.kilogram))
+    @pytest.mark.parametrize(
+        "value,expected_result",
+        [
+            (Quantity(100, "gram"), [100, "gram"]),
+            ([50, "gram"], [50, "gram"]),
+            (None, [None, "gram"]),
+        ],
+    )
+    def test_prepare_value(self, value, expected_result):
+        """Test prepare_value method with different input types."""
+        field = BasePintFormField(default_unit="gram")
+        result = field.prepare_value(value)
+        assert result == expected_result
 
-        # Check what happens when a Decimal is provided. Should use the Decimal and the default_unit
-        self.assertEqual(field.to_python(default_decimal_value), default_quantity)
+    @pytest.mark.parametrize(
+        "required,value,expected_valid",
+        [
+            (True, ["", "gram"], False),  # Required field, empty value
+            (False, ["", "gram"], True),  # Optional field, empty value
+            (False, None, True),  # Optional field, None value
+            (True, None, False),  # Required field, None value
+        ],
+    )
+    def test_required_validation(self, required, value, expected_valid):
+        """Test required field validation."""
+        field = BasePintFormField(default_unit="gram", required=required)
+        if value is not None:
+            if expected_valid:
+                form_value = field.clean(value)
+                assert form_value is None
+            else:
+                with pytest.raises(ValidationError):
+                    field.clean(value)
 
-        # Check what happens when a decimal string is provided. Should convert to Decimal and use the default_unit
-        self.assertEqual(field.to_python(default_decimal_text), default_quantity)
+    def test_disabled_field(self):
+        """Test disabled field behavior."""
+        field = BasePintFormField(default_unit="gram", disabled=True)
+        assert field.disabled
+        assert field.widget.attrs.get("disabled") is True
 
-        # Check what happens when a decimal string is provided. Should convert to Decimal and use the default_unit
-        self.assertEqual(field.to_python("gram"), ureg.Quantity("gram"))
+    @pytest.mark.parametrize(
+        "initial,expected",
+        [
+            (Quantity(100, "gram"), [100, "gram"]),
+            (None, [None, "gram"]),
+            (Quantity(1, "kilogram"), [1, "kilogram"]),
+        ],
+    )
+    def test_initial_value(self, initial, expected):
+        """Test initial value handling."""
+        field = BasePintFormField(default_unit="gram", initial=initial)
+        assert field.prepare_value(field.initial) == expected
 
-    def test_invaid_registry_value_for_default(self):
-        """Test that an invalid registry value for the default raises an error."""
-        field = DecimalPintField(default_unit="gram", max_digits=4, decimal_places=2)
-        tests = [
-            "non-registry string",
-        ]
-        for value in tests:
-            with self.subTest(value):
-                with self.assertRaises(UndefinedUnitError):
-                    field.clean(value, None)
+    def test_help_text(self):
+        """Test help text is properly set."""
+        help_text = "Enter weight in grams"
+        field = BasePintFormField(default_unit="gram", help_text=help_text)
+        assert field.help_text == help_text
 
-    def test_blank_value(self):
-        """Test that a blank value raises an error."""
-        field = DecimalPintField(default_unit="gram", max_digits=4, decimal_places=2)
-        msg = "This field cannot be null."
-        for value in (None,):
-            with self.subTest(value):
-                with self.assertRaisesMessage(ValidationError, msg):
-                    field.clean(value, None)
-
-    def test_null_value(self):
-        """Test that a null value raises an error."""
-        field = DecimalPintField(default_unit="gram", max_digits=4, decimal_places=2)
-        msg = "This field cannot be blank."
-        for value in ([], (), {}):
-            with self.subTest(value):
-                with self.assertRaisesMessage(ValidationError, msg):
-                    field.clean(value, None)
-
-    # def test_invalid_value(self):
-    #     field = DecimalPintField(default_unit="gram", max_digits=4, decimal_places=2)
-    #     msg = "Value must be a Quantity."
-    #     tests = [
-    #         1,  # ToDo: These should raise ValidationError
-    #         1.1,
-    #         set(),
-    #         object(),
-    #         complex(),
-    #         b"non-numeric byte-string",
-    #     ]
-    #     for value in tests:
-    #         print(f"Value: {value}")
-    #         with self.subTest(value):
-    #             with self.assertRaisesMessage(ValidationError, msg):
-    #                 field.clean(value, None)
-
-    def test_get_prep_value(self):
-        """Test the get_prep_value method."""
-        quantity = ureg.Quantity(Decimal("1234.1234") * ureg.gram)
-        quantity_list = [quantity, quantity]
-        field = DecimalPintField(
-            default_unit="ounce",
-            default=Decimal("1.23456789"),
-            unit_choices=["ounce", "gram", "pound", "kilogram"],
-            max_digits=10,
-            decimal_places=6,
-        )
-        self.assertIsNone(field.get_prep_value(None))
-        self.assertEqual(str(field.get_prep_value(quantity)), "(1.2341234::decimal, 1234.1234::decimal, 'gram'::text)")
-
-
-class BaseMixinTestFieldCreate:
-    """Base mixin for testing the creation of a field."""
-
-    # The field that needs to be tested
-    FIELD: Type[Field]
-    # Some fields, i.e. the decimal require default kwargs to work properly
-    DEFAULT_KWARGS = {}
-
-    def test_sets_units(self):
-        """Test that the default unit is set correctly."""
-        test_grams = self.FIELD(default_unit="gram", **self.DEFAULT_KWARGS)
-        self.assertEqual(test_grams.default_unit, ureg.gram)
-
-    def test_fails_with_unknown_units(self):
-        """Test that default unit must be a valid unit."""
-        with self.assertRaises(UndefinedUnitError):
-            test_crazy_units = self.FIELD(default_unit="zinghie", **self.DEFAULT_KWARGS)  # noqa: F841
-
-    def test_unit_choices_must_be_valid_units(self):
-        """Test that unit choices must be valid units."""
-        with self.assertRaises(UndefinedUnitError):
-            self.FIELD(default_unit="mile", unit_choices=["gunzu"], **self.DEFAULT_KWARGS)
-
-    def test_unit_choices_must_match_base_dimensionality(self):
-        """Test that unit choices must match the base dimensionality of the default unit."""
-        with self.assertRaises(DimensionalityError):
-            self.FIELD(default_unit="gram", unit_choices=["meter", "ounces"], **self.DEFAULT_KWARGS)
-
-    def test_default_unit_is_required(self):
-        """Test that the default unit is required."""
-        with self.assertRaises(TypeError):
-            no_units = self.FIELD(**self.DEFAULT_KWARGS)  # noqa: F841
-
-    def test_default_unit_set_with_name(self):
-        """Test that the default unit can be set with a string."""
-        okay_units = self.FIELD(default_unit="meter", **self.DEFAULT_KWARGS)  # noqa: F841
-
-    def test_default_unit_are_invalid(self):
-        """Test that default units must be valid units."""
-        with self.assertRaises(ValueError):
-            wrong_units = self.FIELD(default_unit=None, **self.DEFAULT_KWARGS)  # noqa: F841
-
-
-class TestIntegerFieldCreate(BaseMixinTestFieldCreate, TestCase):
-    """Test the creation of an IntegerPintField."""
-
-    FIELD = IntegerPintField
-
-
-class TestBigIntegerFieldCreate(BaseMixinTestFieldCreate, TestCase):
-    """Test the creation of a BigIntegerPintField."""
-
-    FIELD = BigIntegerPintField
-
-
-class TestDecimalFieldCreate(BaseMixinTestFieldCreate, TestCase):
-    """Test the creation of a DecimalPintField."""
-
-    FIELD = DecimalPintField
-    DEFAULT_KWARGS = {"max_digits": 10, "decimal_places": 2}
-
-
-@pytest.mark.parametrize(
-    "max_digits, decimal_places, error",
-    [
-        (
-            None,
-            None,
-            "Invalid initialization for DecimalPintField(.*?)None(.*?)None",
-        ),
-        (
-            10,
-            None,
-            "Invalid initialization for DecimalPintField(.*?)10(.*?)None",
-        ),
-        (
-            None,
-            2,
-            "Invalid initialization for DecimalPintField(.*?)None(.*?)2",
-        ),
-        (-1, 2, "Invalid initialization for DecimalPintField(.*?)-1(.*?)2(.*?)not valid parameters"),
-        (2, -1, "Invalid initialization for DecimalPintField(.*?)2(.*?)-1(.*?)not valid parameters"),
-        (2, 3, "Invalid initialization for DecimalPintField(.*?)2(.*?)3(.*?)not valid parameters"),
-    ],
-)
-def test_decimal_init_fail(max_digits, decimal_places, error):
-    """Test that the DecimalPintField fails with invalid parameters."""
-    with pytest.raises(ValueError, match=error):
-        DecimalPintField(default_unit="meter", max_digits=max_digits, decimal_places=decimal_places)
-
-
-@pytest.mark.parametrize("max_digits, decimal_places", [(2, 0), (2, 2), (1, 0)])
-def decimal_init_success(max_digits, decimal_places):
-    DecimalPintField(default_unit="meter", max_digits=max_digits, decimal_places=decimal_places)
+    def test_localized_field(self):
+        """Test localized field behavior."""
+        field = BasePintFormField(default_unit="gram", localize=True)
+        assert field.localize
+        assert field.widget.is_localized
 
 
 @pytest.mark.django_db
-class TestCustomUreg(TestCase):
-    """Test the custom unit registry."""
+class TestIntegerPintFormField:
+    """Test the integer form field functionality."""
 
-    def setUp(self):
-        """Set up the test."""
-        # Custom Values are defined in confest.py
-        CustomUregHayBale.objects.create(
-            custom_int=5 * ureg.custom,
-            custom_bigint=5 * ureg.custom,
-            custom_decimal=Decimal("5") * ureg.custom,
-        )
-        CustomUregHayBale.objects.create(
-            custom_int=5 * ureg.kilocustom,
-            custom_bigint=5 * ureg.kilocustom,
-            custom_decimal=Decimal("5") * ureg.kilocustom,
-        )
+    @pytest.fixture
+    def integer_form(self):
+        """Create a form instance for testing."""
 
-    def tearDown(self):
-        """Tear down the test."""
-        CustomUregHayBale.objects.all().delete()
+        class TestForm(ModelForm):
+            """Test form with IntegerPintFormField."""
 
-    def test_custom_ureg_int(self):
-        """Test the custom unit registry with an integer."""
-        obj = CustomUregHayBale.objects.first()
-        self.assertIsInstance(obj.custom_int, ureg.Quantity)
-        self.assertEqual(str(obj.custom_int), "5 custom")
+            weight = IntegerPintFormField(default_unit="gram", unit_choices=["gram", "kilogram", "ounce"])
 
-        obj = CustomUregHayBale.objects.last()
-        self.assertEqual(str(obj.custom_int.to_root_units()), "5000 custom")
+            class Meta:
+                """Meta class for TestForm."""
 
-    def test_custom_ureg_bigint(self):
-        """Test the custom unit registry with a big integer."""
-        obj = CustomUregHayBale.objects.first()
-        self.assertIsInstance(obj.custom_bigint, ureg.Quantity)
-        self.assertEqual(str(obj.custom_bigint), "5 custom")
+                model = IntegerPintFieldSaveModel
+                fields = ["weight"]
 
-        obj = CustomUregHayBale.objects.last()
-        self.assertEqual(str(obj.custom_bigint.to_root_units()), "5000 custom")
+        return TestForm
 
-    def test_custom_ureg_decimal(self):
-        """Test the custom unit registry with a decimal."""
-        obj = CustomUregHayBale.objects.first()
-        self.assertIsInstance(obj.custom_decimal, ureg.Quantity)
-        self.assertEqual(str(obj.custom_decimal), "5.00 custom")
+    def test_valid_integer_input(self, integer_form):
+        """Test valid integer input is properly handled."""
+        form = integer_form(data={"weight_0": "100", "weight_1": "gram"})
+        assert form.is_valid()
+        assert isinstance(form.cleaned_data["weight"], Quantity)
+        assert form.cleaned_data["weight"].magnitude == 100
+        assert str(form.cleaned_data["weight"].units) == "gram"
 
-        obj = CustomUregHayBale.objects.last()
-        self.assertEqual(str(obj.custom_decimal.to_root_units()), "5000.00 custom")
+    def test_float_input_converts_to_integer(self, integer_form):
+        """Test float input is properly converted to integer."""
+        form = integer_form(data={"weight_0": "100.7", "weight_1": "gram"})
+        assert form.is_valid()
+        assert isinstance(form.cleaned_data["weight"].magnitude, int)
+        assert form.cleaned_data["weight"].magnitude == 100
 
+    @pytest.mark.parametrize(
+        "invalid_value",
+        [
+            {"weight_0": "abc", "weight_1": "gram"},  # Non-numeric value
+            {"weight_0": "", "weight_1": "gram"},  # Empty value
+            {"weight_0": "100", "weight_1": ""},  # Missing unit
+            {"weight_0": "100", "weight_1": "invalid_unit"},  # Invalid unit
+        ],
+    )
+    def test_invalid_input(self, integer_form, invalid_value):
+        """Test various invalid inputs."""
+        form = integer_form(data=invalid_value)
+        assert not form.is_valid()
 
-class BaseMixinNullAble:
-    """Base mixin for testing nullable fields."""
+    def test_unit_conversion(self, integer_form):
+        """Test unit conversion is properly handled."""
+        form = integer_form(data={"weight_0": "1", "weight_1": "kilogram"})
+        assert form.is_valid()
+        assert form.cleaned_data["weight"].to("gram").magnitude == 1000
 
-    EMPTY_MODEL: Type[Model]
-    FLOAT_SET_STR = "707.7"
-    FLOAT_SET = Decimal(FLOAT_SET_STR)  # ToDo: NEED WORK HERE
-    DB_FLOAT_VALUE_EXPECTED = 707.7
+    def test_default_form_integer(self):
+        """Test the DefaultFormInteger form."""
+        form = DefaultFormInteger(data={"name": "test", "weight_0": "100", "weight_1": "gram"})
+        assert form.is_valid()
+        instance = form.save()
+        assert instance.weight.magnitude == 100
+        assert str(instance.weight.units) == "gram"
 
-    def setUp(self):
-        """Set up the test."""
-        self.EMPTY_MODEL.objects.create(name="Empty")
+    @pytest.mark.parametrize(
+        "value,unit,expected_error",
+        [
+            (2**31, "gram", "is less than or equal to"),  # Max int + 1
+            (-(2**31) - 1, "gram", "is greater than or equal to"),  # Min int - 1
+            (float("inf"), "gram", "is less than or equal to"),  # Infinity
+            (float("-inf"), "gram", "is greater than or equal to"),  # Negative infinity
+        ],
+    )
+    def test_integer_bounds(self, integer_form, value, unit, expected_error):
+        """Test integer boundary values."""
+        form = integer_form(data={"weight_0": str(value), "weight_1": unit})
+        assert not form.is_valid()
+        assert expected_error in str(form.errors)
 
-    def tearDown(self) -> None:
-        """Tear down the test."""
-        self.EMPTY_MODEL.objects.all().delete()
-
-    def test_accepts_assigned_null(self):
-        """Test that the field accepts a null value."""
-        new = self.EMPTY_MODEL()
-        new.weight = None
-        new.name = "Test"
-        new.save()
-        self.assertIsNone(new.weight)
-        # Also get it from database to verify
-        from_db = self.EMPTY_MODEL.objects.last()
-        self.assertIsNone(from_db.weight)
-
-    def test_accepts_auto_null(self):
-        """Test that the field accepts an auto null value."""
-        empty = self.EMPTY_MODEL.objects.first()
-        self.assertIsNone(empty.weight, None)
-
-    def test_accepts_default_pint_unit(self):
-        """Test that the field accepts a default pint unit."""
-        new = self.EMPTY_MODEL(name="DefaultPintUnitTest")
-        units = UnitRegistry()
-        new.weight = 5 * units.kilogram
-        new.save()
-        obj = self.EMPTY_MODEL.objects.last()
-        self.assertEqual(obj.name, "DefaultPintUnitTest")
-        self.assertEqual(str(obj.weight.to_root_units().units), "gram")
-        self.assertEqual(obj.weight.to_root_units().magnitude, 5000)
-
-    def test_accepts_default_app_unit(self):
-        """Test that the field accepts a default app unit."""
-        new = self.EMPTY_MODEL(name="DefaultAppUnitTest")
-        new.weight = 5 * ureg.kilogram
-        # Make sure that the correct argument does not raise a warning
-        with warnings.catch_warnings(record=True) as w:
-            new.save()
-        assert len(w) == 0
-        obj = self.EMPTY_MODEL.objects.last()
-        self.assertEqual(obj.name, "DefaultAppUnitTest")
-        self.assertEqual(obj.weight.to_root_units().units, "gram")
-        self.assertEqual(obj.weight.to_root_units().magnitude, 5000)
-
-    def test_accepts_assigned_whole_number_quantity(self):
-        """Test that the field accepts a whole number quantity."""
-        new = self.EMPTY_MODEL(name="WholeNumber")
-        new.weight = Quantity(707 * ureg.gram)
-        new.save()
-        obj = self.EMPTY_MODEL.objects.last()
-        self.assertEqual(obj.name, "WholeNumber")
-        self.assertEqual(obj.weight.units, "gram")
-        self.assertEqual(obj.weight.magnitude, 707)
-
-    def test_accepts_assigned_float_number_quantity(self):
-        """Test that the field accepts a float number quantity."""
-        new = self.EMPTY_MODEL(name="FloatNumber")
-        new.weight = Quantity(self.FLOAT_SET * ureg.gram)
-        new.save()
-        obj = self.EMPTY_MODEL.objects.last()
-        self.assertEqual(obj.name, "FloatNumber")
-        self.assertEqual(obj.weight.units, "gram")
-        # We expect the database to deliver the correct type, at least
-        # for postgresql this is true
-        self.assertEqual(obj.weight.magnitude, self.DB_FLOAT_VALUE_EXPECTED)
-        self.assertIsInstance(obj.weight.magnitude, type(self.DB_FLOAT_VALUE_EXPECTED))
-
-    def test_serialisation(self):
-        """Test that the field serializes correctly."""
-        serialized = serialize(
-            "json",
-            [
-                self.EMPTY_MODEL.objects.first(),
-            ],
-        )
-        deserialized = json.loads(serialized)
-        obj = deserialized[0]["fields"]
-        self.assertEqual(obj["name"], "Empty")
-        self.assertIsNone(obj["weight"])
-        obj_generator = deserialize("json", serialized, ignorenonexistent=True)
-        obj_back = next(obj_generator)
-        self.assertEqual(obj_back.object.name, "Empty")
-        self.assertIsNone(obj_back.object.weight)
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            ("1e2", 100),  # Scientific notation
+            ("100.0", 100),  # Float string
+            ("100.7", 100),  # Rounded float
+            (" 100 ", 100),  # Padded string
+            ("-1 ", -1),  # Negative integer
+        ],
+    )
+    def test_integer_input_formats(self, integer_form, value, expected):
+        """Test various integer input formats."""
+        form = integer_form(data={"weight_0": value, "weight_1": "gram"})
+        assert form.is_valid()
+        assert form.cleaned_data["weight"].magnitude == expected
 
 
 @pytest.mark.django_db
-class TestNullableInteger(BaseMixinNullAble, TestCase):
-    """Test the nullable integer field."""
+class TestDecimalPintFormField:
+    """Test the decimal form field functionality."""
 
-    EMPTY_MODEL = EmptyHayBaleInteger
-    DB_FLOAT_VALUE_EXPECTED = int(BaseMixinNullAble.FLOAT_SET)
+    @pytest.fixture
+    def decimal_form(self):
+        """Create a form instance for testing."""
 
+        class TestForm(ModelForm):
+            """Test form with DecimalPintFormField."""
 
-@pytest.mark.django_db
-class TestNullableBigInteger(BaseMixinNullAble, TestCase):
-    """Test the nullable big integer field."""
-
-    EMPTY_MODEL = EmptyHayBaleBigInteger
-    DB_FLOAT_VALUE_EXPECTED = int(BaseMixinNullAble.FLOAT_SET)
-
-
-@pytest.mark.django_db
-class TestNullableDecimal(BaseMixinNullAble, TestCase):
-    """Test the nullable decimal field."""
-
-    EMPTY_MODEL = EmptyHayBaleDecimal
-    DB_FLOAT_VALUE_EXPECTED = Decimal(BaseMixinNullAble.FLOAT_SET_STR)
-
-    def test_with_default_implementation(self):
-        """Test the field with the default implementation."""
-        new = self.EMPTY_MODEL(name="FloatNumber")
-        new.weight = Quantity(self.FLOAT_SET * ureg.gram)
-        new.compare = self.FLOAT_SET
-        new.save()
-        obj = self.EMPTY_MODEL.objects.last()
-        self.assertEqual(obj.name, "FloatNumber")
-        self.assertEqual(obj.weight.units, "gram")
-        # We compare with the reference implementation of django, this should
-        # be always true no matter which database is used
-        self.assertEqual(obj.weight.magnitude, obj.compare)
-        self.assertIsInstance(obj.weight.magnitude, type(obj.compare))
-        # We also expect (at least for postgresql) that this a Decimal
-        self.assertEqual(obj.weight.magnitude, self.DB_FLOAT_VALUE_EXPECTED)
-        self.assertIsInstance(obj.weight.magnitude, Decimal)
-
-
-class FieldSaveTestBase:
-    """Base class for testing the saving of a field."""
-
-    MODEL: Type[FieldSaveModel]
-    EXPECTED_TYPE: Type = float
-    DEFAULT_WEIGHT = 100
-    DEFAULT_WEIGHT_STR = "100.0"
-    DEFAULT_WEIGHT_QUANTITY_STR = "100.0 gram"
-    HEAVIEST = 1000
-    LIGHTEST = 1
-    OUNCE_VALUE = 3.52739619496
-    COMPARE_QUANTITY = Quantity(0.8 * ureg.ounce)  # 1 ounce = 28.34 grams
-    WEIGHT = Quantity(2 * ureg.gram)
-
-    def setUp(self):
-        """Set up the test."""
-        if self.EXPECTED_TYPE == Decimal:
-            self.MODEL.objects.create(
-                weight=Quantity(Decimal(str(self.DEFAULT_WEIGHT)) * ureg.gram),
-                name="grams",
-            )
-            self.lightest = self.MODEL.objects.create(
-                weight=Quantity(Decimal(str(self.LIGHTEST)) * ureg.gram),
-                name="lightest",
-            )
-            self.heaviest = self.MODEL.objects.create(
-                weight=Quantity(Decimal(str(self.HEAVIEST)) * ureg.gram),
-                name="heaviest",
-            )
-        else:
-            self.MODEL.objects.create(
-                weight=Quantity(self.DEFAULT_WEIGHT * ureg.gram),
-                name="grams",
-            )
-            self.lightest = self.MODEL.objects.create(
-                weight=Quantity(self.LIGHTEST * ureg.gram),
-                name="lightest",
-            )
-            self.heaviest = self.MODEL.objects.create(
-                weight=Quantity(self.HEAVIEST * ureg.gram),
-                name="heaviest",
+            weight = DecimalPintFormField(
+                default_unit="gram", unit_choices=["gram", "kilogram", "ounce"], max_digits=10, decimal_places=2
             )
 
-    def tearDown(self):
-        """Tear down the test."""
-        self.MODEL.objects.all().delete()
+            class Meta:
+                """Meta class for TestForm."""
 
-    def test_fails_with_incompatible_units(self):
-        """Test that the field fails with incompatible units."""
-        # we have to wrap this in a transaction
-        # fixing a unit test problem
-        # http://stackoverflow.com/questions/21458387/transactionmanagementerror-you-cant-execute-queries-until-the-end-of-the-atom
-        metres = Quantity(100 * ureg.meter)
-        with transaction.atomic():
-            with self.assertRaises(DimensionalityError):
-                self.MODEL.objects.create(weight=metres, name="Should Fail")
+                model = DecimalPintFieldSaveModel
+                fields = ["weight"]
 
-    def test_value_stored_as_quantity(self):
-        """Test that the value is stored as a quantity."""
-        obj = self.MODEL.objects.first()
-        self.assertIsInstance(obj.weight, Quantity)
-        self.assertEqual(str(obj.weight), self.DEFAULT_WEIGHT_QUANTITY_STR)
+        return TestForm
 
-    def test_value_stored_as_correct_magnitude_type(self):
-        """Test that the value is stored as the correct magnitude type."""
-        obj = self.MODEL.objects.first()
-        self.assertIsInstance(obj.weight, Quantity)
-        self.assertIsInstance(obj.weight.magnitude, self.EXPECTED_TYPE)
+    def test_valid_decimal_input(self, decimal_form):
+        """Test valid decimal input is properly handled."""
+        form = decimal_form(data={"weight_0": "100.55", "weight_1": "gram"})
+        assert form.is_valid()
+        assert isinstance(form.cleaned_data["weight"], Quantity)
+        assert form.cleaned_data["weight"].magnitude == Decimal("100.55")
+        assert str(form.cleaned_data["weight"].units) == "gram"
 
-    def test_value_conversion(self):
-        """Test that the value is converted correctly."""
-        obj = self.MODEL.objects.first()
-        ounces = obj.weight.to(ureg.ounce)
-        # self.assertAlmostEqual(ounces.magnitude, self.OUNCE_VALUE)
-        self.assertEqual(ounces.units, ureg.ounce)
+    def test_decimal_adds_missing_decimal_places(self, decimal_form):
+        """Test that missing decimal places are added."""
+        form = decimal_form(data={"weight_0": "100", "weight_1": "gram"})
+        assert form.is_valid()
+        assert form.cleaned_data["weight"].magnitude == Decimal("100.00")
 
-    def test_order_by(self):
-        """Test that the objects are ordered by weight."""
-        qs = list(self.MODEL.objects.all().order_by("weight"))
-        self.assertEqual(qs[0].name, "lightest")
-        self.assertEqual(qs[-1].name, "heaviest")
-        self.assertEqual(qs[0], self.lightest)
-        self.assertEqual(qs[-1], self.heaviest)
+    def test_max_digits_validation(self, decimal_form):
+        """Test max_digits validation."""
+        form = decimal_form(data={"weight_0": "12345678.90", "weight_1": "gram"})
+        assert not form.is_valid()
+        assert "no more than 5 digits in total" in str(form.errors)
 
-    def test_serialisation(self):
-        """Test that the field serializes correctly."""
-        serialized = serialize(
-            "json",
-            [
-                self.MODEL.objects.first(),
-            ],
+    def test_default_form_decimal(self):
+        """Test the DefaultFormDecimal form."""
+        form = DefaultFormDecimal(data={"name": "test", "weight_0": "100.55", "weight_1": "gram"})
+        assert form.is_valid()
+        instance = form.save()
+        assert instance.weight.magnitude == Decimal("100.55")
+        assert str(instance.weight.units) == "gram"
+
+    @pytest.mark.parametrize(
+        "invalid_value",
+        [
+            {"weight_0": "abc", "weight_1": "gram"},  # Non-numeric value
+            {"weight_0": "", "weight_1": "gram"},  # Empty value
+            {"weight_0": "100.55", "weight_1": ""},  # Missing unit
+            {"weight_0": "100.55", "weight_1": "meter"},  # Incompatible unit
+        ],
+    )
+    def test_invalid_input(self, decimal_form, invalid_value):
+        """Test various invalid inputs."""
+        form = decimal_form(data=invalid_value)
+        assert not form.is_valid()
+
+    def test_missing_max_digits(self):
+        """Test initialization without max_digits raises error."""
+        with pytest.raises(TypeError, match="max_digits"):
+            DecimalPintFormField(default_unit="gram", decimal_places=2)  # pylint: disable=E1125
+
+    def test_missing_decimal_places(self):
+        """Test initialization without decimal_places raises error."""
+        with pytest.raises(TypeError, match="decimal_places"):
+            DecimalPintFormField(default_unit="gram", max_digits=5)  # pylint: disable=E1125
+
+    @pytest.mark.parametrize(
+        "max_digits,decimal_places,error_message",
+        [
+            (0, 0, "max_digits.+positive integer"),
+            (2, 3, "decimal_places.+greater than max_digits"),
+            (5, -1, "decimal_places.+non-negative"),
+            (-3, -3, "max_digits.+non-negative"),
+        ],
+    )
+    def test_invalid_digits_config(self, max_digits, decimal_places, error_message):
+        """Test invalid max_digits and decimal_places configurations."""
+        with pytest.raises(ValidationError, match=error_message):
+            DecimalPintFormField(default_unit="gram", max_digits=max_digits, decimal_places=decimal_places)
+
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            ("1.2e2", Decimal("120.00")),  # Scientific notation
+            (" 100.55 ", Decimal("100.55")),  # Padded string
+            ("100", Decimal("100.00")),  # Integer string
+            ("-100", Decimal("-100.00")),  # Integer string
+        ],
+    )
+    def test_decimal_input_formats(self, decimal_form, value, expected):
+        """Test various decimal input formats."""
+        form = decimal_form(data={"weight_0": value, "weight_1": "gram"})
+        assert form.is_valid()
+        assert form.cleaned_data["weight"].magnitude == expected
+
+    def test_decimal_too_many_decimal_places(self, decimal_form):
+        """Test too many decimal places causes form validation to fail."""
+        form = decimal_form(data={"weight_0": "100.0000", "weight_1": "gram"})
+        assert not form.is_valid()
+
+    @pytest.mark.parametrize(
+        "value,unit,error_type",
+        [
+            ("1" * 11, "gram", ValidationError),  # Too many digits
+            ("1" * 10 + ".1", "gram", ValidationError),  # Too many digits
+            ("1" * 10, "gram", None),  # Max digits
+            ("1" * 10 + ".1", "gram", None),  # Max digits
+            ("1" * 10 + ".01", "gram", ValidationError),  # Too many decimal places
+            ("1" * 10 + ".0", "gram", None),  # Max decimal places
+            ("1" * 10 + ".0" + "1", "gram", ValidationError),  # Too many decimal places
+            ("1" * 10 + ".0" + "1", "gram", ValidationError),  # Too many decimal places
+        ],
+    )
+    def test_decimal_validation_errors(self, decimal_form, value, unit, error_type):
+        """Test decimal validation edge cases."""
+        form = decimal_form(data={"weight_0": value, "weight_1": unit})
+        assert not form.is_valid()
+
+    def test_decimal_none_value_with_required(self):
+        """Test handling of None value with required field."""
+
+        class RequiredDecimalForm(ModelForm):
+            """Form with required DecimalPintFormField."""
+
+            weight = DecimalPintFormField(default_unit="gram", max_digits=10, decimal_places=2, required=True)
+
+            class Meta:
+                """Meta class for RequiredDecimalForm."""
+
+                model = DecimalPintFieldSaveModel
+                fields = ["weight"]
+
+        form = RequiredDecimalForm(data={"weight_0": None, "weight_1": "gram"})
+        assert not form.is_valid()
+        assert "This field cannot be null" in str(form.errors["weight"])
+
+    def test_default_display_precision(self):
+        """Test that display_decimal_places defaults to decimal_places."""
+        field = DecimalPintFormField(default_unit="gram", max_digits=5, decimal_places=2)
+        assert field.display_decimal_places == 2
+        assert field.widget.widgets[0].attrs["step"] == "0.01"
+
+    def test_custom_display_precision(self):
+        """Test custom display_decimal_places setting."""
+        field = DecimalPintFormField(default_unit="gram", max_digits=5, decimal_places=3, display_decimal_places=1)
+        assert field.display_decimal_places == 1
+        assert field.widget.widgets[0].attrs["step"] == "0.1"
+
+    def test_invalid_display_precision(self):
+        """Test validation of display_decimal_places."""
+        # Test negative value
+        with pytest.raises(ValidationError, match="display_decimal_places must be a non-negative integer"):
+            DecimalPintFormField(default_unit="gram", max_digits=5, decimal_places=2, display_decimal_places=-1)
+
+        # Test exceeding decimal_places
+        with pytest.raises(ValidationError, match="display_decimal_places cannot be greater than decimal_places"):
+            DecimalPintFormField(default_unit="gram", max_digits=5, decimal_places=2, display_decimal_places=3)
+
+    @pytest.mark.parametrize(
+        "value,decimal_places,display_places,expected_display",
+        [
+            (Decimal("123.456"), 3, 2, "123.46"),  # Round up
+            (Decimal("123.454"), 3, 2, "123.45"),  # Round down
+            (Decimal("123.000"), 3, 1, "123.0"),  # Trailing zeros
+            (Decimal("123.456"), 3, 0, "123"),  # No decimals
+        ],
+    )
+    def test_value_display_formatting(self, value, decimal_places, display_places, expected_display):
+        """Test that values are formatted correctly for display."""
+        field = DecimalPintFormField(
+            default_unit="gram", max_digits=6, decimal_places=decimal_places, display_decimal_places=display_places
         )
-        deserialized = json.loads(serialized)
-        obj = deserialized[0]["fields"]
-        self.assertEqual(obj["weight"], self.DEFAULT_WEIGHT_QUANTITY_STR)
+        quantity = ureg.Quantity(value, "gram")
+        formatted = field.prepare_value(quantity)
+        assert str(formatted[0]) == expected_display
+        assert formatted[1] == "gram"
 
+    def test_precision_preservation(self):
+        """Test that full precision is preserved when saving, regardless of display setting."""
+        field = DecimalPintFormField(default_unit="gram", max_digits=6, decimal_places=3, display_decimal_places=1)
 
-class TestDecimalFieldSave(FieldSaveTestBase, TestCase):
-    """Test the saving of a decimal field."""
+        # Create a value with full precision
+        value = ["123.456", "gram"]
 
-    MODEL = DecimalPintFieldSaveModel
-    EXPECTED_TYPE = Decimal
-    DEFAULT_WEIGHT = "100.00"
-    DEFAULT_WEIGHT_QUANTITY_STR = "100.00 gram"
-    OUNCES = Decimal("10") * ureg.ounce
-    OUNCE_VALUE = Decimal("3.52739619496")
-    OUNCES_IN_GRAM = Decimal("283.50")
-    WEIGHT = Quantity(Decimal("2") * ureg.gram)
+        # The value should display with reduced precision
+        display_value = field.prepare_value(field.to_python(value))
+        assert str(display_value[0]) == "123.5"
 
-
-class IntLikeFieldSaveTestBase(FieldSaveTestBase):
-    """Base class for testing the saving of an integer-like field."""
-
-    DEFAULT_WEIGHT_QUANTITY_STR = "100 gram"
-    EXPECTED_TYPE = int
-    # 1 ounce = 28.34 grams -> we use something that can be stored as int
-    COMPARE_QUANTITY = Quantity(Decimal(str(28 * 1000)) * ureg.milligram)
-
-
-class TestIntFieldSave(IntLikeFieldSaveTestBase, TestCase):
-    """Test the saving of an integer field."""
-
-    MODEL = IntegerPintFieldSaveModel
-
-
-class TestBigIntFieldSave(IntLikeFieldSaveTestBase, TestCase):
-    """Test the saving of a big integer field."""
-
-    MODEL = BigIntegerPintFieldSaveModel
-
-
-@pytest.mark.django_db
-class TestDefaults(TestCase):
-    """Test the defaults."""
-
-    def setUp(self):
-        """Set up the test."""
-        # Default Values can be used in models
-        DefaultsInModel.objects.create(
-            weight_int=5 * ureg.gram,
-            weight_bigint=5 * ureg.gram,
-            weight_decimal=Decimal("5") * ureg.gram,
-        )
-
-    def tearDown(self):
-        """Tear down the test."""
-        DefaultsInModel.objects.all().delete()
-
-    def test_defaults_int(self):
-        """Test the defaults with an integer."""
-        obj = DefaultsInModel.objects.first()
-        self.assertIsInstance(obj.weight_int, ureg.Quantity)
-        self.assertEqual(str(obj.weight_int), "5 gram")
-
-    def test_defaults_bigint(self):
-        """Test the defaults with a big integer."""
-        obj = DefaultsInModel.objects.first()
-        self.assertIsInstance(obj.weight_bigint, ureg.Quantity)
-        self.assertEqual(str(obj.weight_bigint), "5 gram")
-
-    def test_defaults_decimal(self):
-        """Test the defaults with a decimal."""
-        obj = DefaultsInModel.objects.first()
-        self.assertIsInstance(obj.weight_decimal, ureg.Quantity)
-        self.assertEqual(str(obj.weight_decimal), "5.00 gram")
-
-
-class FieldUpdateTestBase:
-    """Base class for testing the updating of a field."""
-
-    MODEL: Type[FieldSaveModel]
-    EXPECTED_TYPE: Type = int
-    DEFAULT_WEIGHT = Quantity(2 * ureg.gram)
-    DEFAULT_WEIGHT_QUANTITY_STR = "2 gram"
-    NEW_WEIGHT = Quantity(2 * ureg.ounce)
-    NEW_WEIGHT_QUANTITY_STR = "2 ounce"
-
-    def setUp(self):
-        """Set up the test."""
-        self.MODEL.objects.create(
-            weight=self.DEFAULT_WEIGHT,
-            name="grams",
-        )
-
-    def tearDown(self):
-        """Tear down the test."""
-        self.MODEL.objects.all().delete()
-
-    def test_value_updated(self):
-        """Test that the value is updated."""
-        obj = self.MODEL.objects.first()
-        self.assertEqual(str(obj.weight), self.DEFAULT_WEIGHT_QUANTITY_STR)
-
-        new_weight = self.NEW_WEIGHT
-        obj.weight = new_weight
-        obj.save(
-            update_fields=[
-                "weight",
-            ]
-        )
-
-        self.assertIsInstance(obj.weight, Quantity)
-        self.assertEqual(str(obj.weight), self.NEW_WEIGHT_QUANTITY_STR)
-
-        obj.refresh_from_db()
-        self.assertIsInstance(obj.weight, Quantity)
-        self.assertEqual(str(obj.weight), self.NEW_WEIGHT_QUANTITY_STR)
-
-
-class TestDecimalFieldUpdate(FieldUpdateTestBase, TestCase):
-    """Test the updating of a decimal field."""
-
-    MODEL = DecimalPintFieldSaveModel
-    EXPECTED_TYPE = Decimal
-    DEFAULT_WEIGHT = Quantity(Decimal("2.00") * ureg.gram)
-    DEFAULT_WEIGHT_QUANTITY_STR = "2.00 gram"
-    NEW_WEIGHT = Quantity(Decimal("2.00") * ureg.ounce)
-    NEW_WEIGHT_QUANTITY_STR = "2.00 ounce"
-
-
-class TestIntFieldUpdate(FieldUpdateTestBase, TestCase):
-    """Test the updating of an integer field."""
-
-    MODEL = IntegerPintFieldSaveModel
-
-
-class TestBigIntFieldUpdate(FieldUpdateTestBase, TestCase):
-    """Test the updating of a big integer field."""
-
-    MODEL = BigIntegerPintFieldSaveModel
+        # But the full precision should be preserved in the Python object
+        python_value = field.to_python(value)
+        assert str(python_value.magnitude) == "123.456"

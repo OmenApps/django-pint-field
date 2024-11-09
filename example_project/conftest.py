@@ -3,8 +3,8 @@
 from decimal import Decimal
 
 import pytest
-from django.db import models
 
+from django_pint_field.models import IntegerPintField
 from django_pint_field.units import ureg
 
 
@@ -58,4 +58,4 @@ def unit_registry():
 @pytest.fixture
 def integer_pint_field():
     """Return an IntegerPintField instance."""
-    return models.IntegerPintField(default_unit="meter")
+    return IntegerPintField(default_unit="meter")

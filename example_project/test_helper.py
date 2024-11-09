@@ -1,75 +1,132 @@
-"""Tests for the helper functions in django_pint_field.helper."""
+"""Test cases for helper functions."""
 
 from decimal import Decimal
 
 import pytest
-from pint import DimensionalityError
+from django.core.exceptions import ValidationError
 
-import django_pint_field.helper as helper
-import django_pint_field.models as models
+from django_pint_field.helpers import check_matching_unit_dimension
+from django_pint_field.helpers import get_base_unit_magnitude
+from django_pint_field.helpers import get_base_units
+from django_pint_field.helpers import get_quantizing_string
+from django_pint_field.helpers import is_decimal_or_int
 from django_pint_field.units import ureg
 
 
-# Fixtures that could go in conftest.py
-@pytest.fixture
-def unit_registry():
-    """Return a Pint unit registry."""
-    return ureg
+class TestCheckMatchingUnitDimension:
+    """Test the check_matching_unit_dimension function."""
+
+    def test_valid_matching_units(self):
+        """Test units with matching dimensions."""
+        valid_units = ["gram", "kilogram", "pound"]
+        check_matching_unit_dimension(ureg, "gram", valid_units)  # Should not raise
+
+    def test_invalid_unit_dimensions(self):
+        """Test units with non-matching dimensions."""
+        invalid_units = ["meter", "second", "kelvin"]
+        with pytest.raises(ValidationError):
+            check_matching_unit_dimension(ureg, "gram", invalid_units)
+
+    def test_mixed_valid_invalid_units(self):
+        """Test a mix of valid and invalid units."""
+        mixed_units = ["gram", "meter", "kilogram"]
+        with pytest.raises(ValidationError):
+            check_matching_unit_dimension(ureg, "gram", mixed_units)
+
+    def test_empty_units_list(self):
+        """Test with an empty list of units to check."""
+        check_matching_unit_dimension(ureg, "gram", [])  # Should not raise
+
+    def test_invalid_default_unit(self):
+        """Test with an invalid default unit."""
+        with pytest.raises(ValidationError, match="Invalid default unit"):
+            check_matching_unit_dimension(ureg, "invalid_unit", ["gram"])
+
+    def test_invalid_check_unit(self):
+        """Test with an invalid unit in the check list."""
+        with pytest.raises(ValidationError, match="Invalid unit"):
+            check_matching_unit_dimension(ureg, "gram", ["invalid_unit"])
 
 
-@pytest.fixture
-def integer_pint_field():
-    """Return an IntegerPintField instance."""
-    return models.IntegerPintField(default_unit="meter")
-
-
-class TestMatchingUnitDimensions:
-    """Test the check_matching_unit_dimension helper function."""
-
-    def test_valid_choices(self, unit_registry):
-        """Test that valid choices pass."""
-        helper.check_matching_unit_dimension(unit_registry, "meter", ["mile", "foot", "cm"])
-
-    def test_invalid_choices(self, unit_registry):
-        """Test that invalid choices raise an error."""
-        with pytest.raises(DimensionalityError):
-            helper.check_matching_unit_dimension(unit_registry, "meter", ["mile", "foot", "cm", "kg"])
-
-
-class TestEdgeCases:
-    """Test edge cases for the pint field."""
-
-    def test_fix_unit_registry_raises_error(self, integer_pint_field):
-        """Test that the fix_unit_registry method raises ValueError for invalid input."""
-        with pytest.raises(ValueError):
-            integer_pint_field.fix_unit_registry(1)
-
-    def test_get_prep_value_raises_error(self, integer_pint_field):
-        """Test that the get_prep_value method raises ValueError for invalid input."""
-        with pytest.raises(ValueError):
-            integer_pint_field.get_prep_value("foobar")
-
-
-class TestHelperFunctions:
-    """Test the various helper functions."""
+class TestIsDecimalOrInt:
+    """Test the is_decimal_or_int function."""
 
     @pytest.mark.parametrize(
         "value,expected",
         [
+            (42, True),
+            (-17, True),
+            (3.14, True),
+            (Decimal("10.5"), True),
             ("123", True),
-            ("123.45", True),
-            ("abc", False),
+            ("-456.789", True),
+            (Decimal("0"), True),
+            ("invalid", False),
             (None, False),
+            ("", False),
+            ("abc123", False),
+            ([], False),
+            ({}, False),
+            (True, False),
         ],
     )
-    def test_is_decimal_or_int(self, value, expected):
-        """Test is_decimal_or_int with various inputs."""
-        assert helper.is_decimal_or_int(value) == expected
+    def test_various_inputs(self, value, expected):
+        """Test various input types."""
+        assert is_decimal_or_int(value) == expected
 
-    def test_get_base_units(self, unit_registry):
-        """Test get_base_units returns correct base units."""
-        base_units = helper.get_base_units(unit_registry, "kilometer")
-        assert str(base_units) == "meter"
+
+class TestGetBaseUnits:
+    """Test the get_base_units function."""
+
+    @pytest.mark.parametrize(
+        "unit,expected_base",
+        [
+            ("gram", "kilogram"),
+            ("kilogram", "kilogram"),
+            ("pound", "kilogram"),
+            ("meter", "meter"),
+            ("inch", "meter"),
+            ("second", "second"),
+        ],
+    )
+    def test_base_unit_conversion(self, unit, expected_base):
+        """Test conversion to base units."""
+        base_unit = get_base_units(ureg, unit)
+        assert str(base_unit) == expected_base
+
+    def test_invalid_unit(self):
+        """Test with an invalid unit."""
+        with pytest.raises(AttributeError):
+            get_base_units(ureg, "invalid_unit")
+
+
+class TestGetBaseUnitMagnitude:
+    """Test the get_base_unit_magnitude function."""
+
+    def test_gram_to_kilogram(self):
+        """Test converting gram quantities to kilogram base units."""
+        quantity = ureg.Quantity(1000, "gram")
+        assert get_base_unit_magnitude(quantity) == Decimal("1")
+
+    def test_integer_input(self):
+        """Test with integer input magnitude."""
+        quantity = ureg.Quantity(5, "gram")
+        assert get_base_unit_magnitude(quantity) == Decimal("0.005")
+
+    def test_decimal_input(self):
+        """Test with Decimal input magnitude."""
+        quantity = ureg.Quantity(Decimal("5.0"), "gram")
+        assert get_base_unit_magnitude(quantity) == Decimal("0.005")
+
+    def test_float_input_rounding(self):
+        """Test that float inputs are properly rounded."""
+        quantity = ureg.Quantity(5.6789, "gram")
+        result = get_base_unit_magnitude(quantity)
+        assert result == Decimal("0.006")  # Rounds to 6 grams
+
+
+class TestGetQuantizingString:
+    """Test the get_quantizing_string function."""
 
     @pytest.mark.parametrize(
         "max_digits,decimal_places,expected",
@@ -77,83 +134,32 @@ class TestHelperFunctions:
             (1, 0, "1"),
             (2, 1, "1.1"),
             (3, 2, "1.11"),
+            (5, 3, "11.111"),
+            (4, 0, "1111"),
+            (3, 0, "111"),
+            (2, 2, "0.11"),
+            (3, 3, "0.111"),
         ],
     )
-    def test_get_quantizing_string(self, max_digits, decimal_places, expected):
-        """Test get_quantizing_string generates correct strings."""
-        result = helper.get_quantizing_string(max_digits, decimal_places)
-        assert result == expected
-
-
-class TestBaseUnitMagnitude:
-    """Test the get_base_unit_magnitude function."""
-
-    def test_integer_input(self, unit_registry):
-        """Test with integer magnitude."""
-        value = unit_registry.Quantity(5, "kilometers")
-        result = helper.get_base_unit_magnitude(value)
-        assert result == Decimal("5000")
-        assert isinstance(result, Decimal)
-
-    def test_decimal_input(self, unit_registry):
-        """Test with decimal magnitude."""
-        value = unit_registry.Quantity(Decimal("2.5"), "kilometers")
-        result = helper.get_base_unit_magnitude(value)
-        assert result == Decimal("2500")
-        assert isinstance(result, Decimal)
-
-    def test_float_input(self, unit_registry):
-        """Test with float magnitude (should be rounded)."""
-        value = unit_registry.Quantity(2.7, "kilometers")
-        result = helper.get_base_unit_magnitude(value)
-        assert result == Decimal("3000")  # 2.7 rounds to 3, then converts to meters
-        assert isinstance(result, Decimal)
+    def test_valid_inputs(self, max_digits, decimal_places, expected):
+        """Test various valid input combinations."""
+        assert get_quantizing_string(max_digits, decimal_places) == expected
 
     @pytest.mark.parametrize(
-        "input_value,expected",
+        "max_digits,decimal_places,error_msg",
         [
-            (1.4, "1000"),  # rounds down to 1
-            (1.6, "2000"),  # rounds up to 2
-            (2.5, "3000"),  # rounds up to 3
-            (3.49, "3000"),  # rounds down to 3
+            (0, 0, "max_digits must be greater than 0"),
+            (-1, 0, "max_digits must be greater than 0"),
+            (1, -1, "decimal_places must be non-negative"),
+            (1, 2, "decimal_places cannot be greater than max_digits"),
         ],
     )
-    def test_float_rounding(self, unit_registry, input_value, expected):
-        """Test various float rounding scenarios."""
-        value = unit_registry.Quantity(input_value, "kilometers")
-        result = helper.get_base_unit_magnitude(value)
-        assert result == Decimal(expected)
+    def test_invalid_inputs(self, max_digits, decimal_places, error_msg):
+        """Test various invalid input combinations."""
+        with pytest.raises(ValidationError, match=error_msg):
+            get_quantizing_string(max_digits, decimal_places)
 
-    def test_different_unit_types(self, unit_registry):
-        """Test conversion between different unit types."""
-        cases = [
-            (unit_registry.Quantity(1, "mile"), Decimal("1609.344")),  # 1 mile in meters
-            (unit_registry.Quantity(100, "cm"), Decimal("1")),  # 100 cm in meters
-            (unit_registry.Quantity(1, "foot"), Decimal("0.3048")),  # 1 foot in meters
-        ]
-
-        for input_value, expected in cases:
-            result = helper.get_base_unit_magnitude(input_value)
-            assert result == expected
-
-    def test_preserves_precision(self, unit_registry):
-        """Test that decimal precision is preserved."""
-        value = unit_registry.Quantity(Decimal("1.23456"), "meters")
-        result = helper.get_base_unit_magnitude(value)
-        assert result == Decimal("1.23456")
-
-
-class TestQuantizingString:
-    """Additional tests for get_quantizing_string."""
-
-    def test_zero_decimal_places(self):
-        """Test when decimal_places is 0."""
-        assert helper.get_quantizing_string(max_digits=3, decimal_places=0) == "111"
-
-    def test_all_decimal_places(self):
-        """Test when all digits are decimal places."""
-        assert helper.get_quantizing_string(max_digits=3, decimal_places=3) == "0.111"
-
-    def test_large_numbers(self):
-        """Test with larger numbers of digits."""
-        assert helper.get_quantizing_string(max_digits=10, decimal_places=5) == "11111.11111"
+    def test_edge_cases(self):
+        """Test edge cases."""
+        assert get_quantizing_string(1, 0) == "1"  # Minimum valid case
+        assert get_quantizing_string(10, 9) == "1.111111111"  # Large number of decimal places
