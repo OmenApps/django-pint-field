@@ -81,6 +81,7 @@ autodoc_default_options = {
 }
 autodoc_mock_imports = [
     "django",
+    "psycopg",
 ]  # Add any modules that might cause import errors during doc building
 
 # Intersphinx settings
