@@ -1,9 +1,10 @@
+"""Create composite fields for PintField."""
+
 import functools
 
 from django.contrib.postgres.signals import get_type_oids
 from django.db import migrations
-from django.db.backends.base.base import NO_DB_ALIAS
-from psycopg.types import CompositeInfo, TypeInfo, hstore, register_composite
+
 
 # See: https://github.com/django/django/blob/main/django/contrib/postgres/signals.py
 # See: https://www.psycopg.org/psycopg3/docs/basic/pgtypes.html
@@ -27,31 +28,16 @@ def get_decimal_pint_field_oids(connection_alias):
     return get_type_oids(connection_alias, "decimal_pint_field")
 
 
-def clear_oids(apps, schema_editor):
+def clear_oids(apps, schema_editor):  # pylint: disable=W0613
     """Clear cached, stale oids."""
     get_integer_pint_field_oids.cache_clear()
     get_big_integer_pint_field_oids.cache_clear()
     get_decimal_pint_field_oids.cache_clear()
 
 
-def register_type_handlers(connection, **kwargs):
-    if connection.vendor != "postgresql" or connection.alias == NO_DB_ALIAS:
-        return
-
-    # register oids for integer_pint_field
-    integer_pint_field = CompositeInfo.fetch(connection.connection, "integer_pint_field")
-    register_composite(integer_pint_field, connection.connection)
-
-    # register oids for big_integer_pint_field
-    big_integer_pint_field = CompositeInfo.fetch(connection.connection, "big_integer_pint_field")
-    register_composite(big_integer_pint_field, connection.connection)
-
-    # register oids for decimal_pint_field
-    decimal_pint_field = CompositeInfo.fetch(connection.connection, "decimal_pint_field")
-    register_composite(decimal_pint_field, connection.connection)
-
-
 class Migration(migrations.Migration):
+    """Create composite fields for PintField."""
+
     initial = True
     dependencies = []
 

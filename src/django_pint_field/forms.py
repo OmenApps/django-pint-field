@@ -1,53 +1,42 @@
 """Form fields for the Django Pint Field package."""
 
 import copy
-import datetime
+import logging
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from decimal import InvalidOperation
+from typing import Any
+from typing import Optional
+from typing import Union
 
 from django import forms
 from django.contrib.admin.options import FORMFIELD_FOR_DBFIELD_DEFAULTS
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from pint import DimensionalityError, Quantity
 
-from .helper import (
-    check_matching_unit_dimension,
-    get_quantizing_string,
-    is_decimal_or_int,
-)
+from .helpers import check_matching_unit_dimension
+from .helpers import get_quantizing_string
 from .units import ureg
+from .validation import QuantityConverter
+from .validation import validate_decimal_places
+from .validation import validate_dimensionality
+from .validation import validate_required_value
+from .validation import validate_value_range
 from .widgets import PintFieldWidget
 
-DJANGO_JSON_SERIALIZABLE_BASE = Union[None, bool, str, int, float, complex, datetime.datetime]
-DJANGO_JSON_SERIALIZABLE = Union[Sequence[DJANGO_JSON_SERIALIZABLE_BASE], Dict[str, DJANGO_JSON_SERIALIZABLE_BASE]]
-NUMBER_TYPE = Union[int, float, Decimal]
+
+logger = logging.getLogger(__name__)
+
+Quantity = ureg.Quantity
 
 
 def is_special_admin_widget(widget) -> bool:
-    """
-    There are some special django admin widgets, defined
-    in django/contrib/admin/options.py in the variable
-    FORMFIELD_FOR_DBFIELD_DEFAULTS
-    The intention for Integer and BigIntegerField is only to
-    define the width.
-
-    They are set through a complicated process of the
-    modelform_factory setting formfield_callback to
-    ModelForm.formfield_to_dbfield
-
-    As they will overwrite our Widget we check for them and
-    will ignore them, if they are set as attribute.
-
-    We still will allow subclasses, so the end user has still
-    the possibility to use this widget.
-    """
-    WIDGETS_TO_IGNORE = [
+    """Check if the widget is a special admin widget that should be ignored."""
+    widgets_to_ignore = [
         FORMFIELD_FOR_DBFIELD_DEFAULTS[models.IntegerField],
         FORMFIELD_FOR_DBFIELD_DEFAULTS[models.BigIntegerField],
     ]
-    classes_to_ignore = [ignored_widget["widget"].__name__ for ignored_widget in WIDGETS_TO_IGNORE]
+    classes_to_ignore = [ignored_widget["widget"].__name__ for ignored_widget in widgets_to_ignore]
 
     widget_class_name = getattr(widget, "__name__", None) or getattr(widget, "__class__").__name__
     return widget_class_name in classes_to_ignore
@@ -62,18 +51,11 @@ class BasePintFormField(forms.Field):
 
     widget = PintFieldWidget
 
-    validate: Callable
-    run_validators: Callable
-    error_messages: Dict[str, str]
-    empty_values: Sequence[Any]
-    localize: bool
-
-    # def __init__(self, *args, **kwargs):  # pylint: disable=W0231
-    def __init__(
+    def __init__(  # pylint: disable=W0231
         self,
         *,
         default_unit: str,
-        unit_choices: Optional[Union[List[str], Tuple[str]]] = None,
+        unit_choices: Optional[Union[list[str], tuple[str]]] = None,
         required=True,
         widget=None,
         label=None,
@@ -86,6 +68,7 @@ class BasePintFormField(forms.Field):
         disabled=False,
         label_suffix=None,
     ):
+        """Initialize the Pint form field."""
         self.ureg = ureg
 
         self.required = required
@@ -97,16 +80,32 @@ class BasePintFormField(forms.Field):
         self.label_suffix = label_suffix
         self.localize = localize
 
+        self.min_value = None
+        self.max_value = None
+
         if default_unit is None:
-            raise ValueError("PintFormField requires a default_unit kwarg of a single unit type (eg: 'grams')")
+            raise ValidationError("PintFormField requires a default_unit kwarg of a single unit type (eg: 'grams')")
         self.default_unit = default_unit
 
         self.unit_choices = unit_choices or [self.default_unit]
         if self.default_unit not in self.unit_choices:
             self.unit_choices.append(self.default_unit)
 
-        check_matching_unit_dimension(self.ureg, self.default_unit, self.unit_choices)
+        for choice in self.unit_choices:
+            check_matching_unit_dimension(self.ureg, self.default_unit, [choice])
 
+        widget = self._setup_widget(widget)
+
+        messages = {}
+        for c in reversed(self.__class__.__mro__):
+            messages.update(getattr(c, "default_error_messages", {}))
+        messages.update(error_messages or {})
+        self.error_messages = messages
+
+        self.validators = [*self.default_validators, *validators]
+
+    def _setup_widget(self, widget):
+        """Set up and configure the widget."""
         widget = widget or self.widget
 
         # If widget is a class, instantiate it
@@ -127,6 +126,9 @@ class BasePintFormField(forms.Field):
         if extra_attrs:
             widget.attrs.update(extra_attrs)
 
+        if self.disabled:
+            widget.attrs["disabled"] = True
+
         # If widget is not set, or is an admin widget, set it to use PintFieldWidget
         if widget is None or is_special_admin_widget(widget):
             widget = PintFieldWidget(default_unit=self.default_unit, unit_choices=self.unit_choices)
@@ -137,27 +139,37 @@ class BasePintFormField(forms.Field):
                 widget.unit_choices = self.unit_choices
 
         self.widget = widget
+        return widget
 
-        messages = {}
-        for c in reversed(self.__class__.__mro__):
-            messages.update(getattr(c, "default_error_messages", {}))
-        messages.update(error_messages or {})
-        self.error_messages = messages
+    def prepare_value(self, value: Any) -> list:
+        """Convert value to format expected by the widget."""
+        if isinstance(value, (list, tuple)) and len(value) == 2:
+            return value
 
-        self.validators = [*self.default_validators, *validators]
+        if isinstance(value, (list, tuple)) and len(value) == 3:
+            try:
+                comparator, magnitude, units = value  # pylint: disable=W0612
+                return [magnitude, units]
+            except ValueError:
+                logger.warning("Invalid value %s for PintField", value)
+                return [value, self.default_unit]
 
-    def prepare_value(self, value):
-        """Prepare the value for the widget."""
+        if isinstance(value, Quantity):
+            return [value.magnitude, value.units]
 
-        return value
+        if isinstance(value, str):
+            try:
+                comparator, magnitude, units = value.strip("()").split(",")
+                return [Decimal(magnitude.strip()), str(units.strip())]
+            except ValueError:
+                return [value, self.default_unit]
 
-    def to_python(self, value) -> ureg.Quantity:
-        """Return an ureg.Quantity python object from the input value."""
+        return [value, self.default_unit]
+
+    def to_python(self, value) -> Optional[Quantity]:
+        """Convert input value to a Quantity object."""
         if not value:
-            raise ValidationError(
-                _("Value not provided"),
-                code="no_value",
-            )
+            return None
 
         if not isinstance(value, (list, tuple)):
             raise ValidationError(
@@ -167,53 +179,30 @@ class BasePintFormField(forms.Field):
             )
 
         if not self.required and value[0] == "":
-            return value
+            return None
 
-        if not value[0] or not value[1]:
-            raise ValidationError(
-                _("Value (%(value)s) cannot be NoneType"),
-                code="value_is_nonetype",
-                params={"value": type(value)},
-            )
-
-        if value[0] == "" or value[1] == "":
-            raise ValidationError(
-                _("Value (%(value)s) cannot be blank"),
-                code="value_is_blank",
-                params={"value": type(value)},
-            )
-
-        if not is_decimal_or_int(value[0]):
-            raise ValidationError(
-                _("%(value)s is invalid"),
-                code="invalid_number",
-                params={"value": value[0]},
-            )
+        validate_required_value(value[0], required=True)
+        validate_required_value(value[1], required=True)
+        validate_value_range(value[0], self.min_value, self.max_value)
 
         try:
-            check_matching_unit_dimension(
-                self.ureg,
-                self.default_unit,
-                [
-                    value[1],
-                ],
+            converter = QuantityConverter(
+                default_unit=self.default_unit,
+                field_type="integer" if isinstance(self, IntegerPintFormField) else "decimal",
+                unit_registry=self.ureg,
             )
-        except DimensionalityError as e:
-            raise ValidationError(
-                _("%(value)s is has invalid dimensionality"),
-                code="invalid_dimensionality",
-                params={"value": value},
-            ) from e
+            quantity = converter.convert(value)
+            validate_dimensionality(quantity, self.default_unit)
+            return quantity
+        except (ValueError, TypeError) as e:
+            raise ValidationError(str(e)) from e
 
-        return value
+    def clean(self, value: Any) -> Quantity:
+        """Clean and validate the value."""
+        if value in self.empty_values and self.required:
+            raise ValidationError(self.error_messages["required"])
 
-    def clean(self, value):
-        """Validate the given value and return its "cleaned" value as an appropriate Python object.
-
-        Raise ValidationError for any errors.
-        """
         value = self.to_python(value)
-        # value here is a Quantity object. e.g.: <Quantity(3, 'pound')>
         self.validate(value)
         self.run_validators(value)
         return value
@@ -226,78 +215,83 @@ class IntegerPintFormField(BasePintFormField):
     """
 
     def __init__(self, *args, **kwargs):
+        """Initialize the integer Pint form field."""
+        super().__init__(*args, **kwargs)
+
         self.min_value = kwargs.pop("min_value", -2147483648)
         self.max_value = kwargs.pop("max_value", 2147483647)
 
-        super().__init__(*args, **kwargs)
+    # def to_python(self, value) -> Quantity:
+    #     """Return an ureg.Quantity python object from the input value."""
+    #     value = super().to_python(value)
 
-    def to_python(self, value) -> ureg.Quantity:
-        """Return an ureg.Quantity python object from the input value."""
-        value = super().to_python(value)
-
-        if is_decimal_or_int(value[0]) > self.max_value:
-            raise ValidationError(
-                _("%(value)s is too large"),
-                code="number_too_large",
-                params={"value": value[0]},
-            )
-
-        if is_decimal_or_int(value[0]) < self.min_value:
-            raise ValidationError(
-                _("%(value)s is too small"),
-                code="number_too_small",
-                params={"value": value[0]},
-            )
-
-        return self.ureg.Quantity(int(float(value[0])) * getattr(self.ureg, value[1]))
+    #     return self.ureg.Quantity(int(float(value[0])) * getattr(self.ureg, value[1]))
 
 
 class DecimalPintFormField(BasePintFormField):
     """A form field to choose which unit to use to enter a value, which is saved to the composite field."""
 
-    def __init__(self, *, max_digits: int, decimal_places: int, **kwargs):
-        self.min_value = kwargs.pop("min_value", None)  # Not used, but gets passed in via BasePintField
-        self.max_value = kwargs.pop("max_value", None)  # Not used, but gets passed in via BasePintField
-
+    def __init__(self, *, max_digits: int, decimal_places: int, display_decimal_places: Optional[int] = None, **kwargs):
+        """Initialize the decimal Pint form field."""
         if max_digits is None or not isinstance(max_digits, int):
-            raise ValueError("PintFormField requires a max_digits kwarg")
+            raise ValidationError("PintFormField requires a max_digits kwarg")
         self.max_digits = max_digits
 
         if decimal_places is None or not isinstance(decimal_places, int):
-            raise ValueError("PintFormField requires a decimal_places kwarg")
+            raise ValidationError("PintFormField requires a decimal_places kwarg")
         self.decimal_places = decimal_places
+
+        if self.decimal_places > self.max_digits:
+            raise ValidationError("decimal_places cannot be greater than max_digits")
+
+        if self.decimal_places < 0 or self.max_digits < 0:
+            raise ValidationError("decimal_places and max_digits must be non-negative integers")
+
+        if self.max_digits == 0:
+            raise ValidationError("max_digits must be a positive integer")
+
+        self.display_decimal_places = display_decimal_places if display_decimal_places is not None else decimal_places
+        if not isinstance(self.display_decimal_places, int) or self.display_decimal_places < 0:
+            raise ValidationError("display_decimal_places must be a non-negative integer")
+        if self.display_decimal_places > self.decimal_places:
+            raise ValidationError("display_decimal_places cannot be greater than decimal_places")
 
         super().__init__(**kwargs)
 
+        # Update widget attributes to control displayed precision
+        if isinstance(self.widget, PintFieldWidget):
+            self.widget.widgets[0].attrs["step"] = str(10**-self.display_decimal_places)
+
     def prepare_value(self, value):
-        """Prepare the value for the widget."""
-        super().prepare_value(value)
+        """Format the value for display using display_decimal_places."""
+        value = super().prepare_value(value)
 
-        if isinstance(value, Quantity):
-            # quantize the decimal value so we can validate is is no longer than max_digits after quantization
-            quantizing_string = get_quantizing_string(max_digits=self.max_digits, decimal_places=self.decimal_places)
-            new_magnitude = Decimal(str(value.magnitude)).quantize(Decimal(quantizing_string))
-
-            value = self.ureg.Quantity(new_magnitude * getattr(self.ureg, str(value.units)))
-
+        if value and value[0] is not None:
+            try:
+                decimal_value = Decimal(str(value[0]))
+                formatted_value = decimal_value.quantize(Decimal(f"0.{'0' * self.display_decimal_places}"))
+                return [formatted_value, value[1]]
+            except (TypeError, ValueError, InvalidOperation):
+                pass
         return value
 
-    def to_python(self, value) -> ureg.Quantity:
-        """Return an ureg.Quantity python object from the input value."""
-        value = super().to_python(value)
+    def to_python(self, value) -> Optional[Quantity]:
+        """Convert input value to a Quantity with proper decimal handling."""
+        quantity = super().to_python(value)
 
-        # quantize the decimal value so we can validate is is no longer than max_digits after quantization
-        quantizing_string = get_quantizing_string(max_digits=self.max_digits, decimal_places=self.decimal_places)
-        new_magnitude = Decimal(str(value[0])).quantize(Decimal(quantizing_string))
+        if quantity is not None:
+            validate_decimal_places(quantity, self.decimal_places, self.max_digits)
 
-        if len(str(new_magnitude)) - 1 > self.max_digits:
-            raise ValidationError(
-                _(
-                    "Unable to quantize %(value)s to max_digits of %(max_digits)s, "
-                    "likely due to too many leading digits."
-                ),
-                code="exceeded_max_digits",
-                params={"value": value[0], "max_digits": self.max_digits},
-            )
+            # Quantize the decimal value
+            magnitude = Decimal(str(quantity.magnitude))
+            quantizing_string = get_quantizing_string(self.max_digits, self.decimal_places)
+            try:
+                new_magnitude = magnitude.quantize(Decimal(quantizing_string))
+                return self.ureg.Quantity(new_magnitude * getattr(self.ureg, str(quantity.units)))
+            except InvalidOperation as e:
+                raise ValidationError(
+                    _("Unable to quantize to specified precision"),
+                    code="invalid_decimal",
+                ) from e
 
-        return self.ureg.Quantity(new_magnitude * getattr(self.ureg, value[1]))
+        return quantity

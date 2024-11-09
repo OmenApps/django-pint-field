@@ -3,354 +3,271 @@
 Implements custom lookups and provides errors for invalid lookups.
 """
 
-# from django.db import connection
+from collections import namedtuple
+from typing import Any
+
 from django.db.models import Lookup
-from django.utils.translation import gettext_lazy as _
-from psycopg2.extensions import AsIs
 
 from .exceptions import PintFieldLookupError
+from .helpers import get_base_unit_magnitude
 from .models import BigIntegerPintField
 from .models import DecimalPintField
 from .models import IntegerPintField
+from .units import ureg
 
 
-# from psycopg.types.composite import CompositeInfo, register_composite
+Quantity = ureg.Quantity
+
+PintFieldComposite = namedtuple("pint_field", ["comparator", "magnitude", "units"])
 
 
-# ToDo: Find a good way to validate in lookups that the lhs and rhs Quantities use the same dimensionality
-
-# def get_comparator_from_lhs(lhs_params):
-#     """Extracts the comparator from the left-hand side of the lookup.
-
-#     Args:
-#         lhs_params (list): The left-hand side of the lookup.
-
-#     Returns:
-#         list: The comparator extracted from the left-hand side of the lookup.
-#     """
-
-#     def extract_comparator(param):
-#         """Extracts the comparator from the left-hand side of the lookup."""
-#         return str(param)[1:].split(":", maxsplit=1)[0]
-
-#     if (
-#         isinstance(lhs_params, (list, tuple))
-#         and isinstance(lhs_params[0], (list, tuple))
-#         and isinstance(lhs_params[0][0], AsIs)
-#     ):
-#         return [extract_comparator(param) for param in lhs_params[0]]
-
-#     if isinstance(lhs_params, (list, tuple)) and isinstance(lhs_params[0], AsIs):
-#         comparator = extract_comparator(lhs_params[0])
-#         return [
-#             comparator,
-#         ]
-
-#     return [""]
-
-
-def get_comparator_from_rhs(rhs_params):
+def get_comparator_from_rhs(rhs_params: Any) -> list[str]:
     """Extracts the comparator from the right-hand side of the lookup.
 
     Args:
-        rhs_params (list): The right-hand side of the lookup.
+        rhs_params: The right-hand side parameters from the lookup
 
     Returns:
-        list: The comparator extracted from the right-hand side of the lookup.
+        List of comparator strings
     """
 
-    def extract_comparator(param):
-        """Extracts the comparator from the right-hand side of the lookup."""
-        return str(param)[1:].split(":", maxsplit=1)[0]
+    def extract_comparator(param: Any) -> str:
+        if isinstance(param, Quantity):
+            return str(get_base_unit_magnitude(param))
+        if isinstance(param, PintFieldComposite):
+            return str(param.comparator)
+        if isinstance(param, (int, float, str)):
+            return str(param)
+        return ""
 
-    if (
-        isinstance(rhs_params, (list, tuple))
-        and isinstance(rhs_params[0], (list, tuple))
-        and isinstance(rhs_params[0][0], AsIs)
-    ):
-        return [extract_comparator(param) for param in rhs_params[0]]
-
-    if isinstance(rhs_params, (list, tuple)) and isinstance(rhs_params[0], AsIs):
-        comparator = extract_comparator(rhs_params[0])
-        return [
-            comparator,
-        ]
-
-    return [""]
-
-
-# def compare_rhs_with_lhs(lhs, rhs, comparator):
-#     """Compares the right-hand side with the left-hand side of the lookup.
-
-#     Args:
-#         lhs (str): The left-hand side of the lookup.
-#         rhs (str): The right-hand side of the lookup.
-#         comparator (str): The comparator extracted from the right-hand side of the lookup.
-
-#     Returns:
-#         str: The SQL for the comparison of the right-hand side with the left-hand side of the lookup.
-#     """
-
-#     if comparator == "quantity":
-#         return f"({lhs}).quantity {rhs}"
-
-#     if comparator == "magnitude":
-#         return f"({lhs}).magnitude {rhs}"
-
-#     if comparator == "units":
-#         return f"({lhs}).units {rhs}"
-
-#     return f"({lhs}).comparator {rhs}"
+    if isinstance(rhs_params, (list, tuple)):
+        if len(rhs_params) >= 1:
+            inner_params = rhs_params[0]
+            if isinstance(inner_params, (list, tuple)):
+                return [extract_comparator(param) for param in inner_params]
+            return [extract_comparator(inner_params)]
+    return [extract_comparator(rhs_params)]
 
 
 def get_pint_field_lookups():  # pylint: disable=too-many-locals
-    """Registers lookups for PintField"""
+    """Registers lookups for PintField."""
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintGreaterThan(Lookup):  # pylint: disable=W0223 disable=W0612
-        """Greater-than lookup for comparing Quantities"""
+    class BasePintLookup(Lookup):  # pylint: disable=W0223
+        """Base class for PintField lookups."""
+
+        operator = ""
+
+        def process_rhs(self, compiler, connection) -> tuple[str, list[str]]:
+            rhs, params = super().process_rhs(compiler, connection)
+            modified_params = get_comparator_from_rhs(params)
+            return rhs, modified_params
+
+        def as_sql(self, compiler, connection) -> tuple[str, list[str]]:
+            lhs, lhs_params = self.process_lhs(compiler, connection)
+            rhs, rhs_params = self.process_rhs(compiler, connection)
+            params = lhs_params + rhs_params
+            return f"({lhs}).comparator {self.operator} %s", params
+
+    class PintGreaterThan(BasePintLookup):  # pylint: disable=W0223
+        """Greater than lookup for comparing Quantities."""
 
         lookup_name = "gt"
+        operator = ">"
 
-        def as_sql(self, compiler, connection):
-            lhs, lhs_params = self.process_lhs(compiler, connection)
-            rhs, rhs_params = self.process_rhs(compiler, connection)
-            modified_rhs_params = get_comparator_from_rhs(rhs_params)
-            params = lhs_params + modified_rhs_params
-
-            return "(%s).comparator > %s" % (lhs, rhs), params  # pylint: disable=consider-using-f-string
-
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintGreaterThanOrEqual(Lookup):  # pylint: disable=W0223 disable=W0612
-        """Greater-than-or-equal lookup for comparing Quantities"""
+    class PintGreaterThanOrEqual(BasePintLookup):  # pylint: disable=W0223
+        """Greater than or equal lookup for comparing Quantities."""
 
         lookup_name = "gte"
+        operator = ">="
 
-        def as_sql(self, compiler, connection):
-            lhs, lhs_params = self.process_lhs(compiler, connection)
-            rhs, rhs_params = self.process_rhs(compiler, connection)
-            modified_rhs_params = get_comparator_from_rhs(rhs_params)
-            params = lhs_params + modified_rhs_params
-
-            return "(%s).comparator >= %s" % (lhs, rhs), params  # pylint: disable=consider-using-f-string
-
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintLessThan(Lookup):  # pylint: disable=W0223 disable=W0612
-        """Less-than lookup for comparing Quantities"""
+    class PintLessThan(BasePintLookup):  # pylint: disable=W0223
+        """Less than lookup for comparing Quantities."""
 
         lookup_name = "lt"
+        operator = "<"
 
-        def as_sql(self, compiler, connection):
-            lhs, lhs_params = self.process_lhs(compiler, connection)
-            rhs, rhs_params = self.process_rhs(compiler, connection)
-            modified_rhs_params = get_comparator_from_rhs(rhs_params)
-            params = lhs_params + modified_rhs_params
-
-            return "(%s).comparator < %s" % (lhs, rhs), params  # pylint: disable=consider-using-f-string
-
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintLessThanOrEqual(Lookup):  # pylint: disable=W0223 disable=W0612
-        """Less-than-or-equal lookup for comparing Quantities"""
+    class PintLessThanOrEqual(BasePintLookup):  # pylint: disable=W0223
+        """Less than or equal lookup for comparing Quantities."""
 
         lookup_name = "lte"
+        operator = "<="
 
-        def as_sql(self, compiler, connection):
-            lhs, lhs_params = self.process_lhs(compiler, connection)
-            rhs, rhs_params = self.process_rhs(compiler, connection)
-            modified_rhs_params = get_comparator_from_rhs(rhs_params)
-            params = lhs_params + modified_rhs_params
+    class PintExact(BasePintLookup):  # pylint: disable=W0223
+        """Exact lookup for comparing Quantities."""
 
-            return "(%s).comparator <= %s" % (lhs, rhs), params  # pylint: disable=consider-using-f-string
+        lookup_name = "exact"
+        operator = "="
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintRange(Lookup):  # pylint: disable=W0223 disable=W0612
-        """Range lookup for comparing Quantities"""
+    class PintRange(Lookup):  # pylint: disable=W0223
+        """Range lookup for comparing Quantities."""
 
         lookup_name = "range"
 
-        def as_sql(self, compiler, connection):
+        def as_sql(self, compiler, connection) -> tuple[str, list[str]]:
             lhs, lhs_params = self.process_lhs(compiler, connection)
             rhs, rhs_params = self.process_rhs(compiler, connection)
-
             modified_rhs_params = get_comparator_from_rhs(rhs_params)
-            rhs = "BETWEEN %s AND %s"
-
             params = lhs_params + modified_rhs_params
-
-            return "(%s).comparator %s" % (lhs, rhs), params  # pylint: disable=consider-using-f-string
+            return f"({lhs}).comparator BETWEEN %s AND %s", params
 
     class BaseInvalidLookup(Lookup):  # pylint: disable=W0223
-        """Base for invalid Lookups"""
+        """Base for invalid Lookups."""
 
         def as_sql(self, compiler, connection):
             raise PintFieldLookupError("The lookup used is not implemented for django_pint_field.")
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidContains(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidContains(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "contains"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidIContains(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidIContains(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "icontains"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidIn(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidIn(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "in"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidStartsWith(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidStartsWith(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "startswith"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidIStartsWith(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidIStartsWith(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "istartswith"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidEndsWith(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidEndsWith(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "endswith"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidIEndsWith(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidIEndsWith(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "iendswith"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidTruncDate(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidTruncDate(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "date"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractYear(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractYear(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "year"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractIsoYear(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractIsoYear(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "iso_year"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractMonth(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractMonth(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "month"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractDay(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractDay(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "day"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractWeek(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractWeek(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "week"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractIsoWeekDay(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractIsoWeekDay(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "iso_week_day"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractWeekDay(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractWeekDay(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "week_day"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractQuarter(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractQuarter(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "quarter"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidTruncTime(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidTruncTime(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "time"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractHour(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractHour(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "hour"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractMinute(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractMinute(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "minute"
 
-    @IntegerPintField.register_lookup
-    @BigIntegerPintField.register_lookup
-    @DecimalPintField.register_lookup
-    class PintInvalidExtractSecond(BaseInvalidLookup):  # pylint: disable=W0223 disable=W0612
-        """Invalid lookup for comparing Quantities"""
+    class PintInvalidExtractSecond(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
 
         lookup_name = "second"
+
+    class PintInvalidRegex(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
+
+        lookup_name = "regex"
+
+    class PintInvalidIRegex(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
+
+        lookup_name = "iregex"
+
+    class PintInvalidSearch(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
+
+        lookup_name = "search"
+
+    class PintInvalidISearch(BaseInvalidLookup):  # pylint: disable=W0223
+        """Invalid lookup for comparing Quantities."""
+
+        lookup_name = "isearch"
+
+    # Register lookups for all field types
+    for field_class in [IntegerPintField, BigIntegerPintField, DecimalPintField]:
+        for lookup_class in [
+            PintGreaterThan,
+            PintGreaterThanOrEqual,
+            PintLessThan,
+            PintLessThanOrEqual,
+            PintExact,
+            PintRange,
+            PintInvalidContains,
+            PintInvalidIContains,
+            PintInvalidIn,
+            PintInvalidStartsWith,
+            PintInvalidIStartsWith,
+            PintInvalidEndsWith,
+            PintInvalidIEndsWith,
+            PintInvalidTruncDate,
+            PintInvalidExtractYear,
+            PintInvalidExtractIsoYear,
+            PintInvalidExtractMonth,
+            PintInvalidExtractDay,
+            PintInvalidExtractWeek,
+            PintInvalidExtractIsoWeekDay,
+            PintInvalidExtractWeekDay,
+            PintInvalidExtractQuarter,
+            PintInvalidTruncTime,
+            PintInvalidExtractHour,
+            PintInvalidExtractMinute,
+            PintInvalidExtractSecond,
+            PintInvalidRegex,
+            PintInvalidIRegex,
+            PintInvalidSearch,
+            PintInvalidISearch,
+        ]:
+            field_class.register_lookup(lookup_class)
