@@ -5,18 +5,19 @@ import os
 import sys
 from datetime import datetime
 
-import django
-from django.core.management import call_command
-from django.utils.html import strip_tags
+
+# import django
+# from django.core.management import call_command
+# from django.utils.html import strip_tags
 
 
-sys.path.insert(0, os.path.abspath(".."))
-os.environ["DJANGO_SETTINGS_MODULE"] = "example_project.settings"
-django.setup()
+# sys.path.insert(0, os.path.abspath(".."))
+# os.environ["DJANGO_SETTINGS_MODULE"] = "example_project.settings"
+# django.setup()
 
-# Make and run migrations for the example project
-call_command("makemigrations")
-call_command("migrate")
+# # Make and run migrations for the example project
+# call_command("makemigrations")
+# call_command("migrate")
 
 
 # Project information
@@ -115,53 +116,53 @@ myst_enable_extensions = [
 ]
 
 
-def project_django_models(app, what, name, obj, options, lines):  # pylint: disable=W0613 disable=R0913
-    """Process Django models for autodoc.
+# def project_django_models(app, what, name, obj, options, lines):  # pylint: disable=W0613 disable=R0913
+#     """Process Django models for autodoc.
 
-    From: https://djangosnippets.org/snippets/2533/
-    """
-    from django.db import models  # pylint: disable=C0415
+#     From: https://djangosnippets.org/snippets/2533/
+#     """
+#     from django.db import models  # pylint: disable=C0415
 
-    # Only look at objects that inherit from Django's base model class
-    if inspect.isclass(obj) and issubclass(obj, models.Model):
-        # Grab the field list from the meta class
-        fields = obj._meta.get_fields()  # pylint: disable=W0212
+#     # Only look at objects that inherit from Django's base model class
+#     if inspect.isclass(obj) and issubclass(obj, models.Model):
+#         # Grab the field list from the meta class
+#         fields = obj._meta.get_fields()  # pylint: disable=W0212
 
-        for field in fields:
-            # If it's a reverse relation, skip it
-            if isinstance(
-                field,
-                (
-                    models.fields.related.ManyToOneRel,
-                    models.fields.related.ManyToManyRel,
-                    models.fields.related.OneToOneRel,
-                ),
-            ):
-                continue
+#         for field in fields:
+#             # If it's a reverse relation, skip it
+#             if isinstance(
+#                 field,
+#                 (
+#                     models.fields.related.ManyToOneRel,
+#                     models.fields.related.ManyToManyRel,
+#                     models.fields.related.OneToOneRel,
+#                 ),
+#             ):
+#                 continue
 
-            # Decode and strip any html out of the field's help text
-            help_text = strip_tags(field.help_text) if hasattr(field, "help_text") else None
+#             # Decode and strip any html out of the field's help text
+#             help_text = strip_tags(field.help_text) if hasattr(field, "help_text") else None
 
-            # Decode and capitalize the verbose name, for use if there isn't
-            # any help text
-            verbose_name = field.verbose_name if hasattr(field, "verbose_name") else ""
+#             # Decode and capitalize the verbose name, for use if there isn't
+#             # any help text
+#             verbose_name = field.verbose_name if hasattr(field, "verbose_name") else ""
 
-            if help_text:
-                # Add the model field to the end of the docstring as a param
-                # using the help text as the description
-                lines.append(f":param {field.name}: {help_text}")
-            else:
-                # Add the model field to the end of the docstring as a param
-                # using the verbose name as the description
-                lines.append(f":param {field.name}: {verbose_name}")
+#             if help_text:
+#                 # Add the model field to the end of the docstring as a param
+#                 # using the help text as the description
+#                 lines.append(f":param {field.name}: {help_text}")
+#             else:
+#                 # Add the model field to the end of the docstring as a param
+#                 # using the verbose name as the description
+#                 lines.append(f":param {field.name}: {verbose_name}")
 
-            # Add the field's type to the docstring
-            lines.append(f":type {field.name}: {field.__class__.__name__}")
+#             # Add the field's type to the docstring
+#             lines.append(f":type {field.name}: {field.__class__.__name__}")
 
-    # Return the extended docstring
-    return lines
+#     # Return the extended docstring
+#     return lines
 
 
-def setup(app):
-    """Register the Django model processor with Sphinx."""
-    app.connect("autodoc-process-docstring", project_django_models)
+# def setup(app):
+#     """Register the Django model processor with Sphinx."""
+#     app.connect("autodoc-process-docstring", project_django_models)
