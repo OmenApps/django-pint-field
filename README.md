@@ -1,5 +1,8 @@
 # django-pint-field
 
+[![Published on Django Packages](https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26)](https://djangopackages.org/packages/p/django-pint-field/)
+[![PyPI](https://img.shields.io/pypi/v/django-pint-field)](https://pypi.org/project/django-pint-field/)
+
 Store, validate, and convert physical quantities in Django using [Pint](https://pint.readthedocs.io/en/stable/).
 
 ## Why Django Pint Field?
