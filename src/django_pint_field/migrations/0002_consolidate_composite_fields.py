@@ -49,24 +49,16 @@ def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
         """
         )
         for schema, table, column in cursor.fetchall():
-            # Create new column with temporary name
             cursor.execute(
                 f"""
-                ALTER TABLE {schema}.{table}
-                ADD COLUMN {column}_new pint_field;
-
-                UPDATE {schema}.{table}
-                SET {column}_new = ROW(
+                ALTER TABLE "{schema}"."{table}"
+                ALTER COLUMN "{column}"
+                TYPE pint_field
+                USING ROW(
                     ({column}).comparator,
                     ({column}).magnitude::decimal,
                     ({column}).units
                 )::pint_field;
-
-                ALTER TABLE {schema}.{table}
-                DROP COLUMN {column};
-
-                ALTER TABLE {schema}.{table}
-                RENAME COLUMN {column}_new TO {column};
             """
             )
 
@@ -80,25 +72,18 @@ def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
         for schema, table, column in cursor.fetchall():
             cursor.execute(
                 f"""
-                ALTER TABLE {schema}.{table}
-                ADD COLUMN {column}_new pint_field;
-
-                UPDATE {schema}.{table}
-                SET {column}_new = ROW(
+                ALTER TABLE "{schema}"."{table}"
+                ALTER COLUMN "{column}"
+                TYPE pint_field
+                USING ROW(
                     ({column}).comparator,
                     ({column}).magnitude::decimal,
                     ({column}).units
                 )::pint_field;
-
-                ALTER TABLE {schema}.{table}
-                DROP COLUMN {column};
-
-                ALTER TABLE {schema}.{table}
-                RENAME COLUMN {column}_new TO {column};
             """
             )
 
-        # Convert decimal_pint_field columns (straightforward type conversion)
+        # Convert decimal_pint_field columns
         cursor.execute(
             """
             SELECT table_schema, table_name, column_name
@@ -108,21 +93,10 @@ def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
         for schema, table, column in cursor.fetchall():
             cursor.execute(
                 f"""
-                ALTER TABLE {schema}.{table}
-                ADD COLUMN {column}_new pint_field;
-
-                UPDATE {schema}.{table}
-                SET {column}_new = ROW(
-                    ({column}).comparator,
-                    ({column}).magnitude,
-                    ({column}).units
-                )::pint_field;
-
-                ALTER TABLE {schema}.{table}
-                DROP COLUMN {column};
-
-                ALTER TABLE {schema}.{table}
-                RENAME COLUMN {column}_new TO {column};
+                ALTER TABLE "{schema}"."{table}"
+                ALTER COLUMN "{column}"
+                TYPE pint_field
+                USING ({column})::pint_field;
             """
             )
 
