@@ -1,4 +1,5 @@
 """Django Pint Field models."""
+
 from __future__ import annotations
 
 import decimal

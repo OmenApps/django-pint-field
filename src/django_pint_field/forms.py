@@ -221,12 +221,6 @@ class IntegerPintFormField(BasePintFormField):
         self.min_value = kwargs.pop("min_value", -2147483648)
         self.max_value = kwargs.pop("max_value", 2147483647)
 
-    # def to_python(self, value) -> Quantity:
-    #     """Return an ureg.Quantity python object from the input value."""
-    #     value = super().to_python(value)
-
-    #     return self.ureg.Quantity(int(float(value[0])) * getattr(self.ureg, value[1]))
-
 
 class DecimalPintFormField(BasePintFormField):
     """A form field to choose which unit to use to enter a value, which is saved to the composite field."""

@@ -1,4 +1,5 @@
 """Helper functions for the django_pint_field app."""
+
 from __future__ import annotations
 
 import math
