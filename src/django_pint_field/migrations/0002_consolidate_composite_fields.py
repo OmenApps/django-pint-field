@@ -18,54 +18,44 @@ def clear_oids(apps, schema_editor):  # pylint: disable=W0613
     get_pint_field_oids.cache_clear()
 
 
+def convert_column(schema, table, column, is_decimal=False):
+    """Convert a single column with proper trigger handling."""
+    with connection.cursor() as cursor:
+        # Disable triggers
+        cursor.execute(f'ALTER TABLE "{schema}"."{table}" DISABLE TRIGGER ALL;')
+
+        try:
+            if is_decimal:
+                cursor.execute(
+                    f"""
+                    ALTER TABLE "{schema}"."{table}"
+                    ALTER COLUMN "{column}"
+                    TYPE pint_field
+                    USING ({column})::pint_field;
+                    """
+                )
+            else:
+                cursor.execute(
+                    f"""
+                    ALTER TABLE "{schema}"."{table}"
+                    ALTER COLUMN "{column}"
+                    TYPE pint_field
+                    USING ROW(
+                        ({column}).comparator,
+                        ({column}).magnitude::decimal,
+                        ({column}).units
+                    )::pint_field;
+                    """
+                )
+        finally:
+            # Re-enable triggers
+            cursor.execute(f'ALTER TABLE "{schema}"."{table}" ENABLE TRIGGER ALL;')
+
+
 def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
     """Convert existing data to new pint_field type."""
     with connection.cursor() as cursor:
-        # Deal with inherited tables.
-        # Identify all tables and their inheritance information.
-        cursor.execute(
-            """
-            WITH RECURSIVE inheritance_chain AS (
-                -- Base case: tables with no parent
-                SELECT c.oid as table_oid,
-                       c.relname as table_name,
-                       n.nspname as schema_name,
-                       NULL::oid as parent_oid,
-                       0 as level
-                FROM pg_class c
-                JOIN pg_namespace n ON n.oid = c.relnamespace
-                WHERE c.relkind = 'r'
-                  AND NOT EXISTS (
-                      SELECT 1
-                      FROM pg_inherits
-                      WHERE inhrelid = c.oid
-                  )
-
-                UNION ALL
-
-                -- Recursive case: child tables
-                SELECT c.oid,
-                       c.relname,
-                       n.nspname,
-                       i.inhparent,
-                       ic.level + 1
-                FROM pg_class c
-                JOIN pg_namespace n ON n.oid = c.relnamespace
-                JOIN pg_inherits i ON i.inhrelid = c.oid
-                JOIN inheritance_chain ic ON ic.table_oid = i.inhparent
-                WHERE c.relkind = 'r'
-            )
-            SELECT DISTINCT ON (schema_name, table_name)
-                   schema_name,
-                   table_name,
-                   parent_oid IS NOT NULL as is_child
-            FROM inheritance_chain
-            ORDER BY schema_name, table_name, level DESC;
-            """
-        )
-        tables_info = cursor.fetchall()
-
-        # Create temporary tables to store field information
+        # First, create temporary tables to store existing data
         cursor.execute(
             """
             CREATE TEMP TABLE temp_integer_fields AS
@@ -85,79 +75,46 @@ def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
             """
         )
 
-        def convert_column(schema, table, column, is_child):
-            if is_child:
-                # For child tables, handle the parent first
-                cursor.execute(
-                    """
-                    SELECT n.nspname, c.relname
-                    FROM pg_class c
-                    JOIN pg_namespace n ON n.oid = c.relnamespace
-                    JOIN pg_inherits i ON i.inhparent = c.oid
-                    WHERE i.inhrelid = (
-                        SELECT oid
-                        FROM pg_class
-                        WHERE relname = %s
-                        AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = %s)
-                    );
-                    """,
-                    [table, schema]
-                )
-                parent_info = cursor.fetchone()
-                if parent_info:
-                    convert_column(parent_info[0], parent_info[1], column, False)
-
-            # Add a new column with the new type
-            temp_column = f"{column}_new"
+        try:
+            # Convert integer_pint_field columns
             cursor.execute(
-                f"""
-                ALTER TABLE "{schema}"."{table}"
-                ADD COLUMN "{temp_column}" pint_field;
-
-                UPDATE "{schema}"."{table}"
-                SET "{temp_column}" = ROW(
-                    ({column}).comparator,
-                    ({column}).magnitude::decimal,
-                    ({column}).units
-                )::pint_field;
                 """
-            )
-
-            # Drop the old column and rename the new one
-            cursor.execute(
-                f"""
-                ALTER TABLE "{schema}"."{table}" DROP COLUMN "{column}";
-                ALTER TABLE "{schema}"."{table}" RENAME COLUMN "{temp_column}" TO "{column}";
-                """
-            )
-
-        # Process each type of field
-        for field_type in ['integer', 'bigint', 'decimal']:
-            cursor.execute(
-                f"""
                 SELECT table_schema, table_name, column_name
-                FROM temp_{field_type}_fields;
+                FROM temp_integer_fields;
                 """
             )
-            fields = cursor.fetchall()
+            for schema, table, column in cursor.fetchall():
+                convert_column(schema, table, column)
 
-            for schema, table, column in fields:
-                # Find if this table is a child table
-                is_child = next(
-                    (info[2] for info in tables_info
-                     if info[0] == schema and info[1] == table),
-                    False
-                )
-                convert_column(schema, table, column, is_child)
+            # Convert big_integer_pint_field columns
+            cursor.execute(
+                """
+                SELECT table_schema, table_name, column_name
+                FROM temp_bigint_fields;
+                """
+            )
+            for schema, table, column in cursor.fetchall():
+                convert_column(schema, table, column)
 
-        # Clean up temporary tables
-        cursor.execute(
-            """
-            DROP TABLE temp_integer_fields;
-            DROP TABLE temp_bigint_fields;
-            DROP TABLE temp_decimal_fields;
-            """
-        )
+            # Convert decimal_pint_field columns
+            cursor.execute(
+                """
+                SELECT table_schema, table_name, column_name
+                FROM temp_decimal_fields;
+                """
+            )
+            for schema, table, column in cursor.fetchall():
+                convert_column(schema, table, column, is_decimal=True)
+
+        finally:
+            # Clean up temporary tables
+            cursor.execute(
+                """
+                DROP TABLE IF EXISTS temp_integer_fields;
+                DROP TABLE IF EXISTS temp_bigint_fields;
+                DROP TABLE IF EXISTS temp_decimal_fields;
+                """
+            )
 
 
 class Migration(migrations.Migration):
