@@ -96,9 +96,14 @@ def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
                 ALTER TABLE "{schema}"."{table}"
                 ALTER COLUMN "{column}"
                 TYPE pint_field
-                USING ({column})::pint_field;
+                USING ROW(
+                    ({column}).comparator,
+                    ({column}).magnitude::decimal,
+                    ({column}).units
+                )::pint_field;
             """
             )
+
 
         # Clean up temporary tables
         cursor.execute(
