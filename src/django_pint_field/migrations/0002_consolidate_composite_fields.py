@@ -31,7 +31,11 @@ def convert_column(schema, table, column, is_decimal=False):
                     ALTER TABLE "{schema}"."{table}"
                     ALTER COLUMN "{column}"
                     TYPE pint_field
-                    USING ({column})::pint_field;
+                    USING ROW(
+                        ({column}).comparator,
+                        ({column}).magnitude,
+                        ({column}).units
+                    )::pint_field;
                     """
                 )
             else:
@@ -50,6 +54,7 @@ def convert_column(schema, table, column, is_decimal=False):
         finally:
             # Re-enable triggers
             cursor.execute(f'ALTER TABLE "{schema}"."{table}" ENABLE TRIGGER ALL;')
+
 
 
 def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
