@@ -1,10 +1,15 @@
 """Migration to consolidate PintField types into a single composite type."""
 
 import functools
+import logging
+import typing
 
 from django.contrib.postgres.signals import get_type_oids
 from django.db import connection
 from django.db import migrations
+
+
+logger = logging.getLogger(__name__)
 
 
 @functools.lru_cache
@@ -18,10 +23,46 @@ def clear_oids(apps, schema_editor):  # pylint: disable=W0613
     get_pint_field_oids.cache_clear()
 
 
-def convert_column(schema, table, column, is_decimal=False):
+def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, list]:
+    """Get partition information for a table."""
+    # Check if table is partitioned
+    cursor.execute(
+        """
+        SELECT partattrs, partstrat
+        FROM pg_partitioned_table pt
+        JOIN pg_class c ON c.oid = pt.partrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = %s AND c.relname = %s;
+        """,
+        [schema, table]
+    )
+    result = cursor.fetchone()
+
+    if not result:
+        return False, []
+
+    # Get list of partitions
+    cursor.execute(
+        """
+        SELECT n.nspname, c.relname
+        FROM pg_inherits i
+        JOIN pg_class c ON c.oid = i.inhrelid
+        JOIN pg_class p ON p.oid = i.inhparent
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_namespace pn ON pn.oid = p.relnamespace
+        WHERE pn.nspname = %s AND p.relname = %s;
+        """,
+        [schema, table]
+    )
+
+    partitions = cursor.fetchall()
+    return True, partitions
+
+
+def convert_column(schema: str, table: str, column: str, field_type: str) -> None:
     """Convert a single column with proper trigger handling."""
     with connection.cursor() as cursor:
-        # First, verify the exact column name case by querying the information schema
+        # First, verify the exact column name case and check if table exists
         cursor.execute(
             """
             SELECT column_name
@@ -34,108 +75,174 @@ def convert_column(schema, table, column, is_decimal=False):
         )
         result = cursor.fetchone()
         if not result:
-            raise ValueError(f"Column {column} not found in {schema}.{table}")
+            logger.warning("Column %s not found in %s.%s", column, schema, table)
+            return
 
         actual_column_name = result[0]
+        temp_column = f"{actual_column_name}_new"
 
-        # Disable triggers
-        cursor.execute(f'ALTER TABLE "{schema}"."{table}" DISABLE TRIGGER ALL;')
+        # Check if table is partitioned
+        is_partitioned, partitions = get_partition_info(cursor, schema, table)
 
         try:
-            if is_decimal:
+            # Start by adding new column to parent table
+            logger.info("Converting %s.%s.%s from %s to pint_field", schema, table, actual_column_name, field_type)
+
+            cursor.execute(
+                f"""
+                ALTER TABLE "{schema}"."{table}"
+                ADD COLUMN "{temp_column}" pint_field;
+                """
+            )
+
+            # Copy data with conversion
+            cursor.execute(
+                f"""
+                UPDATE "{schema}"."{table}"
+                SET "{temp_column}" = ROW(
+                    ("{actual_column_name}").comparator,
+                    ("{actual_column_name}").magnitude::decimal,
+                    ("{actual_column_name}").units
+                )::pint_field
+                WHERE "{actual_column_name}" IS NOT NULL;
+                """
+            )
+
+            if is_partitioned:
+                logger.info("Table %s.%s is partitioned, processing partitions...", schema, table)
+                for part_schema, part_table in partitions:
+                    logger.info("Processing partition %s.%s", part_schema, part_table)
+                    # For partitions, we need to handle the column conversion separately
+                    cursor.execute(
+                        f"""
+                        UPDATE "{part_schema}"."{part_table}"
+                        SET "{temp_column}" = ROW(
+                            ("{actual_column_name}").comparator,
+                            ("{actual_column_name}").magnitude::decimal,
+                            ("{actual_column_name}").units
+                        )::pint_field
+                        WHERE "{actual_column_name}" IS NOT NULL;
+                        """
+                    )
+
+            # After all data is copied, drop old column and rename new one
+            cursor.execute(
+                f"""
+                ALTER TABLE "{schema}"."{table}"
+                DROP COLUMN "{actual_column_name}",
+                RENAME COLUMN "{temp_column}" TO "{actual_column_name}";
+                """
+            )
+
+        except Exception as e:
+            logger.error("Error converting column %s.%s.%s: %s", schema, table, actual_column_name, str(e))
+            # Try to clean up on error
+            try:
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
-                    ALTER COLUMN "{actual_column_name}"
-                    TYPE pint_field
-                    USING ROW(
-                        ("{actual_column_name}").comparator,
-                        ("{actual_column_name}").magnitude,
-                        ("{actual_column_name}").units
-                    )::pint_field;
+                    DROP COLUMN IF EXISTS "{temp_column}";
                     """
                 )
-            else:
-                cursor.execute(
-                    f"""
-                    ALTER TABLE "{schema}"."{table}"
-                    ALTER COLUMN "{actual_column_name}"
-                    TYPE pint_field
-                    USING ROW(
-                        ("{actual_column_name}").comparator,
-                        ("{actual_column_name}").magnitude::decimal,
-                        ("{actual_column_name}").units
-                    )::pint_field;
-                    """
-                )
-        finally:
-            # Re-enable triggers
-            cursor.execute(f'ALTER TABLE "{schema}"."{table}" ENABLE TRIGGER ALL;')
+            except Exception:
+                pass  # Ignore cleanup errors
+            raise
 
 
-def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
+def convert_existing_data(apps, schema_editor):
     """Convert existing data to new pint_field type."""
     with connection.cursor() as cursor:
-        # First, create temporary tables to store existing data
+        # Get all tables using any of our types, including inherited tables
         cursor.execute(
             """
-            CREATE TEMP TABLE temp_integer_fields AS
-            SELECT table_schema, table_name, column_name
-            FROM information_schema.columns
-            WHERE udt_name = 'integer_pint_field';
+            WITH RECURSIVE inheritance_chain AS (
+                -- Base case: tables directly using our types
+                SELECT DISTINCT c.oid,
+                       n.nspname AS table_schema,
+                       c.relname AS table_name,
+                       NULL::oid AS parent_oid
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                JOIN pg_attribute a ON a.attrelid = c.oid
+                JOIN pg_type t ON t.oid = a.atttypid
+                WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
 
-            CREATE TEMP TABLE temp_bigint_fields AS
-            SELECT table_schema, table_name, column_name
-            FROM information_schema.columns
-            WHERE udt_name = 'big_integer_pint_field';
+                UNION ALL
 
-            CREATE TEMP TABLE temp_decimal_fields AS
-            SELECT table_schema, table_name, column_name
-            FROM information_schema.columns
-            WHERE udt_name = 'decimal_pint_field';
+                -- Recursive case: add inherited tables
+                SELECT c.oid,
+                       n.nspname,
+                       c.relname,
+                       i.inhparent
+                FROM pg_inherits i
+                JOIN pg_class c ON c.oid = i.inhrelid
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                JOIN inheritance_chain p ON p.oid = i.inhparent
+            )
+            SELECT DISTINCT ic.table_schema,
+                   ic.table_name,
+                   a.attname AS column_name,
+                   t.typname AS type_name
+            FROM inheritance_chain ic
+            JOIN pg_attribute a ON a.attrelid = ic.oid
+            JOIN pg_type t ON t.oid = a.atttypid
+            WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
+            AND a.attnum > 0  -- Exclude system columns
+            ORDER BY ic.table_schema, ic.table_name, a.attname;
             """
         )
 
-        try:
-            # Convert integer_pint_field columns
-            cursor.execute(
-                """
-                SELECT table_schema, table_name, column_name
-                FROM temp_integer_fields;
-                """
-            )
-            for schema, table, column in cursor.fetchall():
-                convert_column(schema, table, column)
+        tables_to_convert = cursor.fetchall()
 
-            # Convert big_integer_pint_field columns
-            cursor.execute(
-                """
-                SELECT table_schema, table_name, column_name
-                FROM temp_bigint_fields;
-                """
-            )
-            for schema, table, column in cursor.fetchall():
-                convert_column(schema, table, column)
+        # Convert each table
+        for schema, table, column, type_name in tables_to_convert:
+            convert_column(schema, table, column, type_name)
 
-            # Convert decimal_pint_field columns
-            cursor.execute(
-                """
-                SELECT table_schema, table_name, column_name
-                FROM temp_decimal_fields;
-                """
-            )
-            for schema, table, column in cursor.fetchall():
-                convert_column(schema, table, column, is_decimal=True)
 
-        finally:
-            # Clean up temporary tables
-            cursor.execute(
-                """
-                DROP TABLE IF EXISTS temp_integer_fields;
-                DROP TABLE IF EXISTS temp_bigint_fields;
-                DROP TABLE IF EXISTS temp_decimal_fields;
-                """
+def validate_conversion(apps, schema_editor):
+    """Validate that all columns were converted successfully."""
+    with connection.cursor() as cursor:
+        # Check for any remaining old-type columns, including in inherited tables
+        cursor.execute(
+            """
+            WITH RECURSIVE inheritance_chain AS (
+                SELECT DISTINCT c.oid,
+                       n.nspname AS table_schema,
+                       c.relname AS table_name,
+                       NULL::oid AS parent_oid
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                JOIN pg_attribute a ON a.attrelid = c.oid
+                JOIN pg_type t ON t.oid = a.atttypid
+                WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
+
+                UNION ALL
+
+                SELECT c.oid,
+                       n.nspname,
+                       c.relname,
+                       i.inhparent
+                FROM pg_inherits i
+                JOIN pg_class c ON c.oid = i.inhrelid
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                JOIN inheritance_chain p ON p.oid = i.inhparent
             )
+            SELECT DISTINCT ic.table_schema,
+                   ic.table_name,
+                   a.attname AS column_name,
+                   t.typname AS type_name
+            FROM inheritance_chain ic
+            JOIN pg_attribute a ON a.attrelid = ic.oid
+            JOIN pg_type t ON t.oid = a.atttypid
+            WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
+            AND a.attnum > 0;  -- Exclude system columns
+            """
+        )
+        remaining_columns = cursor.fetchall()
+        if remaining_columns:
+            for schema, table, column, udt in remaining_columns:
+                logger.error("Column %s.%s.%s still has type %s", schema, table, column, udt)
+            raise Exception("Not all columns were converted successfully")
 
 
 class Migration(migrations.Migration):
@@ -148,17 +255,53 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Create new type first
+        # First create casting functions and new type
         migrations.RunSQL(
             sql=[
+                # Create new type
                 "DROP TYPE IF EXISTS pint_field CASCADE;",
-                "CREATE TYPE pint_field AS (comparator decimal, magnitude decimal, units text);"
+                "CREATE TYPE pint_field AS (comparator decimal, magnitude decimal, units text);",
+
+                # Create casting functions
+                """
+                CREATE OR REPLACE FUNCTION cast_decimal_pint_to_pint(decimal_pint_field)
+                RETURNS pint_field AS $$
+                    SELECT ROW($1.comparator, $1.magnitude, $1.units)::pint_field;
+                $$ LANGUAGE SQL IMMUTABLE STRICT;
+                """,
+                """
+                CREATE OR REPLACE FUNCTION cast_integer_pint_to_pint(integer_pint_field)
+                RETURNS pint_field AS $$
+                    SELECT ROW($1.comparator, $1.magnitude::decimal, $1.units)::pint_field;
+                $$ LANGUAGE SQL IMMUTABLE STRICT;
+                """,
+                """
+                CREATE OR REPLACE FUNCTION cast_bigint_pint_to_pint(big_integer_pint_field)
+                RETURNS pint_field AS $$
+                    SELECT ROW($1.comparator, $1.magnitude::decimal, $1.units)::pint_field;
+                $$ LANGUAGE SQL IMMUTABLE STRICT;
+                """,
+
+                # Create the casts
+                "CREATE CAST (decimal_pint_field AS pint_field) WITH FUNCTION cast_decimal_pint_to_pint(decimal_pint_field) AS IMPLICIT;",
+                "CREATE CAST (integer_pint_field AS pint_field) WITH FUNCTION cast_integer_pint_to_pint(integer_pint_field) AS IMPLICIT;",
+                "CREATE CAST (big_integer_pint_field AS pint_field) WITH FUNCTION cast_bigint_pint_to_pint(big_integer_pint_field) AS IMPLICIT;",
             ],
-            reverse_sql=["DROP TYPE IF EXISTS pint_field CASCADE;"],
+            reverse_sql=[
+                "DROP CAST IF EXISTS (decimal_pint_field AS pint_field);",
+                "DROP CAST IF EXISTS (integer_pint_field AS pint_field);",
+                "DROP CAST IF EXISTS (big_integer_pint_field AS pint_field);",
+                "DROP FUNCTION IF EXISTS cast_decimal_pint_to_pint(decimal_pint_field);",
+                "DROP FUNCTION IF EXISTS cast_integer_pint_to_pint(integer_pint_field);",
+                "DROP FUNCTION IF EXISTS cast_bigint_pint_to_pint(big_integer_pint_field);",
+                "DROP TYPE IF EXISTS pint_field CASCADE;",
+            ],
         ),
         # Convert existing data
         migrations.RunPython(convert_existing_data, reverse_code=migrations.RunPython.noop, atomic=False),
-        # Drop old types after conversion
+        # Validate conversion
+        migrations.RunPython(validate_conversion, reverse_code=migrations.RunPython.noop),
+        # Only drop old types after successful conversion
         migrations.RunSQL(
             sql=[
                 "DROP TYPE IF EXISTS integer_pint_field CASCADE;",
@@ -166,9 +309,27 @@ class Migration(migrations.Migration):
                 "DROP TYPE IF EXISTS decimal_pint_field CASCADE;",
             ],
             reverse_sql=[
-                "CREATE TYPE integer_pint_field AS (comparator decimal, magnitude integer, units text);",
-                "CREATE TYPE big_integer_pint_field AS (comparator decimal, magnitude bigint, units text);",
-                "CREATE TYPE decimal_pint_field AS (comparator decimal, magnitude decimal, units text);",
+                """
+                CREATE TYPE integer_pint_field AS (
+                    comparator decimal,
+                    magnitude integer,
+                    units text
+                );
+                """,
+                """
+                CREATE TYPE big_integer_pint_field AS (
+                    comparator decimal,
+                    magnitude bigint,
+                    units text
+                );
+                """,
+                """
+                CREATE TYPE decimal_pint_field AS (
+                    comparator decimal,
+                    magnitude decimal,
+                    units text
+                );
+                """,
             ],
         ),
         # Clear OID cache
