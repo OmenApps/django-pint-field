@@ -125,11 +125,18 @@ def convert_column(schema: str, table: str, column: str, field_type: str) -> Non
                         """
                     )
 
-            # After all data is copied, drop old column and rename new one
+            # Drop old column
             cursor.execute(
                 f"""
                 ALTER TABLE "{schema}"."{table}"
-                DROP COLUMN "{actual_column_name}",
+                DROP COLUMN "{actual_column_name}";
+                """
+            )
+
+            # Rename new column
+            cursor.execute(
+                f"""
+                ALTER TABLE "{schema}"."{table}"
                 RENAME COLUMN "{temp_column}" TO "{actual_column_name}";
                 """
             )
