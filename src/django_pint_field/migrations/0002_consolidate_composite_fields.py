@@ -129,7 +129,10 @@ class Migration(migrations.Migration):
     operations = [
         # Create new type first
         migrations.RunSQL(
-            sql=["CREATE TYPE pint_field AS (comparator decimal, magnitude decimal, units text);"],
+            sql=[
+                "DROP TYPE IF EXISTS pint_field CASCADE;",
+                "CREATE TYPE pint_field AS (comparator decimal, magnitude decimal, units text);"
+            ],
             reverse_sql=["DROP TYPE IF EXISTS pint_field CASCADE;"],
         ),
         # Convert existing data
