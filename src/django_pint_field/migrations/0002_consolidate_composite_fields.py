@@ -120,6 +120,8 @@ def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
 class Migration(migrations.Migration):
     """Consolidate PintField types into a single composite type."""
 
+    atomic = False  # Disable atomic transactions
+
     dependencies = [
         ("django_pint_field", "0001_create_composite_fields"),
     ]
@@ -131,7 +133,7 @@ class Migration(migrations.Migration):
             reverse_sql=["DROP TYPE IF EXISTS pint_field CASCADE;"],
         ),
         # Convert existing data
-        migrations.RunPython(convert_existing_data, reverse_code=migrations.RunPython.noop),
+        migrations.RunPython(convert_existing_data, reverse_code=migrations.RunPython.noop, atomic=False),
         # Drop old types after conversion
         migrations.RunSQL(
             sql=[
