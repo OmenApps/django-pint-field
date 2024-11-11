@@ -21,6 +21,23 @@ def clear_oids(apps, schema_editor):  # pylint: disable=W0613
 def convert_column(schema, table, column, is_decimal=False):
     """Convert a single column with proper trigger handling."""
     with connection.cursor() as cursor:
+        # First, verify the exact column name case by querying the information schema
+        cursor.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = %s
+            AND table_name = %s
+            AND lower(column_name) = lower(%s);
+            """,
+            [schema, table, column]
+        )
+        result = cursor.fetchone()
+        if not result:
+            raise ValueError(f"Column {column} not found in {schema}.{table}")
+
+        actual_column_name = result[0]
+
         # Disable triggers
         cursor.execute(f'ALTER TABLE "{schema}"."{table}" DISABLE TRIGGER ALL;')
 
@@ -29,12 +46,12 @@ def convert_column(schema, table, column, is_decimal=False):
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
-                    ALTER COLUMN "{column}"
+                    ALTER COLUMN "{actual_column_name}"
                     TYPE pint_field
                     USING ROW(
-                        ({column}).comparator,
-                        ({column}).magnitude,
-                        ({column}).units
+                        ("{actual_column_name}").comparator,
+                        ("{actual_column_name}").magnitude,
+                        ("{actual_column_name}").units
                     )::pint_field;
                     """
                 )
@@ -42,19 +59,18 @@ def convert_column(schema, table, column, is_decimal=False):
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
-                    ALTER COLUMN "{column}"
+                    ALTER COLUMN "{actual_column_name}"
                     TYPE pint_field
                     USING ROW(
-                        ({column}).comparator,
-                        ({column}).magnitude::decimal,
-                        ({column}).units
+                        ("{actual_column_name}").comparator,
+                        ("{actual_column_name}").magnitude::decimal,
+                        ("{actual_column_name}").units
                     )::pint_field;
                     """
                 )
         finally:
             # Re-enable triggers
             cursor.execute(f'ALTER TABLE "{schema}"."{table}" ENABLE TRIGGER ALL;')
-
 
 
 def convert_existing_data(apps, schema_editor):  # pylint: disable=W0613
