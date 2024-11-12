@@ -85,9 +85,13 @@ def convert_column(schema: str, table: str, column: str, field_type: str) -> Non
         is_partitioned, partitions = get_partition_info(cursor, schema, table)
 
         try:
-            # Start by adding new column to parent table
+            # Start transaction
+            cursor.execute("BEGIN;")
+
+            # Add new column to parent table
             logger.info("Converting %s.%s.%s from %s to pint_field", schema, table, actual_column_name, field_type)
 
+            # For partitioned tables, we need to add the column to the parent first
             cursor.execute(
                 f"""
                 ALTER TABLE "{schema}"."{table}"
@@ -95,7 +99,7 @@ def convert_column(schema: str, table: str, column: str, field_type: str) -> Non
                 """
             )
 
-            # Copy data with conversion
+            # Copy data with conversion in parent table
             cursor.execute(
                 f"""
                 UPDATE "{schema}"."{table}"
@@ -108,11 +112,24 @@ def convert_column(schema: str, table: str, column: str, field_type: str) -> Non
                 """
             )
 
+            # Verify data was copied correctly
+            cursor.execute(
+                f"""
+                SELECT COUNT(*)
+                FROM "{schema}"."{table}"
+                WHERE "{actual_column_name}" IS NOT NULL
+                AND "{temp_column}" IS NULL;
+                """
+            )
+            if cursor.fetchone()[0] > 0:
+                raise Exception(f"Data copy verification failed for {schema}.{table}.{actual_column_name}")
+
             if is_partitioned:
                 logger.info("Table %s.%s is partitioned, processing partitions...", schema, table)
                 for part_schema, part_table in partitions:
                     logger.info("Processing partition %s.%s", part_schema, part_table)
-                    # For partitions, we need to handle the column conversion separately
+
+                    # Copy data in partition
                     cursor.execute(
                         f"""
                         UPDATE "{part_schema}"."{part_table}"
@@ -125,15 +142,28 @@ def convert_column(schema: str, table: str, column: str, field_type: str) -> Non
                         """
                     )
 
-            # Drop old column
+                    # Verify partition data
+                    cursor.execute(
+                        f"""
+                        SELECT COUNT(*)
+                        FROM "{part_schema}"."{part_table}"
+                        WHERE "{actual_column_name}" IS NOT NULL
+                        AND "{temp_column}" IS NULL;
+                        """
+                    )
+                    if cursor.fetchone()[0] > 0:
+                        raise Exception(f"Data copy verification failed for partition {part_schema}.{part_table}")
+
+            # After successful copy and verification, drop old column from parent
+            # This will cascade to partitions
             cursor.execute(
                 f"""
                 ALTER TABLE "{schema}"."{table}"
-                DROP COLUMN "{actual_column_name}";
+                DROP COLUMN "{actual_column_name}" CASCADE;
                 """
             )
 
-            # Rename new column
+            # Rename new column in parent - will cascade to partitions
             cursor.execute(
                 f"""
                 ALTER TABLE "{schema}"."{table}"
@@ -141,14 +171,20 @@ def convert_column(schema: str, table: str, column: str, field_type: str) -> Non
                 """
             )
 
+            # Commit transaction
+            cursor.execute("COMMIT;")
+
         except Exception as e:
             logger.error("Error converting column %s.%s.%s: %s", schema, table, actual_column_name, str(e))
-            # Try to clean up on error
+            # Rollback transaction
+            cursor.execute("ROLLBACK;")
+
+            # Try to clean up on error - outside of failed transaction
             try:
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
-                    DROP COLUMN IF EXISTS "{temp_column}";
+                    DROP COLUMN IF EXISTS "{temp_column}" CASCADE;
                     """
                 )
             except Exception:
