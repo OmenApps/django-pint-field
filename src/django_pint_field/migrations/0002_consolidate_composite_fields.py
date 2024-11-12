@@ -275,7 +275,7 @@ def finalize_column_conversion(apps, schema_editor):
     """Drop old columns and rename new ones, handling partitioned tables correctly."""
     logger.info("Finalizing column conversion")
     with connection.cursor() as cursor:
-        # Get all parent tables with _new columns
+        # Get all tables with _new columns, excluding system tables/views
         cursor.execute(
             """
             SELECT DISTINCT n.nspname as schema_name,
@@ -286,6 +286,8 @@ def finalize_column_conversion(apps, schema_editor):
             JOIN pg_attribute a ON a.attrelid = c.oid
             WHERE a.attname LIKE '%_new'
             AND a.attnum > 0
+            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+            AND c.relkind IN ('r', 'p')  -- Only regular and partitioned tables
             AND NOT EXISTS (
                 SELECT 1
                 FROM pg_inherits i
@@ -298,7 +300,7 @@ def finalize_column_conversion(apps, schema_editor):
         for schema, table, temp_column in cursor.fetchall():
             original_column = temp_column[:-4]  # Remove '_new' suffix
             try:
-                # Drop and rename operations on parent will affect all partitions
+                # Drop old column with CASCADE to handle dependencies
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
@@ -306,6 +308,7 @@ def finalize_column_conversion(apps, schema_editor):
                     """
                 )
 
+                # Rename new column to original name
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
@@ -313,7 +316,9 @@ def finalize_column_conversion(apps, schema_editor):
                     """
                 )
             except Exception as e:
-                logger.error("Error finalizing column conversion for %s.%s.%s: %s", schema, table, original_column, str(e))
+                logger.error(
+                    "Error finalizing column conversion for %s.%s.%s: %s", schema, table, original_column, str(e)
+                )
                 raise
 
 
