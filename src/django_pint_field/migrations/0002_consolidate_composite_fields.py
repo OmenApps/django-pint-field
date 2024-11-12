@@ -58,11 +58,11 @@ def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, li
     return True, partitions
 
 
-def add_new_column(cursor, schema: str, table: str, column: str, is_nullable: bool) -> typing.Tuple[str, str]:
+def add_new_column(cursor, schema: str, table: str, column: str, not_null: bool) -> typing.Tuple[str, str, bool]:
     """Add new pint_field column.
 
     Returns:
-        Tuple of (original_column_name, temp_column_name) or (None, None) if column not found
+        Tuple of (original_column_name, temp_column_name, is_nullable) or (None, None, None) if column not found
     """
     logger.info("Adding new column for %s.%s.%s", schema, table, column)
     cursor.execute(
@@ -78,13 +78,13 @@ def add_new_column(cursor, schema: str, table: str, column: str, is_nullable: bo
     result = cursor.fetchone()
     if not result:
         logger.info("Column %s not found in %s.%s - skipping", column, schema, table)
-        return None, None
+        return None, None, None
 
     actual_column = result[0]
-    is_nullable = result[1] == "YES"  # Use the actual nullable state from the database
+    is_nullable = result[1] == "YES"
     temp_column = f"{actual_column}_new"
 
-    # First add the column as nullable
+    # Always add column as nullable initially
     cursor.execute(
         f"""
         ALTER TABLE "{schema}"."{table}"
@@ -92,7 +92,7 @@ def add_new_column(cursor, schema: str, table: str, column: str, is_nullable: bo
         """
     )
 
-    return actual_column, temp_column
+    return actual_column, temp_column, is_nullable
 
 
 def get_actual_column_name(cursor, schema: str, table: str, column: str) -> str:
@@ -118,27 +118,35 @@ def get_actual_column_name(cursor, schema: str, table: str, column: str) -> str:
 def copy_column_data(cursor, schema: str, table: str, old_column: str, new_column: str) -> None:
     """Copy data from old column to new column."""
     logger.info("Copying data from %s.%s.%s to %s", schema, table, old_column, new_column)
+
+    # First copy NULL values to preserve NULL semantics
     cursor.execute(
         f"""
         UPDATE "{schema}"."{table}"
-        SET "{new_column}" = (
-            CASE
-                WHEN "{old_column}" IS NOT NULL THEN
-                    ROW(
-                        ("{old_column}").comparator,
-                        ("{old_column}").magnitude::decimal,
-                        ("{old_column}").units
-                    )::pint_field
-                ELSE NULL
-            END
-        );
+        SET "{new_column}" = NULL
+        WHERE "{old_column}" IS NULL;
+        """
+    )
+
+    # Then copy non-NULL values with conversion
+    cursor.execute(
+        f"""
+        UPDATE "{schema}"."{table}"
+        SET "{new_column}" = ROW(
+            ("{old_column}").comparator,
+            ("{old_column}").magnitude::decimal,
+            ("{old_column}").units
+        )::pint_field
+        WHERE "{old_column}" IS NOT NULL;
         """
     )
 
 
 def verify_data_copy(cursor, schema: str, table: str, old_column: str, new_column: str) -> bool:
-    """Verify data was copied correctly."""
+    """Verify data was copied correctly including NULL values."""
     logger.info("Verifying data copy for %s.%s.%s", schema, table, old_column)
+
+    # Check that non-NULL values were copied correctly
     cursor.execute(
         f"""
         SELECT COUNT(*)
@@ -147,7 +155,20 @@ def verify_data_copy(cursor, schema: str, table: str, old_column: str, new_colum
         AND "{new_column}" IS NULL;
         """
     )
-    return cursor.fetchone()[0] == 0
+    non_null_correct = cursor.fetchone()[0] == 0
+
+    # Check that NULL values were preserved
+    cursor.execute(
+        f"""
+        SELECT COUNT(*)
+        FROM "{schema}"."{table}"
+        WHERE "{old_column}" IS NULL
+        AND "{new_column}" IS NOT NULL;
+        """
+    )
+    null_correct = cursor.fetchone()[0] == 0
+
+    return non_null_correct and null_correct
 
 
 def set_not_null_constraint(cursor, schema: str, table: str, column: str, is_nullable: bool) -> None:
@@ -166,74 +187,84 @@ def convert_table_columns(apps, schema_editor):
     """First phase: Add new columns to all tables."""
     logger.info("Converting columns to pint_field")
     with connection.cursor() as cursor:
-        # Get all tables using our types
+        # Get all tables including partitions and event tables
         cursor.execute(
             """
             WITH RECURSIVE inheritance_chain AS (
-                -- Base case: tables directly using our types
                 SELECT DISTINCT c.oid,
                        n.nspname AS table_schema,
                        c.relname AS table_name,
-                       NULL::oid AS parent_oid
+                       NULL::oid AS parent_oid,
+                       a.attname AS column_name,
+                       t.typname AS type_name,
+                       a.attnotnull AS not_null
                 FROM pg_class c
                 JOIN pg_namespace n ON n.oid = c.relnamespace
                 JOIN pg_attribute a ON a.attrelid = c.oid
                 JOIN pg_type t ON t.oid = a.atttypid
                 WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
+                  AND a.attnum > 0
 
                 UNION ALL
 
-                -- Recursive case: add inherited tables
                 SELECT c.oid,
                        n.nspname,
                        c.relname,
-                       i.inhparent
+                       i.inhparent,
+                       ic.column_name,
+                       ic.type_name,
+                       ic.not_null
                 FROM pg_inherits i
                 JOIN pg_class c ON c.oid = i.inhrelid
                 JOIN pg_namespace n ON n.oid = c.relnamespace
-                JOIN inheritance_chain p ON p.oid = i.inhparent
+                JOIN inheritance_chain ic ON ic.oid = i.inhparent
             )
-            SELECT DISTINCT ic.table_schema,
-                   ic.table_name,
-                   a.attname AS column_name,
-                   t.typname AS type_name,
-                   a.attnotnull AS not_null
-            FROM inheritance_chain ic
-            JOIN pg_attribute a ON a.attrelid = ic.oid
-            JOIN pg_type t ON t.oid = a.atttypid
-            WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
-            AND a.attnum > 0
-            ORDER BY ic.table_schema, ic.table_name, a.attname;
+            SELECT DISTINCT
+                table_schema,
+                table_name,
+                column_name,
+                type_name,
+                not_null,
+                exists(
+                    SELECT 1
+                    FROM pg_trigger t
+                    JOIN pg_class c ON c.oid = t.tgrelid
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    WHERE n.nspname = table_schema
+                    AND c.relname = table_name
+                ) as has_triggers
+            FROM inheritance_chain
+            ORDER BY table_schema, table_name, column_name;
             """
         )
         tables_to_convert = cursor.fetchall()
 
-        for schema, table, column, type_name, not_null in tables_to_convert:
-            is_partitioned, partitions = get_partition_info(cursor, schema, table)
+        for schema, table, column, type_name, not_null, has_triggers in tables_to_convert:
+            # Disable triggers if they exist
+            if has_triggers:
+                cursor.execute(f'ALTER TABLE "{schema}"."{table}" DISABLE TRIGGER ALL;')
 
-            # Add new column to parent table (initially nullable)
-            actual_column, temp_column = add_new_column(cursor, schema, table, column, not not_null)
-            if not actual_column:
-                continue
+            try:
+                # Add new column and get original nullability
+                actual_column, temp_column, is_nullable = add_new_column(cursor, schema, table, column, not_null)
+                if not actual_column:
+                    continue
 
-            logger.info("Converting %s.%s.%s from %s to pint_field", schema, table, actual_column, type_name)
+                logger.info("Converting %s.%s.%s from %s to pint_field", schema, table, actual_column, type_name)
 
-            # Copy data in parent
-            copy_column_data(cursor, schema, table, actual_column, temp_column)
-            if not verify_data_copy(cursor, schema, table, actual_column, temp_column):
-                raise Exception(f"Data copy verification failed for {schema}.{table}.{actual_column}")
+                # Copy data and verify
+                copy_column_data(cursor, schema, table, actual_column, temp_column)
+                if not verify_data_copy(cursor, schema, table, actual_column, temp_column):
+                    raise Exception(f"Data copy verification failed for {schema}.{table}.{actual_column}")
 
-            if is_partitioned:
-                for part_schema, part_table in partitions:
-                    logger.info("Processing partition %s.%s", part_schema, part_table)
-                    copy_column_data(cursor, part_schema, part_table, actual_column, temp_column)
-                    if not verify_data_copy(cursor, part_schema, part_table, actual_column, temp_column):
-                        raise Exception(f"Data copy verification failed for partition {part_schema}.{part_table}")
+                # Set NOT NULL constraint only if original column was NOT NULL
+                if not is_nullable:
+                    set_not_null_constraint(cursor, schema, table, temp_column, is_nullable=False)
 
-            # After all data is copied, set NOT NULL if needed
-            if not not_null:
-                logger.info("Setting NOT NULL constraint on %s.%s.%s", schema, table, temp_column)
-                set_not_null_constraint(cursor, schema, table, temp_column, is_nullable=False)
+            finally:
+                # Re-enable triggers if they exist
+                if has_triggers:
+                    cursor.execute(f'ALTER TABLE "{schema}"."{table}" ENABLE TRIGGER ALL;')
 
 
 def finalize_column_conversion(apps, schema_editor):
@@ -242,22 +273,30 @@ def finalize_column_conversion(apps, schema_editor):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT DISTINCT ic.table_schema,
-                   ic.table_name,
-                   a.attname AS column_name
+            SELECT DISTINCT
+                n.nspname as table_schema,
+                c.relname as table_name,
+                a.attname as column_name,
+                exists(
+                    SELECT 1
+                    FROM pg_trigger t
+                    WHERE t.tgrelid = c.oid
+                ) as has_triggers
             FROM pg_class c
             JOIN pg_namespace n ON n.oid = c.relnamespace
             JOIN pg_attribute a ON a.attrelid = c.oid
             WHERE a.attname LIKE '%_new'
-            AND a.attnum > 0
-            ORDER BY ic.table_schema, ic.table_name, a.attname;
+            AND a.attnum > 0;
             """
         )
 
-        for schema, table, temp_column in cursor.fetchall():
+        for schema, table, temp_column, has_triggers in cursor.fetchall():
             original_column = temp_column[:-4]  # Remove '_new' suffix
+
+            if has_triggers:
+                cursor.execute(f'ALTER TABLE "{schema}"."{table}" DISABLE TRIGGER ALL;')
+
             try:
-                # Drop old column
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
@@ -265,7 +304,6 @@ def finalize_column_conversion(apps, schema_editor):
                     """
                 )
 
-                # Rename new column
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
@@ -273,10 +311,11 @@ def finalize_column_conversion(apps, schema_editor):
                     """
                 )
             except Exception as e:
-                logger.error(
-                    "Error finalizing column conversion for %s.%s.%s: %s", schema, table, original_column, str(e)
-                )
+                logger.error(f"Error finalizing column conversion for {schema}.{table}.{original_column}: {str(e)}")
                 raise
+            finally:
+                if has_triggers:
+                    cursor.execute(f'ALTER TABLE "{schema}"."{table}" ENABLE TRIGGER ALL;')
 
 
 class Migration(migrations.Migration):
