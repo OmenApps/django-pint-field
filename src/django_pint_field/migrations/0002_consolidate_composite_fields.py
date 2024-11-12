@@ -25,6 +25,7 @@ def clear_oids(apps, schema_editor):
 
 def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, list]:
     """Get partition information for a table."""
+    logger.info("Checking for partitions on %s.%s", schema, table)
     cursor.execute(
         """
         SELECT partattrs, partstrat
@@ -57,26 +58,46 @@ def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, li
     return True, partitions
 
 
-def add_new_column(cursor, schema: str, table: str, column: str, is_nullable: bool) -> str:
-    """Add new pint_field column."""
-    actual_column = get_actual_column_name(cursor, schema, table, column)
-    if not actual_column:
-        return None
+def add_new_column(cursor, schema: str, table: str, column: str, is_nullable: bool) -> typing.Tuple[str, str]:
+    """Add new pint_field column.
 
+    Returns:
+        Tuple of (original_column_name, temp_column_name) or (None, None) if column not found
+    """
+    logger.info("Adding new column for %s.%s.%s", schema, table, column)
+    cursor.execute(
+        """
+        SELECT column_name, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = %s
+        AND table_name = %s
+        AND lower(column_name) = lower(%s);
+        """,
+        [schema, table, column],
+    )
+    result = cursor.fetchone()
+    if not result:
+        logger.info("Column %s not found in %s.%s - skipping", column, schema, table)
+        return None, None
+
+    actual_column = result[0]
+    is_nullable = result[1] == "YES"  # Use the actual nullable state from the database
     temp_column = f"{actual_column}_new"
-    nullable_str = "" if is_nullable else " NOT NULL"
 
+    # First add the column as nullable
     cursor.execute(
         f"""
         ALTER TABLE "{schema}"."{table}"
-        ADD COLUMN "{temp_column}" pint_field{nullable_str};
+        ADD COLUMN "{temp_column}" pint_field;
         """
     )
-    return temp_column
+
+    return actual_column, temp_column
 
 
 def get_actual_column_name(cursor, schema: str, table: str, column: str) -> str:
     """Get the actual case-sensitive column name."""
+    logger.info("Checking for column %s in %s.%s", column, schema, table)
     cursor.execute(
         """
         SELECT column_name, is_nullable
@@ -96,21 +117,28 @@ def get_actual_column_name(cursor, schema: str, table: str, column: str) -> str:
 
 def copy_column_data(cursor, schema: str, table: str, old_column: str, new_column: str) -> None:
     """Copy data from old column to new column."""
+    logger.info("Copying data from %s.%s.%s to %s", schema, table, old_column, new_column)
     cursor.execute(
         f"""
         UPDATE "{schema}"."{table}"
-        SET "{new_column}" = ROW(
-            ("{old_column}").comparator,
-            ("{old_column}").magnitude::decimal,
-            ("{old_column}").units
-        )::pint_field
-        WHERE "{old_column}" IS NOT NULL;
+        SET "{new_column}" = (
+            CASE
+                WHEN "{old_column}" IS NOT NULL THEN
+                    ROW(
+                        ("{old_column}").comparator,
+                        ("{old_column}").magnitude::decimal,
+                        ("{old_column}").units
+                    )::pint_field
+                ELSE NULL
+            END
+        );
         """
     )
 
 
 def verify_data_copy(cursor, schema: str, table: str, old_column: str, new_column: str) -> bool:
     """Verify data was copied correctly."""
+    logger.info("Verifying data copy for %s.%s.%s", schema, table, old_column)
     cursor.execute(
         f"""
         SELECT COUNT(*)
@@ -122,13 +150,27 @@ def verify_data_copy(cursor, schema: str, table: str, old_column: str, new_colum
     return cursor.fetchone()[0] == 0
 
 
+def set_not_null_constraint(cursor, schema: str, table: str, column: str, is_nullable: bool) -> None:
+    """Set or remove NOT NULL constraint after data is copied."""
+    logger.info("Setting NOT NULL constraint on %s.%s.%s", schema, table, column)
+    if not is_nullable:
+        cursor.execute(
+            f"""
+            ALTER TABLE "{schema}"."{table}"
+            ALTER COLUMN "{column}" SET NOT NULL;
+            """
+        )
+
+
 def convert_table_columns(apps, schema_editor):
     """First phase: Add new columns to all tables."""
+    logger.info("Converting columns to pint_field")
     with connection.cursor() as cursor:
         # Get all tables using our types
         cursor.execute(
             """
             WITH RECURSIVE inheritance_chain AS (
+                -- Base case: tables directly using our types
                 SELECT DISTINCT c.oid,
                        n.nspname AS table_schema,
                        c.relname AS table_name,
@@ -141,6 +183,7 @@ def convert_table_columns(apps, schema_editor):
 
                 UNION ALL
 
+                -- Recursive case: add inherited tables
                 SELECT c.oid,
                        n.nspname,
                        c.relname,
@@ -168,26 +211,34 @@ def convert_table_columns(apps, schema_editor):
         for schema, table, column, type_name, not_null in tables_to_convert:
             is_partitioned, partitions = get_partition_info(cursor, schema, table)
 
-            # Add new column to parent table
-            temp_column = add_new_column(cursor, schema, table, column, not not_null)
-            if not temp_column:
+            # Add new column to parent table (initially nullable)
+            actual_column, temp_column = add_new_column(cursor, schema, table, column, not not_null)
+            if not actual_column:
                 continue
 
+            logger.info("Converting %s.%s.%s from %s to pint_field", schema, table, actual_column, type_name)
+
             # Copy data in parent
-            copy_column_data(cursor, schema, table, column, temp_column)
-            if not verify_data_copy(cursor, schema, table, column, temp_column):
-                raise Exception(f"Data copy verification failed for {schema}.{table}.{column}")
+            copy_column_data(cursor, schema, table, actual_column, temp_column)
+            if not verify_data_copy(cursor, schema, table, actual_column, temp_column):
+                raise Exception(f"Data copy verification failed for {schema}.{table}.{actual_column}")
 
             if is_partitioned:
                 for part_schema, part_table in partitions:
                     logger.info("Processing partition %s.%s", part_schema, part_table)
-                    copy_column_data(cursor, part_schema, part_table, column, temp_column)
-                    if not verify_data_copy(cursor, part_schema, part_table, column, temp_column):
+                    copy_column_data(cursor, part_schema, part_table, actual_column, temp_column)
+                    if not verify_data_copy(cursor, part_schema, part_table, actual_column, temp_column):
                         raise Exception(f"Data copy verification failed for partition {part_schema}.{part_table}")
+
+            # After all data is copied, set NOT NULL if needed
+            if not not_null:
+                logger.info("Setting NOT NULL constraint on %s.%s.%s", schema, table, temp_column)
+                set_not_null_constraint(cursor, schema, table, temp_column, is_nullable=False)
 
 
 def finalize_column_conversion(apps, schema_editor):
     """Second phase: Drop old columns and rename new ones."""
+    logger.info("Finalizing column conversion")
     with connection.cursor() as cursor:
         cursor.execute(
             """
