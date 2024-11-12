@@ -23,12 +23,34 @@ def clear_oids(apps, schema_editor):
     get_pint_field_oids.cache_clear()
 
 
-def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, list]:
-    """Get partition information for a table."""
-    logger.info("Checking for partitions on %s.%s", schema, table)
+def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, list, str, str]:
+    """Get partition information for a table.
+
+    Returns:
+        Tuple of (is_partitioned, partitions, parent_schema, parent_table)
+    """
+    # First check if this is a partition (child table)
     cursor.execute(
         """
-        SELECT partattrs, partstrat
+        SELECT pn.nspname, p.relname
+        FROM pg_inherits i
+        JOIN pg_class c ON c.oid = i.inhrelid
+        JOIN pg_class p ON p.oid = i.inhparent
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_namespace pn ON pn.oid = p.relnamespace
+        WHERE n.nspname = %s AND c.relname = %s;
+        """,
+        [schema, table],
+    )
+    result = cursor.fetchone()
+    if result:
+        # This is a partition, return its parent info
+        return False, [], result[0], result[1]
+
+    # Check if this is a partitioned table (parent table)
+    cursor.execute(
+        """
+        SELECT partattrs
         FROM pg_partitioned_table pt
         JOIN pg_class c ON c.oid = pt.partrelid
         JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -37,10 +59,11 @@ def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, li
         [schema, table],
     )
     result = cursor.fetchone()
-
     if not result:
-        return False, []
+        # Not a partitioned table
+        return False, [], None, None
 
+    # Get all partitions of this table
     cursor.execute(
         """
         SELECT n.nspname, c.relname
@@ -53,9 +76,8 @@ def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, li
         """,
         [schema, table],
     )
-
     partitions = cursor.fetchall()
-    return True, partitions
+    return True, partitions, None, None
 
 
 def add_new_column(cursor, schema: str, table: str, column: str, not_null: bool) -> typing.Tuple[str, str, bool]:
@@ -184,119 +206,99 @@ def set_not_null_constraint(cursor, schema: str, table: str, column: str, is_nul
 
 
 def convert_table_columns(apps, schema_editor):
-    """First phase: Add new columns to all tables."""
+    """Convert columns while properly handling partitioned tables."""
     logger.info("Converting columns to pint_field")
     with connection.cursor() as cursor:
-        # Get all tables including partitions and event tables
+        # First get all parent tables (both regular and partitioned)
         cursor.execute(
             """
-            WITH RECURSIVE inheritance_chain AS (
-                SELECT DISTINCT c.oid,
-                       n.nspname AS table_schema,
-                       c.relname AS table_name,
-                       NULL::oid AS parent_oid,
-                       a.attname AS column_name,
-                       t.typname AS type_name,
-                       a.attnotnull AS not_null
+            WITH parent_tables AS (
+                SELECT DISTINCT n.nspname as schema_name,
+                       c.relname as table_name,
+                       a.attname as column_name,
+                       t.typname as type_name,
+                       a.attnotnull as not_null
                 FROM pg_class c
                 JOIN pg_namespace n ON n.oid = c.relnamespace
                 JOIN pg_attribute a ON a.attrelid = c.oid
                 JOIN pg_type t ON t.oid = a.atttypid
                 WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
-                  AND a.attnum > 0
-
-                UNION ALL
-
-                SELECT c.oid,
-                       n.nspname,
-                       c.relname,
-                       i.inhparent,
-                       ic.column_name,
-                       ic.type_name,
-                       ic.not_null
-                FROM pg_inherits i
-                JOIN pg_class c ON c.oid = i.inhrelid
-                JOIN pg_namespace n ON n.oid = c.relnamespace
-                JOIN inheritance_chain ic ON ic.oid = i.inhparent
-            )
-            SELECT DISTINCT
-                table_schema,
-                table_name,
-                column_name,
-                type_name,
-                not_null,
-                exists(
+                AND a.attnum > 0
+                AND NOT EXISTS (
                     SELECT 1
-                    FROM pg_trigger t
-                    JOIN pg_class c ON c.oid = t.tgrelid
-                    JOIN pg_namespace n ON n.oid = c.relnamespace
-                    WHERE n.nspname = table_schema
-                    AND c.relname = table_name
-                ) as has_triggers
-            FROM inheritance_chain
-            ORDER BY table_schema, table_name, column_name;
+                    FROM pg_inherits i
+                    WHERE i.inhrelid = c.oid
+                )
+            )
+            SELECT * FROM parent_tables
+            ORDER BY schema_name, table_name, column_name;
             """
         )
         tables_to_convert = cursor.fetchall()
 
-        for schema, table, column, type_name, not_null, has_triggers in tables_to_convert:
-            # Disable triggers if they exist
-            if has_triggers:
-                cursor.execute(f'ALTER TABLE "{schema}"."{table}" DISABLE TRIGGER ALL;')
+        # Process each parent table
+        for schema, table, column, type_name, not_null in tables_to_convert:
+            is_partitioned, partitions, parent_schema, parent_table = get_partition_info(cursor, schema, table)
 
-            try:
-                # Add new column and get original nullability
-                actual_column, temp_column, is_nullable = add_new_column(cursor, schema, table, column, not_null)
-                if not actual_column:
-                    continue
+            if parent_schema and parent_table:
+                # This is a partition - skip it as it will be handled through its parent
+                continue
 
-                logger.info("Converting %s.%s.%s from %s to pint_field", schema, table, actual_column, type_name)
+            # Add column to parent table
+            actual_column, temp_column, is_nullable = add_new_column(cursor, schema, table, column, not_null)
+            if not actual_column:
+                continue
 
-                # Copy data and verify
-                copy_column_data(cursor, schema, table, actual_column, temp_column)
-                if not verify_data_copy(cursor, schema, table, actual_column, temp_column):
-                    raise Exception(f"Data copy verification failed for {schema}.{table}.{actual_column}")
+            logger.info("Converting %s.%s.%s from %s to pint_field", schema, table, actual_column, type_name)
 
-                # Set NOT NULL constraint only if original column was NOT NULL
-                if not is_nullable:
-                    set_not_null_constraint(cursor, schema, table, temp_column, is_nullable=False)
+            # Copy data in parent
+            copy_column_data(cursor, schema, table, actual_column, temp_column)
+            if not verify_data_copy(cursor, schema, table, actual_column, temp_column):
+                raise Exception(f"Data copy verification failed for {schema}.{table}.{actual_column}")
 
-            finally:
-                # Re-enable triggers if they exist
-                if has_triggers:
-                    cursor.execute(f'ALTER TABLE "{schema}"."{table}" ENABLE TRIGGER ALL;')
+            # For partitioned tables, we don't need to add columns to partitions
+            # as they inherit from the parent, but we do need to copy data
+            if is_partitioned:
+                logger.info("Processing partitions for %s.%s", schema, table)
+                for part_schema, part_table in partitions:
+                    logger.info("Copying data in partition %s.%s", part_schema, part_table)
+                    copy_column_data(cursor, part_schema, part_table, actual_column, temp_column)
+                    if not verify_data_copy(cursor, part_schema, part_table, actual_column, temp_column):
+                        raise Exception(f"Data copy verification failed for partition {part_schema}.{part_table}")
+
+            # Set NOT NULL constraint only if original column was NOT NULL
+            if not is_nullable:
+                set_not_null_constraint(cursor, schema, table, temp_column, is_nullable=False)
 
 
 def finalize_column_conversion(apps, schema_editor):
-    """Second phase: Drop old columns and rename new ones."""
+    """Drop old columns and rename new ones, handling partitioned tables correctly."""
     logger.info("Finalizing column conversion")
     with connection.cursor() as cursor:
+        # Get all parent tables with _new columns
         cursor.execute(
             """
-            SELECT DISTINCT
-                n.nspname as table_schema,
-                c.relname as table_name,
-                a.attname as column_name,
-                exists(
-                    SELECT 1
-                    FROM pg_trigger t
-                    WHERE t.tgrelid = c.oid
-                ) as has_triggers
+            SELECT DISTINCT n.nspname as schema_name,
+                   c.relname as table_name,
+                   a.attname as column_name
             FROM pg_class c
             JOIN pg_namespace n ON n.oid = c.relnamespace
             JOIN pg_attribute a ON a.attrelid = c.oid
             WHERE a.attname LIKE '%_new'
-            AND a.attnum > 0;
+            AND a.attnum > 0
+            AND NOT EXISTS (
+                SELECT 1
+                FROM pg_inherits i
+                WHERE i.inhrelid = c.oid
+            )
+            ORDER BY schema_name, table_name, column_name;
             """
         )
 
-        for schema, table, temp_column, has_triggers in cursor.fetchall():
+        for schema, table, temp_column in cursor.fetchall():
             original_column = temp_column[:-4]  # Remove '_new' suffix
-
-            if has_triggers:
-                cursor.execute(f'ALTER TABLE "{schema}"."{table}" DISABLE TRIGGER ALL;')
-
             try:
+                # Drop and rename operations on parent will affect all partitions
                 cursor.execute(
                     f"""
                     ALTER TABLE "{schema}"."{table}"
@@ -311,11 +313,8 @@ def finalize_column_conversion(apps, schema_editor):
                     """
                 )
             except Exception as e:
-                logger.error(f"Error finalizing column conversion for {schema}.{table}.{original_column}: {str(e)}")
+                logger.error("Error finalizing column conversion for %s.%s.%s: %s", schema, table, original_column, str(e))
                 raise
-            finally:
-                if has_triggers:
-                    cursor.execute(f'ALTER TABLE "{schema}"."{table}" ENABLE TRIGGER ALL;')
 
 
 class Migration(migrations.Migration):
