@@ -18,14 +18,13 @@ def get_pint_field_oids(connection_alias):
     return get_type_oids(connection_alias, "pint_field")
 
 
-def clear_oids(apps, schema_editor):  # pylint: disable=W0613
+def clear_oids(apps, schema_editor):
     """Clear cached OIDs."""
     get_pint_field_oids.cache_clear()
 
 
 def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, list]:
     """Get partition information for a table."""
-    # Check if table is partitioned
     cursor.execute(
         """
         SELECT partattrs, partstrat
@@ -34,14 +33,13 @@ def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, li
         JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = %s AND c.relname = %s;
         """,
-        [schema, table]
+        [schema, table],
     )
     result = cursor.fetchone()
 
     if not result:
         return False, []
 
-    # Get list of partitions
     cursor.execute(
         """
         SELECT n.nspname, c.relname
@@ -52,154 +50,85 @@ def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, li
         JOIN pg_namespace pn ON pn.oid = p.relnamespace
         WHERE pn.nspname = %s AND p.relname = %s;
         """,
-        [schema, table]
+        [schema, table],
     )
 
     partitions = cursor.fetchall()
     return True, partitions
 
 
-def convert_column(schema: str, table: str, column: str, field_type: str) -> None:
-    """Convert a single column with proper trigger handling."""
+def add_new_column(cursor, schema: str, table: str, column: str, is_nullable: bool) -> str:
+    """Add new pint_field column."""
+    actual_column = get_actual_column_name(cursor, schema, table, column)
+    if not actual_column:
+        return None
+
+    temp_column = f"{actual_column}_new"
+    nullable_str = "" if is_nullable else " NOT NULL"
+
+    cursor.execute(
+        f"""
+        ALTER TABLE "{schema}"."{table}"
+        ADD COLUMN "{temp_column}" pint_field{nullable_str};
+        """
+    )
+    return temp_column
+
+
+def get_actual_column_name(cursor, schema: str, table: str, column: str) -> str:
+    """Get the actual case-sensitive column name."""
+    cursor.execute(
+        """
+        SELECT column_name, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = %s
+        AND table_name = %s
+        AND lower(column_name) = lower(%s);
+        """,
+        [schema, table, column],
+    )
+    result = cursor.fetchone()
+    if not result:
+        logger.warning("Column %s not found in %s.%s", column, schema, table)
+        return None
+    return result[0]
+
+
+def copy_column_data(cursor, schema: str, table: str, old_column: str, new_column: str) -> None:
+    """Copy data from old column to new column."""
+    cursor.execute(
+        f"""
+        UPDATE "{schema}"."{table}"
+        SET "{new_column}" = ROW(
+            ("{old_column}").comparator,
+            ("{old_column}").magnitude::decimal,
+            ("{old_column}").units
+        )::pint_field
+        WHERE "{old_column}" IS NOT NULL;
+        """
+    )
+
+
+def verify_data_copy(cursor, schema: str, table: str, old_column: str, new_column: str) -> bool:
+    """Verify data was copied correctly."""
+    cursor.execute(
+        f"""
+        SELECT COUNT(*)
+        FROM "{schema}"."{table}"
+        WHERE "{old_column}" IS NOT NULL
+        AND "{new_column}" IS NULL;
+        """
+    )
+    return cursor.fetchone()[0] == 0
+
+
+def convert_table_columns(apps, schema_editor):
+    """First phase: Add new columns to all tables."""
     with connection.cursor() as cursor:
-        # First, verify the exact column name case and check if table exists
-        cursor.execute(
-            """
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_schema = %s
-            AND table_name = %s
-            AND lower(column_name) = lower(%s);
-            """,
-            [schema, table, column]
-        )
-        result = cursor.fetchone()
-        if not result:
-            logger.warning("Column %s not found in %s.%s", column, schema, table)
-            return
-
-        actual_column_name = result[0]
-        temp_column = f"{actual_column_name}_new"
-
-        # Check if table is partitioned
-        is_partitioned, partitions = get_partition_info(cursor, schema, table)
-
-        try:
-            # Start transaction
-            cursor.execute("BEGIN;")
-
-            # Add new column to parent table
-            logger.info("Converting %s.%s.%s from %s to pint_field", schema, table, actual_column_name, field_type)
-
-            # For partitioned tables, we need to add the column to the parent first
-            cursor.execute(
-                f"""
-                ALTER TABLE "{schema}"."{table}"
-                ADD COLUMN "{temp_column}" pint_field;
-                """
-            )
-
-            # Copy data with conversion in parent table
-            cursor.execute(
-                f"""
-                UPDATE "{schema}"."{table}"
-                SET "{temp_column}" = ROW(
-                    ("{actual_column_name}").comparator,
-                    ("{actual_column_name}").magnitude::decimal,
-                    ("{actual_column_name}").units
-                )::pint_field
-                WHERE "{actual_column_name}" IS NOT NULL;
-                """
-            )
-
-            # Verify data was copied correctly
-            cursor.execute(
-                f"""
-                SELECT COUNT(*)
-                FROM "{schema}"."{table}"
-                WHERE "{actual_column_name}" IS NOT NULL
-                AND "{temp_column}" IS NULL;
-                """
-            )
-            if cursor.fetchone()[0] > 0:
-                raise Exception(f"Data copy verification failed for {schema}.{table}.{actual_column_name}")
-
-            if is_partitioned:
-                logger.info("Table %s.%s is partitioned, processing partitions...", schema, table)
-                for part_schema, part_table in partitions:
-                    logger.info("Processing partition %s.%s", part_schema, part_table)
-
-                    # Copy data in partition
-                    cursor.execute(
-                        f"""
-                        UPDATE "{part_schema}"."{part_table}"
-                        SET "{temp_column}" = ROW(
-                            ("{actual_column_name}").comparator,
-                            ("{actual_column_name}").magnitude::decimal,
-                            ("{actual_column_name}").units
-                        )::pint_field
-                        WHERE "{actual_column_name}" IS NOT NULL;
-                        """
-                    )
-
-                    # Verify partition data
-                    cursor.execute(
-                        f"""
-                        SELECT COUNT(*)
-                        FROM "{part_schema}"."{part_table}"
-                        WHERE "{actual_column_name}" IS NOT NULL
-                        AND "{temp_column}" IS NULL;
-                        """
-                    )
-                    if cursor.fetchone()[0] > 0:
-                        raise Exception(f"Data copy verification failed for partition {part_schema}.{part_table}")
-
-            # After successful copy and verification, drop old column from parent
-            # This will cascade to partitions
-            cursor.execute(
-                f"""
-                ALTER TABLE "{schema}"."{table}"
-                DROP COLUMN "{actual_column_name}" CASCADE;
-                """
-            )
-
-            # Rename new column in parent - will cascade to partitions
-            cursor.execute(
-                f"""
-                ALTER TABLE "{schema}"."{table}"
-                RENAME COLUMN "{temp_column}" TO "{actual_column_name}";
-                """
-            )
-
-            # Commit transaction
-            cursor.execute("COMMIT;")
-
-        except Exception as e:
-            logger.error("Error converting column %s.%s.%s: %s", schema, table, actual_column_name, str(e))
-            # Rollback transaction
-            cursor.execute("ROLLBACK;")
-
-            # Try to clean up on error - outside of failed transaction
-            try:
-                cursor.execute(
-                    f"""
-                    ALTER TABLE "{schema}"."{table}"
-                    DROP COLUMN IF EXISTS "{temp_column}" CASCADE;
-                    """
-                )
-            except Exception:
-                pass  # Ignore cleanup errors
-            raise
-
-
-def convert_existing_data(apps, schema_editor):
-    """Convert existing data to new pint_field type."""
-    with connection.cursor() as cursor:
-        # Get all tables using any of our types, including inherited tables
+        # Get all tables using our types
         cursor.execute(
             """
             WITH RECURSIVE inheritance_chain AS (
-                -- Base case: tables directly using our types
                 SELECT DISTINCT c.oid,
                        n.nspname AS table_schema,
                        c.relname AS table_name,
@@ -212,7 +141,6 @@ def convert_existing_data(apps, schema_editor):
 
                 UNION ALL
 
-                -- Recursive case: add inherited tables
                 SELECT c.oid,
                        n.nspname,
                        c.relname,
@@ -225,86 +153,102 @@ def convert_existing_data(apps, schema_editor):
             SELECT DISTINCT ic.table_schema,
                    ic.table_name,
                    a.attname AS column_name,
-                   t.typname AS type_name
+                   t.typname AS type_name,
+                   a.attnotnull AS not_null
             FROM inheritance_chain ic
             JOIN pg_attribute a ON a.attrelid = ic.oid
             JOIN pg_type t ON t.oid = a.atttypid
             WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
-            AND a.attnum > 0  -- Exclude system columns
+            AND a.attnum > 0
+            ORDER BY ic.table_schema, ic.table_name, a.attname;
+            """
+        )
+        tables_to_convert = cursor.fetchall()
+
+        for schema, table, column, type_name, not_null in tables_to_convert:
+            is_partitioned, partitions = get_partition_info(cursor, schema, table)
+
+            # Add new column to parent table
+            temp_column = add_new_column(cursor, schema, table, column, not not_null)
+            if not temp_column:
+                continue
+
+            # Copy data in parent
+            copy_column_data(cursor, schema, table, column, temp_column)
+            if not verify_data_copy(cursor, schema, table, column, temp_column):
+                raise Exception(f"Data copy verification failed for {schema}.{table}.{column}")
+
+            if is_partitioned:
+                for part_schema, part_table in partitions:
+                    logger.info("Processing partition %s.%s", part_schema, part_table)
+                    copy_column_data(cursor, part_schema, part_table, column, temp_column)
+                    if not verify_data_copy(cursor, part_schema, part_table, column, temp_column):
+                        raise Exception(f"Data copy verification failed for partition {part_schema}.{part_table}")
+
+
+def finalize_column_conversion(apps, schema_editor):
+    """Second phase: Drop old columns and rename new ones."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT DISTINCT ic.table_schema,
+                   ic.table_name,
+                   a.attname AS column_name
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_attribute a ON a.attrelid = c.oid
+            WHERE a.attname LIKE '%_new'
+            AND a.attnum > 0
             ORDER BY ic.table_schema, ic.table_name, a.attname;
             """
         )
 
-        tables_to_convert = cursor.fetchall()
+        for schema, table, temp_column in cursor.fetchall():
+            original_column = temp_column[:-4]  # Remove '_new' suffix
+            try:
+                # Drop old column
+                cursor.execute(
+                    f"""
+                    ALTER TABLE "{schema}"."{table}"
+                    DROP COLUMN IF EXISTS "{original_column}" CASCADE;
+                    """
+                )
 
-        # Convert each table
-        for schema, table, column, type_name in tables_to_convert:
-            convert_column(schema, table, column, type_name)
-
-
-def validate_conversion(apps, schema_editor):
-    """Validate that all columns were converted successfully."""
-    with connection.cursor() as cursor:
-        # Check for any remaining old-type columns, including in inherited tables
-        cursor.execute(
-            """
-            WITH RECURSIVE inheritance_chain AS (
-                SELECT DISTINCT c.oid,
-                       n.nspname AS table_schema,
-                       c.relname AS table_name,
-                       NULL::oid AS parent_oid
-                FROM pg_class c
-                JOIN pg_namespace n ON n.oid = c.relnamespace
-                JOIN pg_attribute a ON a.attrelid = c.oid
-                JOIN pg_type t ON t.oid = a.atttypid
-                WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
-
-                UNION ALL
-
-                SELECT c.oid,
-                       n.nspname,
-                       c.relname,
-                       i.inhparent
-                FROM pg_inherits i
-                JOIN pg_class c ON c.oid = i.inhrelid
-                JOIN pg_namespace n ON n.oid = c.relnamespace
-                JOIN inheritance_chain p ON p.oid = i.inhparent
-            )
-            SELECT DISTINCT ic.table_schema,
-                   ic.table_name,
-                   a.attname AS column_name,
-                   t.typname AS type_name
-            FROM inheritance_chain ic
-            JOIN pg_attribute a ON a.attrelid = ic.oid
-            JOIN pg_type t ON t.oid = a.atttypid
-            WHERE t.typname IN ('integer_pint_field', 'big_integer_pint_field', 'decimal_pint_field')
-            AND a.attnum > 0;  -- Exclude system columns
-            """
-        )
-        remaining_columns = cursor.fetchall()
-        if remaining_columns:
-            for schema, table, column, udt in remaining_columns:
-                logger.error("Column %s.%s.%s still has type %s", schema, table, column, udt)
-            raise Exception("Not all columns were converted successfully")
+                # Rename new column
+                cursor.execute(
+                    f"""
+                    ALTER TABLE "{schema}"."{table}"
+                    RENAME COLUMN "{temp_column}" TO "{original_column}";
+                    """
+                )
+            except Exception as e:
+                logger.error(
+                    "Error finalizing column conversion for %s.%s.%s: %s", schema, table, original_column, str(e)
+                )
+                raise
 
 
 class Migration(migrations.Migration):
     """Consolidate PintField types into a single composite type."""
 
-    atomic = False  # Disable atomic transactions
+    atomic = False
 
     dependencies = [
         ("django_pint_field", "0001_create_composite_fields"),
     ]
 
     operations = [
-        # First create casting functions and new type
+        # First create new type and casting functions
         migrations.RunSQL(
             sql=[
-                # Create new type
                 "DROP TYPE IF EXISTS pint_field CASCADE;",
-                "CREATE TYPE pint_field AS (comparator decimal, magnitude decimal, units text);",
-
+                """
+                CREATE TYPE pint_field AS (
+                    comparator decimal,
+                    magnitude decimal,
+                    units text
+                );
+                """,
                 # Create casting functions
                 """
                 CREATE OR REPLACE FUNCTION cast_decimal_pint_to_pint(decimal_pint_field)
@@ -324,7 +268,6 @@ class Migration(migrations.Migration):
                     SELECT ROW($1.comparator, $1.magnitude::decimal, $1.units)::pint_field;
                 $$ LANGUAGE SQL IMMUTABLE STRICT;
                 """,
-
                 # Create the casts
                 "CREATE CAST (decimal_pint_field AS pint_field) WITH FUNCTION cast_decimal_pint_to_pint(decimal_pint_field) AS IMPLICIT;",
                 "CREATE CAST (integer_pint_field AS pint_field) WITH FUNCTION cast_integer_pint_to_pint(integer_pint_field) AS IMPLICIT;",
@@ -340,11 +283,11 @@ class Migration(migrations.Migration):
                 "DROP TYPE IF EXISTS pint_field CASCADE;",
             ],
         ),
-        # Convert existing data
-        migrations.RunPython(convert_existing_data, reverse_code=migrations.RunPython.noop, atomic=False),
-        # Validate conversion
-        migrations.RunPython(validate_conversion, reverse_code=migrations.RunPython.noop),
-        # Only drop old types after successful conversion
+        # Add new columns and copy data
+        migrations.RunPython(convert_table_columns, reverse_code=migrations.RunPython.noop, atomic=False),
+        # Drop old columns and rename new ones
+        migrations.RunPython(finalize_column_conversion, reverse_code=migrations.RunPython.noop, atomic=False),
+        # Drop old types
         migrations.RunSQL(
             sql=[
                 "DROP TYPE IF EXISTS integer_pint_field CASCADE;",
