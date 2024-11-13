@@ -30,17 +30,17 @@ INSTALLED_APPS = [
 python manage.py migrate django_pint_field
 ```
 
-```{warning}
+```{caution}
 Failure to run django-pint-field migrations before running migrations for models using PintFields will result in errors. The migration creates a required composite type in your PostgreSQL database.
-```
 
-```{warning}
-Previous versions of the package added three compsite types to the database. The newest migration rolls these back and replaces them with a single composite type.
+Previous versions of the package added three compsite types to the database. The newest migration modifies the columns with these types to use a single composite type.
 ```
 
 #### Tips for Upgrading from Legacy django-pint-field
 
-If using [django-pgtrigger](https://django-pgtrigger.readthedocs.io/en/latest/commands/) or other packages that depend on it (e.g.: django-pghistory), we recommend that you temporarily uninstall all triggers before running the django-pint-field migrations:
+```{warning}
+If using [django-pgtrigger](https://django-pgtrigger.readthedocs.io/en/latest/commands/) or other packages that depend on it (e.g.: django-pghistory), we highly recommend that you temporarily uninstall all triggers before running the django-pint-field migrations. It is also a good practice to make a backup of your database before running the migration. Users freshly installing `django-pint-field` do not need to worry about this warning.
+```
 
 ```bash
 python manage.py pgtrigger uninstall
