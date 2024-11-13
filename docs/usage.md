@@ -38,6 +38,26 @@ Failure to run django-pint-field migrations before running migrations for models
 Previous versions of the package added three compsite types to the database. The newest migration rolls these back and replaces them with a single composite type.
 ```
 
+#### Tips for Upgrading from Legacy django-pint-field
+
+If using [django-pgtrigger](https://django-pgtrigger.readthedocs.io/en/latest/commands/) or other packages that depend on it (e.g.: django-pghistory), we recommend that you temporarily uninstall all triggers before running the django-pint-field migrations:
+
+```bash
+python manage.py pgtrigger uninstall
+```
+
+Then run the migrations:
+
+```bash
+python manage.py migrate django_pint_field
+```
+
+Reinstall the triggers after the migrations are complete:
+
+```bash
+python manage.py pgtrigger install
+```
+
 ### 1.2 Basic Configuration
 
 django-pint-field provides several configuration options that can be set in your project's `settings.py` file.

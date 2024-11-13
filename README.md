@@ -50,6 +50,27 @@ python manage.py migrate django_pint_field
 Failure to run migrations will result in errors for any model making use of django-pint-field.
 ```
 
+### Tips for Upgrading from Legacy django-pint-field
+
+If using [django-pgtrigger](https://django-pgtrigger.readthedocs.io/en/latest/commands/) or other packages that depend on it (e.g.: django-pghistory), we recommend that you temporarily uninstall all triggers before running the django-pint-field migrations:
+
+```bash
+python manage.py pgtrigger uninstall
+```
+
+Then run the migrations:
+
+```bash
+python manage.py migrate django_pint_field
+```
+
+Reinstall the triggers after the migrations are complete:
+
+```bash
+python manage.py pgtrigger install
+```
+
+
 ## Quick Start
 
 1. Define your model:
