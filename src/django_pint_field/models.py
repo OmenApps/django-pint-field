@@ -298,11 +298,10 @@ class BasePintField(PintFieldMixin, models.Field):
 
     def get_prep_value(self, value):
         """Converts Python objects to query values."""
-        print(f"get_prep_value: {value=}")
         if value in self.empty_values:
             return value
 
-        # If we're doing a range query, we need to check each quantity individually, so we recursively call this method
+        # If we're doing a range query, handle each value individually
         if (
             isinstance(value, (tuple, list))
             and len(value) == 2
@@ -323,12 +322,17 @@ class BasePintField(PintFieldMixin, models.Field):
 
         validate_dimensionality(value, self.default_unit)
 
+        # Note: We intentionally don't validate decimal places here
+        # to allow database operations to work with full precision
         return value
 
     def from_db_value(
         self, value, expression, connection  # pylint: disable=W0621 disable=W0613
     ) -> Optional[BaseQuantity]:
-        """Converts a value as returned by the database to a Python object."""
+        """Converts a value as returned by the database to a Python object.
+
+        Marks database-sourced values to skip decimal place validation.
+        """
         converter = QuantityConverter(
             default_unit=self.default_unit,
             field_type="decimal" if self.field_type == FieldType.DECIMAL_FIELD else "integer",
@@ -430,6 +434,12 @@ class DecimalPintField(BasePintField):
         self.max_digits = max_digits
         self.rounding_method = rounding_method
 
+        self._check_arguments()
+
+        super().__init__(*args, **kwargs)
+
+    def _check_arguments(self):
+        """Check if the arguments are valid."""
         if not isinstance(self.max_digits, int) or not isinstance(self.decimal_places, int):
             raise ValidationError(
                 "Invalid initialization for DecimalPintField. "
@@ -454,15 +464,52 @@ class DecimalPintField(BasePintField):
                     f"If provided, rounding_method must be one of: {valid_rounding_methods}"
                 )
 
-        super().__init__(*args, **kwargs)
+    def _should_skip_validation(self, value, model_instance) -> bool:
+        """Determine if we should skip decimal place validation for this value.
+
+        We skip validation in these cases:
+        1. Value is None or empty
+        2. Value comes from a database aggregation/computation
+        3. Value is being loaded from the database (not a form or direct assignment)
+        """
+        if value is None or value in self.empty_values:
+            return True
+
+        # Check if this is part of a database operation by looking at the model instance
+        if model_instance is not None and model_instance._state.adding is False:
+            # If this is an existing model instance and we're loading data,
+            # skip validation as it's coming from the database
+            return True
+
+        # Get the current frame's locals to check context
+        import inspect  # Import here to avoid circular import issues
+        frame = inspect.currentframe()
+        try:
+            while frame is not None:
+                # Check if we're in an aggregation operation
+                if 'self' in frame.f_locals:
+                    f_self = frame.f_locals['self']
+                    if any(aggregation_class in f_self.__class__.__name__
+                        for aggregation_class in ['Aggregate', 'PintSum', 'PintAvg']):
+                        return True
+                frame = frame.f_back
+        finally:
+            del frame  # Clean up circular reference
+
+        return False
 
     def validate(self, value, model_instance):
-        """Validate the value and raise ValidationError if necessary."""
+        """Validate the value and raise ValidationError if necessary.
+
+        Only validates decimal places and max_digits when the value is being set directly
+        or through a form. Skips these validations during database operations.
+        """
         super().validate(value, model_instance)
 
-        if value is not None and value not in self.empty_values:
+        if not self._should_skip_validation(value, model_instance):
             validate_decimal_places(
-                value, self.decimal_places, self.max_digits, allow_rounding=self.rounding_method is not None
+                value, self.decimal_places, self.max_digits,
+                allow_rounding=self.rounding_method is not None
             )
 
     def get_db_prep_save(self, value, connection) -> Decimal:  # pylint: disable=W0621
