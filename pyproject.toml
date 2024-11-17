@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-pint-field"
-version = "2024.11.4"
+version = "2024.11.5"
 description = "Unit Conversion fields for Django and Postgres"
 authors = [{ name = "Jack Linke", email = "jacklinke@gmail.com" }]
 license = { text = "MIT" }
@@ -88,9 +88,6 @@ dev-dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-templated_email_md = ["templates/templated_email/*", "locale/*"]
 
 [tool.black]
 line-length = 120
