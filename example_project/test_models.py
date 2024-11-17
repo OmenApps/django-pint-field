@@ -58,7 +58,7 @@ class TestFieldValidation:
         field = DecimalPintField(default_unit="gram", max_digits=5, decimal_places=2)
         with pytest.raises(ValidationError):
             # Value with too many digits
-            field.clean(ureg.Quantity(Decimal('1234.567'), "gram"), None)
+            field.clean(ureg.Quantity(Decimal("1234.567"), "gram"), None)
 
 
 @pytest.mark.django_db
@@ -410,10 +410,10 @@ class TestDatabaseOperations:
         assert field.get_db_prep_save(None, connection=None) is None
 
         # # Test with dictionary
-        dict_value = {'magnitude': '100.456', 'units': 'gram'}
+        dict_value = {"magnitude": "100.456", "units": "gram"}
         result = field.get_db_prep_save(dict_value, connection=None)
         assert isinstance(result, ureg.Quantity)
-        assert result.magnitude == Decimal('100.46')
+        assert result.magnitude == Decimal("100.46")
 
         # Test with dictionary and Decimal
         dict_value = {"magnitude": Decimal("100.456"), "units": "gram"}
@@ -428,25 +428,25 @@ class TestDecimalValidationBehavior:
 
     def test_db_aggregation_bypasses_validation(self, monkeypatch):
         """Test that values from database aggregation bypass decimal validation."""
-        field = DecimalPintField(
-            default_unit="acre_feet",
-            max_digits=5,
-            decimal_places=2
-        )
+        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
 
         # Create a quantity that would fail normal validation
-        value = ureg.Quantity(Decimal('123.45678'), 'acre_feet')
+        value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
 
         class MockFrame:
             """Mock frame for testing aggregation context."""
+
             @property
             def f_locals(self):
                 """Create a proper mock aggregate class that matches what Django would use."""
+
                 class MockPintSum:
                     """Mock the aggregate class."""
+
                     def __init__(self):
-                        self.__class__.__name__ = 'PintSum'
-                return {'self': MockPintSum()}
+                        self.__class__.__name__ = "PintSum"
+
+                return {"self": MockPintSum()}
 
             @property
             def f_back(self):
@@ -454,7 +454,7 @@ class TestDecimalValidationBehavior:
                 return None
 
         # Mock the frame inspection to simulate being inside an aggregation
-        monkeypatch.setattr('inspect.currentframe', lambda: MockFrame())
+        monkeypatch.setattr("inspect.currentframe", lambda: MockFrame())
 
         # This should not raise ValidationError despite having too many decimal places
         try:
@@ -464,22 +464,20 @@ class TestDecimalValidationBehavior:
 
     def test_form_input_enforces_validation(self):
         """Test that direct value assignment enforces decimal validation."""
-        field = DecimalPintField(
-            default_unit="acre_feet",
-            max_digits=5,
-            decimal_places=2
-        )
+        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
 
         # Create a quantity that exceeds the decimal places limit
-        value = ureg.Quantity(Decimal('123.45678'), 'acre_feet')
+        value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
 
         # Create a model instance state indicating it's a new instance
         class ModelState:
             """Mock model state."""
+
             adding = True
 
         class ModelInstance:
             """Mock model instance."""
+
             _state = ModelState()
 
         # This should raise ValidationError because we're simulating form input
@@ -490,22 +488,20 @@ class TestDecimalValidationBehavior:
 
     def test_model_load_bypasses_validation(self):
         """Test that loading values from the database bypasses validation."""
-        field = DecimalPintField(
-            default_unit="acre_feet",
-            max_digits=5,
-            decimal_places=2
-        )
+        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
 
         # Create a quantity that would fail normal validation
-        value = ureg.Quantity(Decimal('123.45678'), 'acre_feet')
+        value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
 
         # Create a model instance state indicating it's from the database
         class ModelState:
             """Mock model state."""
+
             adding = False
 
         class ModelInstance:
             """Mock model instance."""
+
             _state = ModelState()
 
         # This should not raise ValidationError despite having too many decimal places
@@ -516,22 +512,20 @@ class TestDecimalValidationBehavior:
 
     def test_new_instance_enforces_validation(self):
         """Test that creating a new model instance enforces validation."""
-        field = DecimalPintField(
-            default_unit="acre_feet",
-            max_digits=5,
-            decimal_places=2
-        )
+        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
 
         # Create a quantity that exceeds the decimal places limit
-        value = ureg.Quantity(Decimal('123.45678'), 'acre_feet')
+        value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
 
         # Create a model instance state indicating it's a new instance
         class ModelState:
             """Mock model state."""
+
             adding = True
 
         class ModelInstance:
             """Mock model instance."""
+
             _state = ModelState()
 
         # This should raise ValidationError because we're creating a new instance
@@ -542,14 +536,10 @@ class TestDecimalValidationBehavior:
 
     def test_prep_value_bypasses_validation(self):
         """Test that get_prep_value allows full precision for database operations."""
-        field = DecimalPintField(
-            default_unit="acre_feet",
-            max_digits=5,
-            decimal_places=2
-        )
+        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
 
         # Create a quantity with more decimal places than allowed
-        value = ureg.Quantity(Decimal('123.45678'), 'acre_feet')
+        value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
 
         # get_prep_value should not validate decimal places
         try:
