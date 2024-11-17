@@ -188,3 +188,88 @@ class TestTabledPintFieldWidget:
 
         assert len(values_list) == len(self.UNIT_CHOICES) - 1
         assert all(isinstance(value.magnitude, (Decimal, float, int)) for value in values_list)
+
+
+@pytest.mark.django_db
+class AdditionalWidgetTests:
+    """Additional test cases for widgets."""
+
+    def test_normalize_value(self):
+        """Test _normalize_value method."""
+        widget = TabledPintFieldWidget(default_unit="gram")
+        with pytest.raises(ImproperlyConfigured):
+            widget._normalize_value(None)
+
+        with pytest.raises(ImproperlyConfigured):
+            widget._normalize_value([100])
+
+        with pytest.raises(ImproperlyConfigured):
+            widget._normalize_value([100, "gram"])
+
+        with pytest.raises(ImproperlyConfigured):
+            widget._normalize_value([100, ureg.Unit("gram")])
+
+        with pytest.raises(ImproperlyConfigured):
+            widget._normalize_value([100, "invalid_unit"])
+
+        with pytest.raises(ImproperlyConfigured):
+            widget._normalize_value([100, 100])
+
+    def test_create_quantity(self):
+        """Test _create_quantity method."""
+        widget = TabledPintFieldWidget(default_unit="gram")
+        with pytest.raises(ImproperlyConfigured):
+            widget._create_quantity(None, "gram")
+
+        with pytest.raises(ImproperlyConfigured):
+            widget._create_quantity(100, "invalid_unit")
+
+        with pytest.raises(ImproperlyConfigured):
+            widget._create_quantity(100, 100)
+
+
+def test_default_widget_template_name():
+    """Test that PintFieldWidget uses Django's default MultiWidget template."""
+    widget = PintFieldWidget(default_unit="gram")
+    assert widget.template_name == "django/forms/widgets/multiwidget.html"
+
+
+def test_subwidget_template_names():
+    """Test that subwidgets have correct template names."""
+    widget = PintFieldWidget(default_unit="gram")
+    assert widget.widgets[0].template_name == "django/forms/widgets/number.html"
+    assert widget.widgets[1].template_name == "django/forms/widgets/select.html"
+
+
+def test_widget_render_inherits_id_for_subwidgets():
+    """Test that subwidgets inherit and modify the parent widget's ID correctly."""
+    widget = PintFieldWidget(default_unit="gram")
+    context = widget.get_context("weight", None, {"id": "id_weight"})
+    assert context["widget"]["subwidgets"][0]["attrs"]["id"] == "id_weight_0"
+    assert context["widget"]["subwidgets"][1]["attrs"]["id"] == "id_weight_1"
+
+
+def test_tabled_widget_template_inheritance():
+    """Test that TabledPintFieldWidget properly inherits and overrides template name."""
+    widget = TabledPintFieldWidget(default_unit="gram")
+    assert widget.template_name == "django_pint_field/tabled_django_pint_field_widget.html"
+    # Should still use default templates for subwidgets
+    assert widget.widgets[0].template_name == "django/forms/widgets/number.html"
+    assert widget.widgets[1].template_name == "django/forms/widgets/select.html"
+
+
+def test_tabled_widget_context_structure():
+    """Test that TabledPintFieldWidget provides correct context structure for template."""
+    widget = TabledPintFieldWidget(default_unit="gram", unit_choices=["gram", "kilogram"])
+    context = widget.get_context("weight", None, {})
+
+    # Check required context keys for template rendering
+    assert "widget" in context
+    assert "values_list" in context
+    assert "floatformat" in context
+    assert "table_class" in context
+    assert "td_class" in context
+
+    # Check subwidgets are properly configured
+    assert len(context["widget"]["subwidgets"]) == 2
+    assert all("template_name" in widget for widget in context["widget"]["subwidgets"])

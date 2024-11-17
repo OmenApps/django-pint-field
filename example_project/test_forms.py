@@ -11,6 +11,7 @@ from django_pint_field.forms import DecimalPintFormField
 from django_pint_field.forms import IntegerPintFormField
 from django_pint_field.units import ureg
 from django_pint_field.widgets import PintFieldWidget
+from django_pint_field.widgets import TabledPintFieldWidget
 from example_project.example.forms import DefaultFormDecimal
 from example_project.example.forms import DefaultFormInteger
 from example_project.example.models import DecimalPintFieldSaveModel
@@ -104,6 +105,56 @@ class TestBasePintFormField:
         field = BasePintFormField(default_unit="gram", localize=True)
         assert field.localize
         assert field.widget.is_localized
+
+    def test_base_field_template_name(self):
+        """Test that BasePintFormField has correct template_name."""
+        field = BasePintFormField(default_unit="gram")
+        assert field.template_name == "django/forms/widgets/input.html"
+
+    def test_base_field_with_tabled_widget_template(self):
+        """Test template_name behavior with TabledPintFieldWidget."""
+        field = BasePintFormField(default_unit="gram", widget=TabledPintFieldWidget(default_unit="gram"))
+        assert field.template_name == "django/forms/widgets/input.html"
+        assert field.widget.template_name == "django_pint_field/tabled_django_pint_field_widget.html"
+
+    def test_field_renders_with_standard_widget(self):
+        """Test that field renders correctly with standard PintFieldWidget."""
+        field = BasePintFormField(default_unit="gram")
+        html = field.widget.render("weight", None, {"id": "id_weight"})
+        assert 'id="id_weight_0"' in html
+        assert 'id="id_weight_1"' in html
+        assert 'name="weight_0"' in html
+        assert 'name="weight_1"' in html
+
+    def test_field_renders_with_tabled_widget(self):
+        """Test that field renders correctly with TabledPintFieldWidget."""
+        field = BasePintFormField(
+            default_unit="gram", widget=TabledPintFieldWidget(default_unit="gram", unit_choices=["gram", "kilogram"])
+        )
+        html = field.widget.render("weight", None, {"id": "id_weight"})
+        # Instead of checking for specific IDs (which may vary), check for essential elements
+        assert 'name="weight_0"' in html
+        assert 'name="weight_1"' in html
+        assert '<table class="p-5 m-5">' in html
+        assert '<td class="text-end">' in html
+        assert "<th>Unit</th>" in html
+        assert "<th>Value</th>" in html
+
+    def test_field_media_requirements(self):
+        """Test that field properly declares its media requirements."""
+        field = BasePintFormField(default_unit="gram")
+        assert hasattr(field.widget, "media")
+
+        field_with_tabled = BasePintFormField(default_unit="gram", widget=TabledPintFieldWidget(default_unit="gram"))
+        assert hasattr(field_with_tabled.widget, "media")
+
+    def test_widget_class_attributes_in_rendering(self):
+        """Test that widget class attributes are properly included in rendering."""
+        field = BasePintFormField(
+            default_unit="gram", widget=PintFieldWidget(default_unit="gram", attrs={"class": "custom-input"})
+        )
+        html = field.widget.render("weight", None, {})
+        assert 'class="custom-input"' in html
 
 
 @pytest.mark.django_db
@@ -200,6 +251,17 @@ class TestIntegerPintFormField:
         form = integer_form(data={"weight_0": value, "weight_1": "gram"})
         assert form.is_valid()
         assert form.cleaned_data["weight"].magnitude == expected
+
+    def test_integer_field_template_name(self):
+        """Test that IntegerPintFormField inherits correct template_name."""
+        field = IntegerPintFormField(default_unit="gram")
+        assert field.template_name == "django/forms/widgets/input.html"
+
+    def test_integer_field_with_tabled_widget_template(self):
+        """Test template_name behavior with TabledPintFieldWidget."""
+        field = IntegerPintFormField(default_unit="gram", widget=TabledPintFieldWidget(default_unit="gram"))
+        assert field.template_name == "django/forms/widgets/input.html"
+        assert field.widget.template_name == "django_pint_field/tabled_django_pint_field_widget.html"
 
 
 @pytest.mark.django_db
@@ -402,3 +464,16 @@ class TestDecimalPintFormField:
         # But the full precision should be preserved in the Python object
         python_value = field.to_python(value)
         assert str(python_value.magnitude) == "123.456"
+
+    def test_decimal_field_template_name(self):
+        """Test that DecimalPintFormField inherits correct template_name."""
+        field = DecimalPintFormField(default_unit="gram", max_digits=10, decimal_places=2)
+        assert field.template_name == "django/forms/widgets/input.html"
+
+    def test_decimal_field_with_tabled_widget_template(self):
+        """Test template_name behavior with TabledPintFieldWidget."""
+        field = DecimalPintFormField(
+            default_unit="gram", max_digits=10, decimal_places=2, widget=TabledPintFieldWidget(default_unit="gram")
+        )
+        assert field.template_name == "django/forms/widgets/input.html"
+        assert field.widget.template_name == "django_pint_field/tabled_django_pint_field_widget.html"
