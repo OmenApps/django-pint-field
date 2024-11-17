@@ -11,6 +11,7 @@ from django.forms.widgets import MultiWidget
 from django.forms.widgets import NumberInput
 from django.forms.widgets import Select
 
+from .helpers import get_pint_unit
 from .helpers import is_decimal_or_int
 from .units import ureg
 
@@ -88,7 +89,7 @@ class TabledPintFieldWidget(PintFieldWidget):
             magnitude = 0
 
         if isinstance(unit, str):
-            unit = getattr(self.ureg, unit)
+            unit = get_pint_unit(self.ureg, unit)
 
         return self.ureg.Quantity(magnitude * unit)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from decimal import Decimal
 from typing import Any
-from typing import Union
+from typing import Optional
 
 from django.core.exceptions import ValidationError
 from pint import Unit
@@ -16,12 +16,31 @@ from .units import ureg
 Quantity = ureg.Quantity
 
 
+def get_pint_unit(registry, unit_name: str) -> Optional[object]:
+    """Get unit from registry using newer formatter API."""
+    if unit_name is None:
+        return None
+
+    # Store the unit
+    unit = getattr(registry, str(unit_name))
+
+    # Configure the formatter for this unit if needed
+    if hasattr(registry, "formatter"):
+        registry.formatter.default_format = "D"  # Use default format
+        # Note: fmt_locale can be set here if locale formatting is needed
+
+    return unit
+
+
 def check_matching_unit_dimension(
-    registry: Any, default_unit: Union[str, Unit], units_to_check: list[Union[str, Unit]], raise_exception: bool = True
+    registry: Any, default_unit: str | Unit, units_to_check: list[str | Unit], raise_exception: bool = True
 ) -> None:
-    """Improved unit dimension checking with better type hints."""
+    """Check that unit choices match dimension of default unit."""
     if not units_to_check:
         return
+
+    if hasattr(registry, "formatter"):
+        registry.formatter.default_format = "D"
 
     try:
         default_unit = getattr(registry, str(default_unit))
@@ -33,7 +52,7 @@ def check_matching_unit_dimension(
         try:
             unit_obj = getattr(registry, str(unit))
             if unit_obj.dimensionality != default_unit.dimensionality:
-                raise ValidationError(f"Unit {unit} has incompatible dimensionality with default unit.")
+                raise ValidationError(f"Unit {unit} has incompatible dimensionality with default unit {default_unit}.")
         except AttributeError as e:
             if raise_exception:
                 raise ValidationError(f"Invalid unit: {unit}") from e

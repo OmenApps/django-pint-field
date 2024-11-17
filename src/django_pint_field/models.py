@@ -29,6 +29,7 @@ from .adapters import PintDumper
 from .forms import DecimalPintFormField
 from .forms import IntegerPintFormField
 from .helpers import check_matching_unit_dimension
+from .helpers import get_pint_unit
 from .units import ureg
 from .validation import QuantityConverter
 from .validation import validate_decimal_places
@@ -92,7 +93,7 @@ class PintFieldConverter:
             return None
 
         try:
-            target_unit_obj = getattr(self.ureg, target_unit)
+            target_unit_obj = get_pint_unit(self.ureg, target_unit)
             return value.to(target_unit_obj)
         except (AttributeError, UndefinedUnitError):
             return None
@@ -168,13 +169,13 @@ class PintFieldMixin:
 
     def add_properties(self, cls, name):
         """Add properties for all common units that match the dimensionality."""
-        base_unit = getattr(self.ureg, self.default_unit)
+        base_unit = get_pint_unit(self.ureg, self.default_unit)
         for unit_name in dir(self.ureg):
             if unit_name.startswith("_"):
                 continue
 
             try:
-                unit = getattr(self.ureg, unit_name)
+                unit = get_pint_unit(self.ureg, unit_name)
                 if not hasattr(unit, "dimensionality"):
                     continue
 
@@ -221,7 +222,7 @@ class BasePintField(PintFieldMixin, models.Field):
 
         try:
             self.ureg = ureg
-            getattr(self.ureg, default_unit)
+            get_pint_unit(self.ureg, default_unit)
         except AttributeError as e:
             raise ValidationError(f"Invalid unit: {default_unit}") from e
 
@@ -483,14 +484,17 @@ class DecimalPintField(BasePintField):
 
         # Get the current frame's locals to check context
         import inspect  # Import here to avoid circular import issues
+
         frame = inspect.currentframe()
         try:
             while frame is not None:
                 # Check if we're in an aggregation operation
-                if 'self' in frame.f_locals:
-                    f_self = frame.f_locals['self']
-                    if any(aggregation_class in f_self.__class__.__name__
-                        for aggregation_class in ['Aggregate', 'PintSum', 'PintAvg']):
+                if "self" in frame.f_locals:
+                    f_self = frame.f_locals["self"]
+                    if any(
+                        aggregation_class in f_self.__class__.__name__
+                        for aggregation_class in ["Aggregate", "PintSum", "PintAvg"]
+                    ):
                         return True
                 frame = frame.f_back
         finally:
@@ -508,8 +512,7 @@ class DecimalPintField(BasePintField):
 
         if not self._should_skip_validation(value, model_instance):
             validate_decimal_places(
-                value, self.decimal_places, self.max_digits,
-                allow_rounding=self.rounding_method is not None
+                value, self.decimal_places, self.max_digits, allow_rounding=self.rounding_method is not None
             )
 
     def get_db_prep_save(self, value, connection) -> Decimal:  # pylint: disable=W0621

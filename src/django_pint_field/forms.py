@@ -15,6 +15,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from .helpers import check_matching_unit_dimension
+from .helpers import get_pint_unit
 from .helpers import get_quantizing_string
 from .units import ureg
 from .validation import QuantityConverter
@@ -282,7 +283,7 @@ class DecimalPintFormField(BasePintFormField):
             quantizing_string = get_quantizing_string(self.max_digits, self.decimal_places)
             try:
                 new_magnitude = magnitude.quantize(Decimal(quantizing_string))
-                return self.ureg.Quantity(new_magnitude * getattr(self.ureg, str(quantity.units)))
+                return self.ureg.Quantity(new_magnitude * get_pint_unit(self.ureg, quantity.units))
             except InvalidOperation as e:
                 raise ValidationError(
                     _("Unable to quantize to specified precision"),
