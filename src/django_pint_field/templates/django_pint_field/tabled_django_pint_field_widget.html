@@ -1,19 +1,21 @@
-{% spaceless %}{% for widget in widget.subwidgets %}{% include
-widget.template_name %}{% endfor %}{% endspaceless %} {% if values_list %}
+{% spaceless %}
+{% for subwidget in widget.subwidgets %}
+    {% include subwidget.template_name with widget=subwidget %}
+{% endfor %}
+{% if values_list %}
 <table class="{{ table_class }}">
-  <tr>
-    <th>Unit</th>
-    <th>Value</th>
-  </tr>
-  {% for value_item in values_list %}
-  <tr>
-    <td>{{ value_item.units }}</td>
-    <td style="text-align: right" class="{{ td_class }}">
-      {{ value_item.magnitude|floatformat:floatformat }}
-    </td>
-  </tr>
-  {% endfor %}
+    <tr>
+        <th>Unit</th>
+        <th>Value</th>
+    </tr>
+    {% for value_item in values_list %}
+    <tr>
+        <td>{{ value_item.units }}</td>
+        <td class="{{ td_class }}">
+            {{ value_item.magnitude|floatformat:floatformat }}
+        </td>
+    </tr>
+    {% endfor %}
 </table>
-{% else %}
-<br />
 {% endif %}
+{% endspaceless %}
