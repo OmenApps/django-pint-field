@@ -50,6 +50,7 @@ class BasePintFormField(forms.Field):
     """
 
     widget = PintFieldWidget
+    template_name = "django/forms/widgets/input.html"
 
     def __init__(  # pylint: disable=W0231
         self,
