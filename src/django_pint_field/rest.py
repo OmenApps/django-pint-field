@@ -19,7 +19,6 @@ from decimal import Decimal
 from decimal import InvalidOperation
 from typing import Any
 from typing import Optional
-from typing import Union
 
 from pint import UndefinedUnitError
 from rest_framework import serializers
@@ -56,7 +55,7 @@ class PintRestField(serializers.Field):
 
         return {"magnitude": value.magnitude, "units": str(value.units)}
 
-    def _prep_quantity(self, magnitude: Union[str, int, float, Decimal], units: str) -> Quantity:
+    def _prep_quantity(self, magnitude: str | int | float | Decimal, units: str) -> Quantity:
         """Prepare Quantity object from provided magnitude and units."""
         try:
             if isinstance(magnitude, (int, float)):
@@ -144,11 +143,11 @@ class BasePintRestField(serializers.Field):
         except (ValueError, TypeError) as e:
             raise ValidationError(str(e)) from e
 
-    def _create_quantity(self, magnitude: Union[str, int, float, Decimal], units: Any) -> Quantity:
+    def _create_quantity(self, magnitude: str | int | float | Decimal, units: Any) -> Quantity:
         """Create Quantity object with proper type handling."""
         raise NotImplementedError("Subclasses must implement _create_quantity")
 
-    def to_internal_value(self, data: Union[str, Quantity]) -> Quantity:
+    def to_internal_value(self, data: str | Quantity) -> Quantity:
         """Convert string or Quantity to Quantity object."""
         if isinstance(data, Quantity):
             return data
@@ -163,7 +162,7 @@ class IntegerPintRestField(BasePintRestField):
     Example: Quantity(1, "gram") <-> "1 gram"
     """
 
-    def _create_quantity(self, magnitude: Union[str, int, float, Decimal], units: Any) -> Quantity:
+    def _create_quantity(self, magnitude: str | int | float | Decimal, units: Any) -> Quantity:
         """Create Quantity with integer magnitude."""
         return Quantity(int(float(magnitude)), units)
 
@@ -180,6 +179,6 @@ class DecimalPintRestField(BasePintRestField):
         kwargs.pop("decimal_places", None)
         super().__init__(*args, **kwargs)
 
-    def _create_quantity(self, magnitude: Union[str, int, float, Decimal], units: Any) -> Quantity:
+    def _create_quantity(self, magnitude: str | int | float | Decimal, units: Any) -> Quantity:
         """Create Quantity with decimal magnitude."""
         return Quantity(Decimal(str(magnitude)), units)
