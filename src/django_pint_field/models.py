@@ -35,6 +35,7 @@ from .validation import QuantityConverter
 from .validation import validate_decimal_places
 from .validation import validate_dimensionality
 from .validation import validate_required_value
+from .validation import validate_unit_choices
 
 
 logger = logging.getLogger(__name__)
@@ -214,37 +215,55 @@ class BasePintField(PintFieldMixin, models.Field):
         **kwargs,
     ):
         """Initialize a Pint field."""
-        if not default_unit or not isinstance(default_unit, str):
+        if not isinstance(default_unit, (str, list, tuple)):
             raise ValidationError(
-                "Django Pint Fields must be defined with a default_unit, eg: 'gram', "
-                f"but default_value of type: {type(default_unit)} was provided"
+                "Django Pint Fields must be defined with a default_unit of type str or "
+                f"2-tuple/2-list, but got type: {type(default_unit)}"
+            )
+
+        # Normalize default_unit to a 2-tuple format
+        if isinstance(default_unit, str):
+            self._default_unit_display = default_unit
+            self._default_unit_value = default_unit
+        elif len(default_unit) == 2:
+            self._default_unit_display, self._default_unit_value = default_unit
+        else:
+            raise ValidationError(
+                "When providing default_unit as a tuple/list, it must contain exactly 2 elements: "
+                "(display_name, unit_value)"
             )
 
         try:
             self.ureg = ureg
-            get_pint_unit(self.ureg, default_unit)
+            get_pint_unit(self.ureg, self._default_unit_value)
         except AttributeError as e:
-            raise ValidationError(f"Invalid unit: {default_unit}") from e
+            raise ValidationError(f"Invalid unit: {self._default_unit_value}") from e
 
         self.verbose_name = verbose_name
         self.name = name
-        self.default_unit = default_unit
-        self.unit_choices = self.setup_unit_choices(unit_choices)
+        self.default_unit = self._default_unit_value  # For backwards compatibility
+
+        # Validate and normalize unit choices
+        normalized_choices = validate_unit_choices(unit_choices, self.default_unit)
+        # Extract just the unit values for dimensionality checking
+        unit_values = [choice[1] for choice in normalized_choices]
+
+        self.unit_choices = self.setup_unit_choices(normalized_choices)
 
         # Check if all unit_choices are valid
-        check_matching_unit_dimension(self.ureg, self.default_unit, self.unit_choices)
+        check_matching_unit_dimension(self.ureg, self.default_unit, unit_values)
 
         super().__init__(*args, **kwargs)
 
-    def setup_unit_choices(self, unit_choices: Optional[Iterable[str]]) -> list[str]:
+    def setup_unit_choices(self, unit_choices: list[tuple[str, str]]) -> list[tuple[str, str]]:
         """Set up unit choices ensuring default unit is the first option."""
-        if unit_choices is None:
-            return [self.default_unit]
+        if not unit_choices:
+            return [(self.default_unit, self.default_unit)]
 
-        unit_choices = list(unit_choices)
-        if self.default_unit in unit_choices:
-            unit_choices.remove(self.default_unit)
-        return [self.default_unit, *unit_choices]
+        # Remove any choice that has default_unit as the value
+        unit_choices = [choice for choice in unit_choices if choice[1] != self.default_unit]
+        # Add default unit as first choice
+        return [(self.default_unit, self.default_unit), *unit_choices]
 
     def db_type(self, connection) -> str:  # pylint: disable=W0621 disable=W0613
         """Returns the database column data type for this field."""

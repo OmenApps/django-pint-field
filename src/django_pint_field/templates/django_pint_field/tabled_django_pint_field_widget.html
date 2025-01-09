@@ -1,21 +1,51 @@
 {% spaceless %}
-{% for subwidget in widget.subwidgets %}
-    {% include subwidget.template_name with widget=subwidget %}
-{% endfor %}
-{% if values_list %}
-<table class="{{ table_class }}">
-    <tr>
-        <th>Unit</th>
-        <th>Value</th>
-    </tr>
-    {% for value_item in values_list %}
-    <tr>
-        <td>{{ value_item.units }}</td>
-        <td class="{{ td_class }}">
-            {{ value_item.magnitude|floatformat:floatformat }}
-        </td>
-    </tr>
-    {% endfor %}
-</table>
-{% endif %}
+    {# Input widgets section #}
+    <div class="pint-field-inputs {% if input_wrapper_class %}{{ input_wrapper_class }}{% endif %}">
+        {% for subwidget in widget.subwidgets %}
+            {% include subwidget.template_name with widget=subwidget %}
+        {% endfor %}
+    </div>
+
+    {# Conversion table section #}
+    {% if values_list %}
+        <div class="pint-field-table {% if table_wrapper_class %}{{ table_wrapper_class }}{% endif %}">
+            <table class="pint-field-conversion-table {% if table_class %}{{ table_class }}{% endif %}">
+                <thead class="{% if thead_class %}{{ thead_class }}{% endif %}">
+                    <tr class="{% if tr_header_class %}{{ tr_header_class }}{% endif %}">
+                        <th class="pint-field-unit-header {% if th_class %}{{ th_class }}{% endif %}">
+                            {% if unit_header %}{{ unit_header }}{% else %}Unit{% endif %}
+                        </th>
+                        <th class="pint-field-value-header {% if th_class %}{{ th_class }}{% endif %}">
+                            {% if value_header %}{{ value_header }}{% else %}Value{% endif %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="{% if tbody_class %}{{ tbody_class }}{% endif %}">
+                    {% for value_item in values_list %}
+                    <tr class="{% if tr_class %}{{ tr_class }}{% endif %}">
+                        <td class="pint-field-unit {% if td_class %}{{ td_class }}{% endif %} {% if td_unit_class %}{{ td_unit_class }}{% endif %}">
+                            {% with current_unit=value_item.units|stringformat:"s" %}
+                                {% for display_name, unit in display_choices %}
+                                    {% if unit == current_unit %}
+                                        {{ display_name }}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endwith %}
+                        </td>
+                        <td class="pint-field-value {% if td_class %}{{ td_class }}{% endif %} {% if td_value_class %}{{ td_value_class }}{% endif %}">
+                            <span class="pint-field-magnitude">
+                                {{ value_item.magnitude|floatformat:floatformat }}
+                            </span>
+                            {% if show_units_in_values %}
+                            <span class="pint-field-unit-symbol">
+                                {{ value_item.units }}
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 {% endspaceless %}

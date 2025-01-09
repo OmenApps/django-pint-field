@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Iterable  # pylint: disable=E0611
 from decimal import Decimal
 from typing import Optional
 
@@ -16,6 +18,8 @@ from .helpers import is_decimal_or_int
 from .units import ureg
 
 
+logger = logging.getLogger(__name__)
+
 Quantity = ureg.Quantity
 Unit = ureg.Unit
 
@@ -23,7 +27,13 @@ Unit = ureg.Unit
 class PintFieldWidget(MultiWidget):
     """Widget for PintField."""
 
-    def __init__(self, *, attrs: Optional[dict] = None, default_unit: str = None, unit_choices: list[str] = None):
+    def __init__(
+        self,
+        *,
+        attrs: Optional[dict] = None,
+        default_unit: str | tuple[str, str] | list[str, str],
+        unit_choices: Optional[Iterable[str] | Iterable[Iterable[str]]] = None,
+    ):
         """Initializes the PintFieldWidget."""
         self.ureg = ureg
 
@@ -31,15 +41,34 @@ class PintFieldWidget(MultiWidget):
             raise ValidationError(
                 "PintFieldWidgets require a default_unit kwarg of a single Pint unit type (eg: 'grams')"
             )
-        self.default_unit = default_unit
 
-        unit_choices = unit_choices or [self.default_unit]
-        if self.default_unit not in unit_choices:
-            unit_choices.append(self.default_unit)
-        self.choices = [(str(self.ureg(x).units), x) for x in unit_choices]
+        # Normalize default_unit
+        if isinstance(default_unit, str):
+            self._default_unit_display = default_unit
+            self._default_unit_value = default_unit
+        elif isinstance(default_unit, (list, tuple)) and len(default_unit) == 2:
+            self._default_unit_display, self._default_unit_value = default_unit
+        else:
+            raise ValidationError(
+                "default_unit must be either a string or a 2-tuple/2-list of (display_name, unit_value)"
+            )
+
+        self.default_unit = self._default_unit_value
+
+        unit_choices = unit_choices or [(self._default_unit_display, self._default_unit_value)]
+        if not any(value == self._default_unit_value for _, value in unit_choices):
+            unit_choices.insert(0, (self._default_unit_display, self._default_unit_value))
+
+        # Store the original choices for reference
+        self.original_choices = unit_choices
+
+        # Create choices for the Select widget
+        # The value (second element) needs to be the unit name that Pint will use
+        self.choices = [(str(self.ureg(value).units), display) for display, value in unit_choices]
 
         attrs = attrs or {}
-        attrs.setdefault("step", "any")
+        if "step" not in attrs:
+            attrs.setdefault("step", "any")
         widgets = (NumberInput(attrs=attrs), Select(attrs=attrs, choices=self.choices))
         super().__init__(widgets, attrs)
 
@@ -48,7 +77,10 @@ class PintFieldWidget(MultiWidget):
         if value is None:
             return [None, None]
 
-        return value
+        if hasattr(value, "value"):
+            value = value.value
+
+        return [value.magnitude, str(value.units)]
 
 
 class TabledPintFieldWidget(PintFieldWidget):
@@ -57,16 +89,54 @@ class TabledPintFieldWidget(PintFieldWidget):
     template_name = "django_pint_field/tabled_django_pint_field_widget.html"
 
     def __init__(
-        self, *, attrs: Optional[dict] = None, default_unit: str = None, unit_choices: list[str] = None, **kwargs
+        self,
+        *,
+        attrs: Optional[dict] = None,
+        default_unit: str = None,
+        unit_choices: list[str] = None,
+        **kwargs,
     ):
         """Initializes the TabledPintFieldWidget."""
-        self.floatformat = kwargs.pop("floatformat", 6)
-        self.table_class = kwargs.pop("table_class", "p-5 m-5")
-        self.td_class = kwargs.pop("td_class", "text-end")
+        self.styling_options = {
+            # Wrapper classes
+            "input_wrapper_class": kwargs.pop("input_wrapper_class", ""),
+            "table_wrapper_class": kwargs.pop("table_wrapper_class", ""),
+            # Table structure classes
+            "table_class": kwargs.pop("table_class", ""),
+            "thead_class": kwargs.pop("thead_class", ""),
+            "tbody_class": kwargs.pop("tbody_class", ""),
+            # Row classes
+            "tr_header_class": kwargs.pop("tr_header_class", ""),
+            "tr_class": kwargs.pop("tr_class", ""),
+            # Cell classes
+            "th_class": kwargs.pop("th_class", ""),
+            "td_class": kwargs.pop("td_class", ""),
+            "td_unit_class": kwargs.pop("td_unit_class", ""),
+            "td_value_class": kwargs.pop("td_value_class", ""),
+        }
+
+        self.content_options = {
+            "unit_header": kwargs.pop("unit_header", "Unit"),
+            "value_header": kwargs.pop("value_header", "Value"),
+            "show_units_in_values": kwargs.pop("show_units_in_values", False),
+            "floatformat": kwargs.pop("floatformat", -1),  # -1 means only show necessary decimal places
+        }
+
         super().__init__(attrs=attrs, default_unit=default_unit, unit_choices=unit_choices)
 
-    def _normalize_value(self, value: list | tuple) -> tuple[Optional[int | float | Decimal], str | Unit]:
+    def _normalize_value(self, value: list | tuple | Quantity) -> tuple[Optional[int | float | Decimal], str | Unit]:
         """Normalizes the input value into a consistent format."""
+        if value is None:
+            return None, self.default_unit
+
+        # Handle PintFieldProxy
+        if hasattr(value, "value") and hasattr(value.value, "magnitude"):
+            return value.value.magnitude, value.value.units
+
+        # Handle Quantity
+        if hasattr(value, "magnitude"):
+            return value.magnitude, value.units
+
         if not isinstance(value, (list, tuple)) or len(value) != 2:
             raise ImproperlyConfigured(f"Expected list/tuple of length 2, got {value}")
 
@@ -93,42 +163,57 @@ class TabledPintFieldWidget(PintFieldWidget):
 
         return self.ureg.Quantity(magnitude * unit)
 
-    def _convert_to_unit(self, quantity: Quantity, target_unit: str) -> Quantity:
-        """Converts a quantity to the target unit."""
-        return quantity.to(target_unit)
+    def create_table(self, value):
+        """Create a list of converted quantities for the table display.
 
-    def _filter_choices(self, value: Optional[Quantity]) -> list[tuple[str, str]]:
-        """Filters out the current value from choices if present."""
-        if not isinstance(value, self.ureg.Quantity):
-            return self.choices
+        Args:
+            value: The current Pint Quantity value
 
-        value_tuple = (str(value.units), str(value.units))
-        return [choice for choice in self.choices if choice != value_tuple]
+        Returns:
+            list: List of Pint Quantities in different units
+        """
+        if value is None:
+            return []
 
-    def create_table(self, value: Optional[Quantity] = None) -> list[Quantity]:
-        """Create a table of unit conversions."""
-        filtered_choices = self._filter_choices(value)
+        # If value is a proxy, get the actual value
+        if hasattr(value, "value"):
+            value = value.value
 
-        try:
-            if isinstance(value, (list, tuple)):
-                magnitude, unit = self._normalize_value(value)
-                base_quantity = self._create_quantity(magnitude, unit)
-            else:
-                # Default case: zero quantity in the first available unit
-                first_unit = filtered_choices[0][0] if filtered_choices else None
-                base_quantity = self._create_quantity(0, first_unit)
+        if isinstance(value, Iterable) and len(value) == 2:
+            value = self._create_quantity(*value)
 
-            return [self._convert_to_unit(base_quantity, unit_output) for unit_output, _ in filtered_choices]
+        # Convert value to each available unit
+        converted_values = []
+        for _, target_unit in self.original_choices:
+            try:
+                # Convert the value to the target unit, skipping the current unit
+                if str(target_unit) != str(value.units):
+                    converted = value.to(target_unit)
+                    converted_values.append(converted)
+            except (AttributeError, ValueError) as e:
+                logger.error("Error converting value to %s: %s", target_unit, e)
+                continue
 
-        except (AttributeError, ValueError) as e:
-            raise ImproperlyConfigured(f"Error creating unit conversion table: {e}") from e
+        return converted_values
 
-    def get_context(self, name: str, value: Optional[Quantity], attrs: dict):
-        """Adds table of unit conversions to widget context."""
+    def get_context(self, name, value, attrs):
+        """Add customization options to the widget context."""
         context = super().get_context(name, value, attrs)
+
+        # Add all styling classes to context
+        context.update(self.styling_options)
+
+        # Add content options to context
+        context.update(self.content_options)
+
+        # Create the conversion table values
         context["values_list"] = self.create_table(value)
-        context["floatformat"] = self.floatformat
-        context["table_class"] = self.table_class
-        context["td_class"] = self.td_class
+
+        # Pass the display choices directly as a list of tuples
+        display_choices = []
+        for display_name, unit_value in self.original_choices:
+            unit_str = str(self.ureg(unit_value).units)
+            display_choices.append((display_name, unit_str))
+        context["display_choices"] = display_choices
 
         return context

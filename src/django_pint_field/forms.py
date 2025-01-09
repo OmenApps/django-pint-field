@@ -2,6 +2,8 @@
 
 import copy
 import logging
+import warnings
+from collections.abc import Iterable  # pylint: disable=E0611
 from decimal import Decimal
 from decimal import InvalidOperation
 from typing import Any
@@ -22,6 +24,7 @@ from .validation import QuantityConverter
 from .validation import validate_decimal_places
 from .validation import validate_dimensionality
 from .validation import validate_required_value
+from .validation import validate_unit_choices
 from .validation import validate_value_range
 from .widgets import PintFieldWidget
 
@@ -56,21 +59,35 @@ class BasePintFormField(forms.Field):
     def __init__(  # pylint: disable=W0231
         self,
         *,
-        default_unit: str,
-        unit_choices: Optional[Union[list[str], tuple[str]]] = None,
-        required=True,
+        default_unit: str | tuple[str, str] | list[str, str],
+        unit_choices: Optional[Iterable[str] | Iterable[Iterable[str]]] = None,
+        required: bool = True,
         widget=None,
-        label=None,
-        initial=None,
-        help_text="",
+        label: str = None,
+        initial: Any = None,
+        help_text: str = "",
         error_messages=None,
-        show_hidden_initial=False,
+        show_hidden_initial: bool = False,
         validators=(),
-        localize=False,
-        disabled=False,
-        label_suffix=None,
+        localize: bool = False,
+        disabled: bool = False,
+        label_suffix: str = None,
     ):
         """Initialize the Pint form field."""
+
+        if default_unit is None:
+            raise ValidationError("PintFormField requires a default_unit kwarg of a single unit type (eg: 'grams')")
+        # Normalize default_unit to tuple format
+        if isinstance(default_unit, str):
+            self._default_unit_display = default_unit
+            self._default_unit_value = default_unit
+        elif isinstance(default_unit, (list, tuple)) and len(default_unit) == 2:
+            self._default_unit_display, self._default_unit_value = default_unit
+        else:
+            raise ValidationError(
+                "default_unit must be either a string or a 2-tuple/2-list of (display_name, unit_value)"
+            )
+        self.default_unit = self._default_unit_value
         self.ureg = ureg
 
         self.required = required
@@ -85,16 +102,10 @@ class BasePintFormField(forms.Field):
         self.min_value = None
         self.max_value = None
 
-        if default_unit is None:
-            raise ValidationError("PintFormField requires a default_unit kwarg of a single unit type (eg: 'grams')")
-        self.default_unit = default_unit
-
-        self.unit_choices = unit_choices or [self.default_unit]
-        if self.default_unit not in self.unit_choices:
-            self.unit_choices.append(self.default_unit)
-
-        for choice in self.unit_choices:
-            check_matching_unit_dimension(self.ureg, self.default_unit, [choice])
+        # Normalize unit choices using the same validation function as the model field
+        self.unit_choices = validate_unit_choices(unit_choices, default_unit)
+        if not any(value == default_unit for _, value in self.unit_choices):
+            self.unit_choices.insert(0, (default_unit, default_unit))
 
         widget = self._setup_widget(widget)
 
