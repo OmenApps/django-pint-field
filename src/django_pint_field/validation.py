@@ -7,7 +7,6 @@ from decimal import InvalidOperation
 from decimal import getcontext
 from typing import Any
 from typing import Optional
-from typing import Union
 
 from django.core import validators
 from django.core.exceptions import ValidationError
@@ -100,13 +99,11 @@ def validate_required_value(value: Any, required: bool = True, blank: bool = Fal
         raise ValidationError(_("This field cannot be blank."), code="blank")
 
 
-def validate_decimal_places(
-    value: Union[BaseQuantity, Decimal],
-    decimal_places: int,
-    max_digits: int,
+def validate_decimal_precision(
+    value: BaseQuantity | Decimal,
     allow_rounding: bool = False,
 ) -> None:
-    """Validate decimal places and digits for a value."""
+    """Validate decimal precision for a value."""
     if not hasattr(value, "magnitude"):
         return
 
@@ -118,51 +115,92 @@ def validate_decimal_places(
             raise ValidationError(_("Value must be a valid decimal."), code="invalid") from e
 
     # Check number of decimal places
-    if int(magnitude.as_tuple().exponent) < -decimal_places and not allow_rounding:
+    if len(str(magnitude).replace(".", "")) > getcontext().prec and not allow_rounding:
         raise ValidationError(
-            _("Ensure that there are no more than %(decimal_places)s decimal places."),
-            code="max_decimal_places",
-            params={"decimal_places": decimal_places},
-        )
-
-    # Check total number of digits
-    if len(magnitude.as_tuple().digits) > max_digits and not allow_rounding:
-        raise ValidationError(
-            _("Ensure that there are no more than %(max_digits)s digits in total."),
-            code="max_digits",
-            params={"max_digits": max_digits},
+            _(f"Ensure that the value does not exceed the maximum precision ({getcontext().prec})."),
+            code="max_precision",
         )
 
 
 def validate_value_range(
-    value: Union[BaseQuantity, int, float, Decimal],
-    min_value: Optional[Union[int, float, Decimal]] = None,
-    max_value: Optional[Union[int, float, Decimal]] = None,
+    value: BaseQuantity | int | float | Decimal,
+    min_value: Optional[BaseQuantity | int | float | Decimal] = None,
+    max_value: Optional[BaseQuantity | int | float | Decimal] = None,
 ) -> None:
-    """Validate that a value falls within the specified range."""
+    """Validate that a value falls within the specified range.
+
+    Args:
+        value: The value to validate. Can be a Quantity object or a numeric type.
+        min_value: Optional minimum value. Must be a Quantity if value is a Quantity.
+        max_value: Optional maximum value. Must be a Quantity if value is a Quantity.
+
+    Raises:
+        ValidationError: If value falls outside the specified range or if units are incompatible.
+    """
     if value is None:
         return
 
-    magnitude = getattr(value, "magnitude", value)
+    # Handle Quantity objects
+    if isinstance(value, BaseQuantity):
+        # Validate that min/max values are also Quantities if provided
+        if min_value is not None and not isinstance(min_value, BaseQuantity):
+            raise ValidationError(_("Min value must be a Quantity when comparing with Quantity values."))
+        if max_value is not None and not isinstance(max_value, BaseQuantity):
+            raise ValidationError(_("Max value must be a Quantity when comparing with Quantity values."))
 
-    try:
-        float_val = float(magnitude)
-    except (TypeError, ValueError) as e:
-        raise ValidationError(_("Value must be a number."), code="invalid") from e
+        # Convert all values to base units for comparison
+        value_base = value.to_base_units()
 
-    if min_value is not None and float_val < min_value:
-        raise ValidationError(
-            _("Ensure this value is greater than or equal to %(min_value)s."),
-            code="min_value",
-            params={"min_value": min_value},
-        )
+        if min_value is not None:
+            try:
+                min_value_base = min_value.to_base_units()
+                if value_base.magnitude < min_value_base.magnitude:
+                    raise ValidationError(
+                        _("Ensure this value is greater than or equal to %(min_value)s."),
+                        code="min_value",
+                        params={"min_value": min_value},
+                    )
+            except DimensionalityError as e:
+                raise ValidationError(_("Min value must have compatible units with the value being validated.")) from e
 
-    if max_value is not None and float_val > max_value:
-        raise ValidationError(
-            _("Ensure this value is less than or equal to %(max_value)s."),
-            code="max_value",
-            params={"max_value": max_value},
-        )
+        if max_value is not None:
+            try:
+                max_value_base = max_value.to_base_units()
+                if value_base.magnitude > max_value_base.magnitude:
+                    raise ValidationError(
+                        _("Ensure this value is less than or equal to %(max_value)s."),
+                        code="max_value",
+                        params={"max_value": max_value},
+                    )
+            except DimensionalityError as e:
+                raise ValidationError(_("Max value must have compatible units with the value being validated.")) from e
+
+    # Handle non-Quantity numeric values
+    else:
+        try:
+            float_val = float(value)
+        except (TypeError, ValueError) as e:
+            raise ValidationError(_("Value must be a number."), code="invalid") from e
+
+        if min_value is not None:
+            if isinstance(min_value, BaseQuantity):
+                raise ValidationError(_("Cannot compare numeric value with Quantity min_value."))
+            if float_val < float(min_value):
+                raise ValidationError(
+                    _("Ensure this value is greater than or equal to %(min_value)s."),
+                    code="min_value",
+                    params={"min_value": min_value},
+                )
+
+        if max_value is not None:
+            if isinstance(max_value, BaseQuantity):
+                raise ValidationError(_("Cannot compare numeric value with Quantity max_value."))
+            if float_val > float(max_value):
+                raise ValidationError(
+                    _("Ensure this value is less than or equal to %(max_value)s."),
+                    code="max_value",
+                    params={"max_value": max_value},
+                )
 
 
 class QuantityConverter:
@@ -172,13 +210,11 @@ class QuantityConverter:
         self,
         default_unit: str,
         field_type: str = "decimal",
-        decimal_places: Optional[int] = None,
         unit_registry: Optional[UnitRegistry] = None,
     ):
         """Initialize the QuantityConverter."""
         self.default_unit = default_unit
         self.field_type = field_type
-        self.decimal_places = decimal_places
         self.ureg = unit_registry or UnitRegistry()
 
     def convert(self, value: Any) -> Optional[BaseQuantity]:
@@ -206,7 +242,7 @@ class QuantityConverter:
         except (ValueError, InvalidOperation) as e:
             raise ValidationError(_("Invalid numeric value."), code="invalid") from e
 
-    def _convert_magnitude(self, value: Union[str, int, float, Decimal]) -> Union[Decimal, int]:
+    def _convert_magnitude(self, value: str | int | float | Decimal) -> Decimal | int:
         """Convert a value to either Decimal or int based on field_type."""
         str_value = str(value)
         return Decimal(str_value) if self.field_type == "decimal" else int(float(str_value))
@@ -219,7 +255,7 @@ class QuantityConverter:
         except (ValueError, TypeError, InvalidOperation):
             return False
 
-    def _create_quantity(self, magnitude: Union[Decimal, int], units: str) -> BaseQuantity:
+    def _create_quantity(self, magnitude: Decimal | int, units: str) -> BaseQuantity:
         """Create a Quantity object with validation."""
         check_matching_unit_dimension(self.ureg, self.default_unit, [str(units)])
         return self.ureg.Quantity(magnitude, units)
@@ -247,7 +283,7 @@ class QuantityConverter:
         except ValueError as e:
             raise ValidationError(_("Invalid composite string format."), code="invalid") from e
 
-    def _handle_numeric(self, value: Union[int, float, Decimal]) -> BaseQuantity:
+    def _handle_numeric(self, value: int | float | Decimal) -> BaseQuantity:
         """Handle numeric input types."""
         magnitude = self._convert_magnitude(value)
         return self.ureg.Quantity(magnitude, self.default_unit)
@@ -259,7 +295,7 @@ class QuantityConverter:
             return self._create_quantity(magnitude, str(value.units))
         return value
 
-    def _handle_sequence(self, value: Union[list, tuple]) -> BaseQuantity:
+    def _handle_sequence(self, value: list | tuple) -> BaseQuantity:
         """Handle sequence (list/tuple) input types."""
         if len(value) == 2:
             magnitude, units = value

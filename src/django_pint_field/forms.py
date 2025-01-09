@@ -8,7 +8,6 @@ from decimal import Decimal
 from decimal import InvalidOperation
 from typing import Any
 from typing import Optional
-from typing import Union
 
 from django import forms
 from django.contrib.admin.options import FORMFIELD_FOR_DBFIELD_DEFAULTS
@@ -16,12 +15,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from .helpers import check_matching_unit_dimension
-from .helpers import get_pint_unit
 from .helpers import get_quantizing_string
 from .units import ureg
 from .validation import QuantityConverter
-from .validation import validate_decimal_places
+from .validation import validate_decimal_precision
 from .validation import validate_dimensionality
 from .validation import validate_required_value
 from .validation import validate_unit_choices
@@ -216,6 +213,19 @@ class BasePintFormField(forms.Field):
             raise ValidationError(self.error_messages["required"])
 
         value = self.to_python(value)
+
+        # Convert min/max values to Quantities if they're not already
+        min_value = self.min_value
+        if min_value is not None and not isinstance(min_value, Quantity):
+            min_value = self.ureg.Quantity(min_value, self.default_unit)
+
+        max_value = self.max_value
+        if max_value is not None and not isinstance(max_value, Quantity):
+            max_value = self.ureg.Quantity(max_value, self.default_unit)
+
+        # Validate the range using the potentially converted min/max values
+        validate_value_range(value, min_value, max_value)
+
         self.validate(value)
         self.run_validators(value)
         return value
@@ -238,30 +248,29 @@ class IntegerPintFormField(BasePintFormField):
 class DecimalPintFormField(BasePintFormField):
     """A form field to choose which unit to use to enter a value, which is saved to the composite field."""
 
-    def __init__(self, *, max_digits: int, decimal_places: int, display_decimal_places: Optional[int] = None, **kwargs):
+    def __init__(
+        self,
+        *,
+        max_digits: Optional[int] = None,
+        decimal_places: Optional[int] = None,
+        display_decimal_places: Optional[int] = None,
+        rounding_method: str = "ROUND_HALF_UP",
+        **kwargs,
+    ):
         """Initialize the decimal Pint form field."""
-        if max_digits is None or not isinstance(max_digits, int):
-            raise ValidationError("PintFormField requires a max_digits kwarg")
-        self.max_digits = max_digits
 
-        if decimal_places is None or not isinstance(decimal_places, int):
-            raise ValidationError("PintFormField requires a decimal_places kwarg")
-        self.decimal_places = decimal_places
+        # Deprecated options
+        if decimal_places is not None or max_digits is not None:
+            warnings.warn(
+                "max_digits and decimal_places are deprecated and will be removed in a future version. "
+                "Rely on Python's decimal precision instead.",
+                DeprecationWarning,
+            )
 
-        if self.decimal_places > self.max_digits:
-            raise ValidationError("decimal_places cannot be greater than max_digits")
-
-        if self.decimal_places < 0 or self.max_digits < 0:
-            raise ValidationError("decimal_places and max_digits must be non-negative integers")
-
-        if self.max_digits == 0:
-            raise ValidationError("max_digits must be a positive integer")
-
-        self.display_decimal_places = display_decimal_places if display_decimal_places is not None else decimal_places
-        if not isinstance(self.display_decimal_places, int) or self.display_decimal_places < 0:
-            raise ValidationError("display_decimal_places must be a non-negative integer")
-        if self.display_decimal_places > self.decimal_places:
-            raise ValidationError("display_decimal_places cannot be greater than decimal_places")
+        if display_decimal_places and (not isinstance(display_decimal_places, int) or display_decimal_places < 0):
+            raise ValidationError("If provided, display_decimal_places must be a positive integer or zero.")
+        self.display_decimal_places = display_decimal_places or 0
+        self.rounding_method = rounding_method
 
         super().__init__(**kwargs)
 
@@ -273,10 +282,11 @@ class DecimalPintFormField(BasePintFormField):
         """Format the value for display using display_decimal_places."""
         value = super().prepare_value(value)
 
-        if value and value[0] is not None:
+        if value and value[0] is not None and self.display_decimal_places is not None:
             try:
                 decimal_value = Decimal(str(value[0]))
-                formatted_value = decimal_value.quantize(Decimal(f"0.{'0' * self.display_decimal_places}"))
+                quantizing_string = get_quantizing_string(decimal_places=self.display_decimal_places)
+                formatted_value = decimal_value.quantize(quantizing_string)
                 return [formatted_value, value[1]]
             except (TypeError, ValueError, InvalidOperation):
                 pass
@@ -286,18 +296,14 @@ class DecimalPintFormField(BasePintFormField):
         """Convert input value to a Quantity with proper decimal handling."""
         quantity = super().to_python(value)
 
-        if quantity is not None:
-            validate_decimal_places(quantity, self.decimal_places, self.max_digits)
-
-            # Quantize the decimal value
-            magnitude = Decimal(str(quantity.magnitude))
-            quantizing_string = get_quantizing_string(self.max_digits, self.decimal_places)
+        if hasattr(quantity, "magnitude") and isinstance(quantity.magnitude, Decimal):
+            validate_decimal_precision(quantity)
+        else:
             try:
-                new_magnitude = magnitude.quantize(Decimal(quantizing_string))
-                return self.ureg.Quantity(new_magnitude * get_pint_unit(self.ureg, quantity.units))
-            except InvalidOperation as e:
+                quantity = self.ureg.Quantity(quantity)
+            except Exception as e:
                 raise ValidationError(
-                    _("Unable to quantize to specified precision"),
+                    _("Unable to convert value to Quantity object."),
                     code="invalid_decimal",
                 ) from e
 

@@ -10,7 +10,6 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any
 from typing import Optional
-from typing import Union
 
 import psycopg
 from django.core import validators
@@ -32,7 +31,7 @@ from .helpers import check_matching_unit_dimension
 from .helpers import get_pint_unit
 from .units import ureg
 from .validation import QuantityConverter
-from .validation import validate_decimal_places
+from .validation import validate_decimal_precision
 from .validation import validate_dimensionality
 from .validation import validate_required_value
 from .validation import validate_unit_choices
@@ -87,6 +86,8 @@ class PintFieldConverter:
         """Initialize the converter with the field instance."""
         self.field = field_instance
         self.ureg = field_instance.ureg
+        # Add display_decimal_places from the field instance
+        self.display_decimal_places = getattr(field_instance, "display_decimal_places", None)
 
     def convert_to_unit(self, value: Quantity, target_unit: str) -> Optional[Quantity]:
         """Convert a quantity to the target unit."""
@@ -110,9 +111,35 @@ class PintFieldProxy:
 
     def __str__(self):
         """Return the string representation of the value."""
+        if self.value is None:
+            return ""
+
+        # Format magnitude according to display_decimal_places if set
+        if (
+            hasattr(self.converter.field, "display_decimal_places")
+            and self.converter.field.display_decimal_places is not None
+        ):
+            magnitude = float(self.value.magnitude)
+            formatted_magnitude = f"{magnitude:.{self.converter.field.display_decimal_places}f}"
+            # Remove trailing zeros after decimal point, but keep the decimal point if places > 0
+            if "." in formatted_magnitude:
+                formatted_magnitude = formatted_magnitude.rstrip("0").rstrip(".")
+            return f"{formatted_magnitude} {self.value.units}"
+
         return str(self.value)
 
-    def __getattr__(self, name: str) -> Union[Quantity, str]:
+    def __format__(self, format_spec: str) -> str:
+        """Format the value according to the format specification."""
+        if not format_spec:
+            return str(self)
+
+        if self.value is None:
+            return ""
+
+        # Delegate formatting to the underlying Quantity object
+        return format(self.value, format_spec)
+
+    def __getattr__(self, name: str) -> Quantity | str:
         """Handle attribute access for unit conversions."""
         if name.startswith("__"):
             raise AttributeError(name)
@@ -158,12 +185,30 @@ class PintFieldMixin:
         """Create a property that handles the unit conversion."""
 
         def getter(instance):
+            field = instance._meta.get_field(name)  # pylint: disable=W0212
             value = getattr(instance, name)
             if value is None:
                 return None
+
             try:
-                return value.to(unit_name)
-            except (AttributeError, UndefinedUnitError):
+                if isinstance(value, PintFieldProxy):
+                    value = value.value
+                converted = value.to(unit_name)
+
+                # Format according to display_decimal_places if set
+                display_decimal_places = getattr(field, "display_decimal_places", None)
+                if display_decimal_places is not None:
+                    magnitude = float(converted.magnitude)
+                    formatted_magnitude = f"{magnitude:.{display_decimal_places}f}"
+                    # Remove trailing zeros after decimal point, but keep the decimal point if places > 0
+                    if "." in formatted_magnitude:
+                        formatted_magnitude = formatted_magnitude.rstrip("0").rstrip(".")
+                    return f"{formatted_magnitude} {converted.units}"
+
+                return converted
+
+            except (AttributeError, UndefinedUnitError) as e:
+                logger.error("Error converting value to %s: %s", unit_name, e)
                 return None
 
         return property(getter)
@@ -196,6 +241,14 @@ class PintFieldMixin:
         # Add properties for all common units that match the dimensionality
         self.add_properties(cls, name)
 
+        # Don't override a get_FOO_display() method defined explicitly on the class
+        if f"get_{self.name}_display" not in cls.__dict__:
+
+            def get_display(obj, format_string=None):  # New implementation
+                return self._get_FIELD_display(obj, format_string)
+
+            setattr(cls, f"get_{self.name}_display", get_display)
+
 
 class BasePintField(PintFieldMixin, models.Field):
     """A Django Model Field that resolves to a pint object."""
@@ -208,8 +261,8 @@ class BasePintField(PintFieldMixin, models.Field):
     def __init__(
         self,
         *args,
-        default_unit: str,
-        unit_choices: Optional[Iterable[str]] = None,
+        default_unit: str | tuple[str, str] | list[str, str],
+        unit_choices: Optional[Iterable[str] | Iterable[Iterable[str]]] = None,
         verbose_name: Optional[str] = None,
         name: Optional[str] = None,
         **kwargs,
@@ -274,14 +327,23 @@ class BasePintField(PintFieldMixin, models.Field):
         super().contribute_to_class(cls, name, private_only=private_only, **kwargs)
         setattr(cls, self.name, self)
 
+    def _get_FIELD_display(self, obj, format_string=None):  # pylint: disable=C0103
+        """Return the display value for a PintField."""
+        value = getattr(obj, self.attname)
+        if value is None:
+            return ""
+
+        if format_string is None:
+            return str(value)
+
+        return f"{value:{format_string}}"
+
     def deconstruct(self):
         """Return enough information to recreate the field as a 4-tuple.
 
-        * The name of the field on the model, if contribute_to_class() has
-          been run.
-        * The import path of the field, including the class:e.g.
-          django.db.models.IntegerField This should be the most portable
-          version, so less specific may be better.
+        * The name of the field on the model, if contribute_to_class() has been run.
+        * The import path of the field, including the class: e.g. django.db.models.IntegerField
+          This should be the most portable version, so less specific may be better.
         * A list of positional arguments.
         * A dict of keyword arguments.
         """
@@ -290,8 +352,8 @@ class BasePintField(PintFieldMixin, models.Field):
         kwargs["unit_choices"] = self.unit_choices
 
         if self.field_type == FieldType.DECIMAL_FIELD:
-            kwargs["max_digits"] = getattr(self, "max_digits", None)
-            kwargs["decimal_places"] = getattr(self, "decimal_places", None)
+            kwargs["rounding_method"] = getattr(self, "rounding_method", None)
+            kwargs["display_decimal_places"] = getattr(self, "display_decimal_places", None)
 
         return name, path, args, kwargs
 
@@ -408,8 +470,8 @@ class BasePintField(PintFieldMixin, models.Field):
             "label": self.name.capitalize() if self.name is not None else "Pint Field",
         }
         if self.field_type == FieldType.DECIMAL_FIELD:
-            defaults["max_digits"] = getattr(self, "max_digits", None)
-            defaults["decimal_places"] = getattr(self, "decimal_places", None)
+            defaults["rounding_method"] = getattr(self, "rounding_method", None)
+            defaults["display_decimal_places"] = getattr(self, "display_decimal_places", None)
         defaults.update(kwargs)
         return super().formfield(**defaults)
 
@@ -444,14 +506,23 @@ class DecimalPintField(BasePintField):
     def __init__(
         self,
         *args,
-        decimal_places: int,
-        max_digits: int,
+        max_digits: Optional[int] = None,
+        decimal_places: Optional[int] = None,
+        display_decimal_places: Optional[int] = None,
         rounding_method: Optional[str] = None,
         **kwargs,
     ):
         """Initialize a Decimal Pint field."""
-        self.decimal_places = decimal_places
-        self.max_digits = max_digits
+
+        # Deprecated options
+        if decimal_places is not None or max_digits is not None:
+            warnings.warn(
+                "max_digits and decimal_places are deprecated and will be removed in a future version. "
+                "Rely on Python's decimal precision instead.",
+                DeprecationWarning,
+            )
+
+        self.display_decimal_places = display_decimal_places
         self.rounding_method = rounding_method
 
         self._check_arguments()
@@ -460,20 +531,12 @@ class DecimalPintField(BasePintField):
 
     def _check_arguments(self):
         """Check if the arguments are valid."""
-        if not isinstance(self.max_digits, int) or not isinstance(self.decimal_places, int):
-            raise ValidationError(
-                "Invalid initialization for DecimalPintField. "
-                "max_digits and decimal_places must be provided as integers. "
-                f"{self.max_digits=}, {self.decimal_places=}."
-            )
 
-        if self.decimal_places < 0 or self.max_digits < 1 or self.decimal_places > self.max_digits:
+        # Check if display_decimal_places is greater than the current decimal precision
+        if self.display_decimal_places is not None and self.display_decimal_places > decimal.getcontext().prec:
             raise ValidationError(
-                "Invalid initialization for DecimalPintField. "
-                "max_digits and decimal_places need to positive, and max_digits "
-                "needs to be larger than decimal_places and at least 1. "
-                f"{self.max_digits=} and {self.decimal_places=} "
-                "are not valid parameters."
+                "display_decimal_places must be less than or equal to the current decimal precision: "
+                f"{decimal.getcontext().prec}"
             )
 
         if self.rounding_method is not None:
@@ -502,7 +565,7 @@ class DecimalPintField(BasePintField):
             return True
 
         # Get the current frame's locals to check context
-        import inspect  # Import here to avoid circular import issues
+        import inspect  # pylint: disable=C0415
 
         frame = inspect.currentframe()
         try:
@@ -524,15 +587,13 @@ class DecimalPintField(BasePintField):
     def validate(self, value, model_instance):
         """Validate the value and raise ValidationError if necessary.
 
-        Only validates decimal places and max_digits when the value is being set directly
+        Only validates decimal precision when the value is being set directly
         or through a form. Skips these validations during database operations.
         """
         super().validate(value, model_instance)
 
         if not self._should_skip_validation(value, model_instance):
-            validate_decimal_places(
-                value, self.decimal_places, self.max_digits, allow_rounding=self.rounding_method is not None
-            )
+            validate_decimal_precision(value, allow_rounding=self.rounding_method is not None)
 
     def get_db_prep_save(self, value, connection) -> Decimal:  # pylint: disable=W0621
         """Get value that shall be saved to database."""
@@ -549,10 +610,10 @@ class DecimalPintField(BasePintField):
         if self.rounding_method and value is not None:
             magnitude = value.magnitude
             if not isinstance(magnitude, Decimal):
-                magnitude = Decimal(str(magnitude))
-            value = self.ureg.Quantity(
-                magnitude.quantize(Decimal(10) ** -self.decimal_places, rounding=self.rounding_method), value.units
-            )
+                try:
+                    magnitude = Decimal(str(magnitude))
+                except (TypeError, ValueError) as e:
+                    raise ValidationError(str(e)) from e
         else:
             self.validate(value, None)
 
@@ -567,13 +628,58 @@ class DecimalPintField(BasePintField):
 
         if hasattr(value, "magnitude") and self.rounding_method:
             try:
-                magnitude = value.magnitude
-                if not isinstance(magnitude, Decimal):
-                    magnitude = Decimal(str(magnitude))
-                return self.ureg.Quantity(
-                    magnitude.quantize(Decimal(10) ** -self.decimal_places, rounding=self.rounding_method), value.units
-                )
+                _ = value.magnitude
             except (TypeError, ValueError) as e:
                 raise ValidationError(str(e)) from e
 
         return super().clean(value, model_instance)
+
+    def value_to_string(self, obj):
+        """Convert the value to a string, respecting display_decimal_places."""
+        value = self.value_from_object(obj)
+        if isinstance(value, PintFieldProxy):
+            return str(value)
+        return str(value) if value is not None else ""
+
+    def format_value(self, value):
+        """Format a value with the proper decimal places."""
+        if value is None:
+            return ""
+
+        if hasattr(value, "magnitude") and self.display_decimal_places is not None:
+            # Format the magnitude to the specified decimal places
+            magnitude = float(value.magnitude)
+            formatted_magnitude = f"{magnitude:.{self.display_decimal_places}f}"
+            # Remove trailing zeros after decimal point, but keep the decimal point if places > 0
+            if "." in formatted_magnitude:
+                formatted_magnitude = formatted_magnitude.rstrip("0").rstrip(".")
+            return f"{formatted_magnitude} {value.units}"
+
+        return str(value)
+
+    def get_prep_value(self, value):
+        """Converts Python objects to query values."""
+        if isinstance(value, PintFieldProxy):
+            value = value.value  # Unwrap proxy before preparing value
+        return super().get_prep_value(value)
+
+    def from_db_value(self, value, expression, connection):
+        """Convert database value to Python object and wrap in proxy."""
+        converted = super().from_db_value(value, expression, connection)
+        if converted is not None:
+            # Return the proxy-wrapped value
+            return PintFieldProxy(converted, PintFieldConverter(self))
+        return None
+
+    def to_python(self, value):
+        """Converts the value into the correct Python object."""
+        if isinstance(value, PintFieldProxy):
+            return value.value  # Unwrap proxy when converting to Python
+        return super().to_python(value)
+
+    def value_from_object(self, obj):
+        """Get the value from the object."""
+        value = super().value_from_object(obj)
+        if isinstance(value, PintFieldProxy):
+            return value.value  # Return unwrapped value for form fields
+        return value
