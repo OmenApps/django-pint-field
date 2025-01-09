@@ -1,8 +1,10 @@
 """Validation utilities for django-pint-field."""
 
 import logging
+from collections.abc import Iterable  # pylint: disable=E0611
 from decimal import Decimal
 from decimal import InvalidOperation
+from decimal import getcontext
 from typing import Any
 from typing import Optional
 from typing import Union
@@ -22,6 +24,49 @@ from .units import ureg
 logger = logging.getLogger(__name__)
 
 Quantity = ureg.Quantity
+
+
+def validate_unit_choices(
+    unit_choices: Optional[Iterable],
+    default_unit: str,
+) -> list[tuple[str, str]]:
+    """Validate and normalize unit choices.
+
+    Args:
+        unit_choices: An iterable that can be either:
+            - An iterable of strings representing unit names
+            - An iterable of 2-tuples/2-lists containing (display_name, unit_name)
+
+    Returns:
+        List of tuples (display_name, unit_name)
+
+    Raises:
+        ValidationError: If unit_choices format is invalid
+    """
+    if unit_choices is None:
+        return []
+
+    normalized = []
+    for choice in unit_choices:
+        if isinstance(choice, str):
+            # If it's a string, use it as both display name and value
+
+            # Check that the unit dimension matches the default unit
+            check_matching_unit_dimension(ureg, default_unit, [choice])
+            normalized.append((choice, choice))
+        elif isinstance(choice, (list, tuple)):
+            if len(choice) != 2:
+                raise ValidationError(f"Unit choices must be strings or 2-element iterables, got {choice}")
+            display_name, unit_name = choice
+            if not isinstance(display_name, str) or not isinstance(unit_name, str):
+                raise ValidationError(f"Both elements in unit choices tuple/list must be strings, got {choice}")
+            # Check that the unit dimension matches the default unit
+            check_matching_unit_dimension(ureg, default_unit, [unit_name])
+            normalized.append((display_name, unit_name))
+        else:
+            raise ValidationError(f"Unit choices must be strings or iterables of 2 strings, got {choice}")
+
+    return normalized
 
 
 def validate_dimensionality(value: Any, default_unit: str) -> None:
