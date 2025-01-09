@@ -97,19 +97,33 @@ def get_base_unit_magnitude(value: Quantity) -> Decimal:
     return Decimal(str(comparator_value.magnitude))
 
 
-def get_quantizing_string(max_digits: int = 1, decimal_places: int = 0) -> str:
-    """Improved quantizing string generation with validation."""
-    if max_digits < 1:
+def get_quantizing_string(*, max_digits: Optional[int] = None, decimal_places: int = 0) -> str:
+    """Quantizing string generation with leading digits and decimal places.
+
+    If max_digits is provided, the leading digits will be set to max_digits - decimal_places.
+
+    Examples:
+        get_full_quantizing_string(max_digits=1, decimal_places=0) -> "1."  # Rounds to integer
+        get_full_quantizing_string(max_digits=3, decimal_places=2) -> "1.11"  # Preserve 3 digits and 2 decimal places
+        get_full_quantizing_string(max_digits=5, decimal_places=3) -> "11.111"  # Preserve 5 digits and 3 decimal places
+        get_full_quantizing_string(decimal_places=3) -> ".111"  # Preserve 3 decimal places
+    """
+    if max_digits and max_digits < 1:
         raise ValidationError("max_digits must be greater than 0")
     if decimal_places < 0:
         raise ValidationError("decimal_places must be non-negative")
-    if decimal_places > max_digits:
+    if max_digits and decimal_places > max_digits:
         raise ValidationError("decimal_places cannot be greater than max_digits")
 
-    leading_digits = max_digits - decimal_places
+    if max_digits:
+        leading_digits = max_digits - decimal_places
+
+        if decimal_places == 0:
+            return f"{'1' * leading_digits}."
+        if max_digits == decimal_places:
+            return f"0.{'1' * decimal_places}"
+        return f"{'1' * leading_digits}.{'1' * decimal_places}"
 
     if decimal_places == 0:
-        return "1" * leading_digits
-    if max_digits == decimal_places:
-        return f"0.{'1' * decimal_places}"
-    return f"{'1' * leading_digits}.{'1' * decimal_places}"
+        return "1."
+    return f".{'1' * decimal_places}"
