@@ -12,7 +12,6 @@ from django.core import validators
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from pint import DimensionalityError
-from pint import Quantity as BaseQuantity
 from pint import UndefinedUnitError
 from pint import UnitRegistry
 
@@ -70,7 +69,7 @@ def validate_unit_choices(
 
 def validate_dimensionality(value: Any, default_unit: str) -> None:
     """Validate that the value has the correct dimensionality."""
-    if not isinstance(value, BaseQuantity):
+    if not isinstance(value, Quantity):
         return
 
     try:
@@ -100,7 +99,7 @@ def validate_required_value(value: Any, required: bool = True, blank: bool = Fal
 
 
 def validate_decimal_precision(
-    value: BaseQuantity | Decimal,
+    value: Quantity | Decimal,
     allow_rounding: bool = False,
 ) -> None:
     """Validate decimal precision for a value."""
@@ -123,9 +122,9 @@ def validate_decimal_precision(
 
 
 def validate_value_range(
-    value: BaseQuantity | int | float | Decimal,
-    min_value: Optional[BaseQuantity | int | float | Decimal] = None,
-    max_value: Optional[BaseQuantity | int | float | Decimal] = None,
+    value: Quantity | int | float | Decimal,
+    min_value: Optional[Quantity | int | float | Decimal] = None,
+    max_value: Optional[Quantity | int | float | Decimal] = None,
 ) -> None:
     """Validate that a value falls within the specified range.
 
@@ -141,11 +140,11 @@ def validate_value_range(
         return
 
     # Handle Quantity objects
-    if isinstance(value, BaseQuantity):
+    if isinstance(value, Quantity):
         # Validate that min/max values are also Quantities if provided
-        if min_value is not None and not isinstance(min_value, BaseQuantity):
+        if min_value is not None and not isinstance(min_value, Quantity):
             raise ValidationError(_("Min value must be a Quantity when comparing with Quantity values."))
-        if max_value is not None and not isinstance(max_value, BaseQuantity):
+        if max_value is not None and not isinstance(max_value, Quantity):
             raise ValidationError(_("Max value must be a Quantity when comparing with Quantity values."))
 
         # Convert all values to base units for comparison
@@ -183,7 +182,7 @@ def validate_value_range(
             raise ValidationError(_("Value must be a number."), code="invalid") from e
 
         if min_value is not None:
-            if isinstance(min_value, BaseQuantity):
+            if isinstance(min_value, Quantity):
                 raise ValidationError(_("Cannot compare numeric value with Quantity min_value."))
             if float_val < float(min_value):
                 raise ValidationError(
@@ -193,7 +192,7 @@ def validate_value_range(
                 )
 
         if max_value is not None:
-            if isinstance(max_value, BaseQuantity):
+            if isinstance(max_value, Quantity):
                 raise ValidationError(_("Cannot compare numeric value with Quantity max_value."))
             if float_val > float(max_value):
                 raise ValidationError(
@@ -217,7 +216,7 @@ class QuantityConverter:
         self.field_type = field_type
         self.ureg = unit_registry or UnitRegistry()
 
-    def convert(self, value: Any) -> Optional[BaseQuantity]:
+    def convert(self, value: Any) -> Optional[Quantity]:
         """Main entry point for converting values to quantities."""
         if value is None or value in validators.EMPTY_VALUES:
             return None
@@ -227,7 +226,7 @@ class QuantityConverter:
             type_handlers = {
                 str: self._handle_string,
                 (int, float, Decimal): self._handle_numeric,
-                BaseQuantity: self._handle_base_quantity,
+                Quantity: self._handle_base_quantity,
                 (list, tuple): self._handle_sequence,
                 dict: self._handle_dictionary,
             }
@@ -255,12 +254,12 @@ class QuantityConverter:
         except (ValueError, TypeError, InvalidOperation):
             return False
 
-    def _create_quantity(self, magnitude: Decimal | int, units: str) -> BaseQuantity:
+    def _create_quantity(self, magnitude: Decimal | int, units: str) -> Quantity:
         """Create a Quantity object with validation."""
         check_matching_unit_dimension(self.ureg, self.default_unit, [str(units)])
         return self.ureg.Quantity(magnitude, units)
 
-    def _handle_string(self, value: str) -> BaseQuantity:
+    def _handle_string(self, value: str) -> Quantity:
         """Handle string input types."""
         if value.startswith("(") and value.endswith(")"):
             return self._handle_composite_string(value)
@@ -274,7 +273,7 @@ class QuantityConverter:
         except UndefinedUnitError as e:
             raise ValidationError(_("Invalid quantity string."), code="invalid") from e
 
-    def _handle_composite_string(self, value: str) -> BaseQuantity:
+    def _handle_composite_string(self, value: str) -> Quantity:
         """Handle composite string format '(comparator,magnitude,units)'."""
         try:
             _comparator, magnitude, units = value.strip("()").split(",")
@@ -283,24 +282,30 @@ class QuantityConverter:
         except ValueError as e:
             raise ValidationError(_("Invalid composite string format."), code="invalid") from e
 
-    def _handle_numeric(self, value: int | float | Decimal) -> BaseQuantity:
+    def _handle_numeric(self, value: int | float | Decimal) -> Quantity:
         """Handle numeric input types."""
         magnitude = self._convert_magnitude(value)
         return self.ureg.Quantity(magnitude, self.default_unit)
 
-    def _handle_base_quantity(self, value: BaseQuantity) -> BaseQuantity:
-        """Handle BaseQuantity input type."""
+    def _handle_base_quantity(self, value: Quantity) -> Quantity:
+        """Handle Quantity input type."""
         if not isinstance(value, self.ureg.Quantity):
             magnitude = self._convert_magnitude(value.magnitude)
             return self._create_quantity(magnitude, str(value.units))
         return value
 
-    def _handle_sequence(self, value: list | tuple) -> BaseQuantity:
+    def _handle_sequence(self, value: list | tuple) -> Quantity:
         """Handle sequence (list/tuple) input types."""
         if len(value) == 2:
             magnitude, units = value
+            # If units is a tuple/list, extract the Pint unit string
+            if isinstance(units, (list, tuple)) and len(units) == 2:
+                units = units[1]
         elif len(value) == 3:
             _, magnitude, units = value
+            # If units is a tuple/list, extract the Pint unit string
+            if isinstance(units, (list, tuple)) and len(units) == 2:
+                units = units[1]
         else:
             raise ValidationError(_("Invalid sequence length for quantity."), code="invalid")
 
@@ -308,9 +313,9 @@ class QuantityConverter:
             raise ValidationError(_("Magnitude must be a number."), code="invalid")
 
         magnitude = self._convert_magnitude(magnitude)
-        return self._create_quantity(magnitude, units)
+        return self._create_quantity(magnitude, str(units))
 
-    def _handle_dictionary(self, value: dict) -> BaseQuantity:
+    def _handle_dictionary(self, value: dict) -> Quantity:
         """Handle dictionary input type."""
         if "magnitude" not in value or "units" not in value:
             raise ValidationError(_("Dictionary must contain 'magnitude' and 'units' keys."), code="invalid")

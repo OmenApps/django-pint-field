@@ -56,15 +56,15 @@ class PintFieldWidget(MultiWidget):
         self.default_unit = self._default_unit_value
 
         unit_choices = unit_choices or [(self._default_unit_display, self._default_unit_value)]
-        if not any(value == self._default_unit_value for _, value in unit_choices):
+        if not any(value[1] == self._default_unit_value for value in unit_choices):
             unit_choices.insert(0, (self._default_unit_display, self._default_unit_value))
 
         # Store the original choices for reference
         self.original_choices = unit_choices
 
         # Create choices for the Select widget
-        # The value (second element) needs to be the unit name that Pint will use
-        self.choices = [(str(self.ureg(value).units), display) for display, value in unit_choices]
+        # The value needs to be the Pint unit string, display name is what user sees
+        self.choices = [(str(self.ureg(choice[1]).units), choice[0]) for choice in unit_choices]
 
         attrs = attrs or {}
         if "step" not in attrs:

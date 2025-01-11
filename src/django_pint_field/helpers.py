@@ -32,8 +32,32 @@ def get_pint_unit(registry, unit_name: str) -> Optional[object]:
     return unit
 
 
+def get_unit_string(unit_value):
+    """Extract the actual unit string from various possible formats.
+
+    Args:
+        unit_value: Can be:
+            - A string representing the unit
+            - A Unit object
+            - A tuple/list of (display_name, unit_str)
+            - A compound unit string (e.g. "mol/L")
+
+    Returns:
+        str: The Pint unit string
+    """
+    if isinstance(unit_value, (list, tuple)):
+        if len(unit_value) != 2:
+            raise ValidationError(f"Unit choices must be 2-element lists/tuples, got {unit_value}")
+        # Return the second element which should be the Pint unit string
+        return str(unit_value[1])
+    return str(unit_value)
+
+
 def check_matching_unit_dimension(
-    registry: Any, default_unit: str | Unit, units_to_check: list[str | Unit], raise_exception: bool = True
+    registry: Any,
+    default_unit: str | Unit | tuple | list,
+    units_to_check: list[str | Unit | tuple | list],
+    raise_exception: bool = True,
 ) -> None:
     """Check that unit choices match dimension of default unit."""
     if not units_to_check:
@@ -43,19 +67,26 @@ def check_matching_unit_dimension(
         registry.formatter.default_format = "D"
 
     try:
-        default_unit = getattr(registry, str(default_unit))
+        # Get the actual unit string for the default unit
+        default_unit_str = get_unit_string(default_unit)
+        default_unit_obj = getattr(registry, default_unit_str)
     except AttributeError as e:
         if raise_exception:
-            raise ValidationError(f"Invalid default unit: {default_unit}") from e
+            raise ValidationError(f"Invalid default unit: {default_unit_str}") from e
+        return
 
     for unit in units_to_check:
         try:
-            unit_obj = getattr(registry, str(unit))
-            if unit_obj.dimensionality != default_unit.dimensionality:
-                raise ValidationError(f"Unit {unit} has incompatible dimensionality with default unit {default_unit}.")
+            unit_str = get_unit_string(unit)
+            unit_obj = getattr(registry, unit_str)
+            if unit_obj.dimensionality != default_unit_obj.dimensionality:
+                if raise_exception:
+                    raise ValidationError(
+                        f"Unit {unit_str} has incompatible dimensionality with default unit {default_unit_str}."
+                    )
         except AttributeError as e:
             if raise_exception:
-                raise ValidationError(f"Invalid unit: {unit}") from e
+                raise ValidationError(f"Invalid unit: {unit_str}") from e
 
 
 def is_decimal_or_int(value):
