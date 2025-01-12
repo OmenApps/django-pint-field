@@ -663,13 +663,22 @@ class DecimalPintField(BasePintField):
             value = value.value  # Unwrap proxy before preparing value
         return super().get_prep_value(value)
 
-    def from_db_value(self, value, expression, connection):
-        """Convert database value to Python object and wrap in proxy."""
-        converted = super().from_db_value(value, expression, connection)
-        if converted is not None:
-            # Return the proxy-wrapped value
-            return PintFieldProxy(converted, PintFieldConverter(self))
-        return None
+    def from_db_value(self, value, expression, connection):  # pylint: disable=W0613
+        """Convert database value to Python object."""
+        if value is None:
+            return None
+
+        converter = QuantityConverter(
+            default_unit=self.default_unit,
+            field_type="decimal",
+            unit_registry=self.ureg,
+        )
+        converted = converter.convert(value)
+
+        # Only wrap in proxy for form display, not for database operations
+        if hasattr(expression, "_constructor"):
+            return converted
+        return PintFieldProxy(converted, PintFieldConverter(self)) if converted is not None else None
 
     def to_python(self, value):
         """Converts the value into the correct Python object."""
