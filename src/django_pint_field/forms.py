@@ -269,13 +269,13 @@ class DecimalPintFormField(BasePintFormField):
 
         if display_decimal_places and (not isinstance(display_decimal_places, int) or display_decimal_places < 0):
             raise ValidationError("If provided, display_decimal_places must be a positive integer or zero.")
-        self.display_decimal_places = display_decimal_places or 0
+        self.display_decimal_places = display_decimal_places
         self.rounding_method = rounding_method
 
         super().__init__(**kwargs)
 
-        # Update widget attributes to control displayed precision
-        if isinstance(self.widget, PintFieldWidget):
+        # Update widget attributes to control displayed precision if necessary
+        if isinstance(self.widget, PintFieldWidget) and self.display_decimal_places is not None:
             self.widget.widgets[0].attrs["step"] = str(10**-self.display_decimal_places)
 
     def prepare_value(self, value):
@@ -284,9 +284,15 @@ class DecimalPintFormField(BasePintFormField):
 
         if value and value[0] is not None and self.display_decimal_places is not None:
             try:
-                decimal_value = Decimal(str(value[0]))
-                quantizing_string = get_quantizing_string(decimal_places=self.display_decimal_places)
-                formatted_value = decimal_value.quantize(quantizing_string)
+                decimal_value = Decimal(str(value[0]))  # Convert to Decimal for quantizing
+                if self.display_decimal_places is not None:
+                    # Quantize the value to the display_decimal_places
+                    quantizing_string = get_quantizing_string(decimal_places=self.display_decimal_places)
+                    formatted_value = decimal_value.quantize(Decimal(quantizing_string))
+                else:
+                    # Normalize the value to remove trailing zeros
+                    formatted_value = decimal_value.normalize()
+                    self.display_decimal_places = formatted_value.as_tuple().exponent
                 return [formatted_value, value[1]]
             except (TypeError, ValueError, InvalidOperation):
                 pass
