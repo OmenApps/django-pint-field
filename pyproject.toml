@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-pint-field"
-version = "2025.1.1a2"
+version = "2025.1.1a4"
 description = "Unit Conversion fields for Django and Postgres"
 authors = [{ name = "Jack Linke", email = "jacklinke@gmail.com" }]
 license = { text = "MIT" }
@@ -46,6 +46,7 @@ dev-dependencies = [
     "crispy-bootstrap5~=2024.10",
     "darglint>=1.8.1",
     "django-cachalot>=2.6",
+    "django-cacheops>=7.1",
     "django-crispy-forms~=2.3",
     "django-extensions>=3.2",
     "django-filter>=24",

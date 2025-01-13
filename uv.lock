@@ -1,9 +1,6 @@
 version = 1
 requires-python = ">=3.10, <4.0"
 
-[options]
-prerelease-mode = "allow"
-
 [[package]]
 name = "alabaster"
 version = "1.0.0"
@@ -506,6 +503,20 @@ wheels = [
 ]
 
 [[package]]
+name = "django-cacheops"
+version = "7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+    { name = "funcy" },
+    { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/77/b6/b75807d706f7f1fca659627c2da21b70941c1f832a974fa922c05ff5e659/django_cacheops-7.1.tar.gz", hash = "sha256:ec079abb968557321ee208c6274820231820f98ca6377dda971f04981bc2ab52", size = 72352 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1f/e8/4de8b0fecffdc1b30fc23d5d157c217f094c53614247bb1f68db03f35ef8/django_cacheops-7.1-py2.py3-none-any.whl", hash = "sha256:7d5e0f42e41ab4a8052130d33d9f3b26c47bef944ef2df0a64db92d70e51d87e", size = 44881 },
+]
+
+[[package]]
 name = "django-crispy-forms"
 version = "2.3"
 source = { registry = "https://pypi.org/simple" }
@@ -556,7 +567,7 @@ wheels = [
 
 [[package]]
 name = "django-pint-field"
-version = "2025.1.1a2"
+version = "2025.1.1a4"
 source = { editable = "." }
 dependencies = [
     { name = "django" },
@@ -571,6 +582,7 @@ dev = [
     { name = "crispy-bootstrap5" },
     { name = "darglint" },
     { name = "django-cachalot" },
+    { name = "django-cacheops" },
     { name = "django-crispy-forms" },
     { name = "django-extensions" },
     { name = "django-filter" },
@@ -625,6 +637,7 @@ dev = [
     { name = "crispy-bootstrap5", specifier = "~=2024.10" },
     { name = "darglint", specifier = ">=1.8.1" },
     { name = "django-cachalot", specifier = ">=2.6" },
+    { name = "django-cacheops", specifier = ">=7.1" },
     { name = "django-crispy-forms", specifier = "~=2.3" },
     { name = "django-extensions", specifier = ">=3.2" },
     { name = "django-filter", specifier = ">=24" },
@@ -853,6 +866,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/82/99/b4de7e39e8eaf8207ba1a8fa2241dd98b2ba72ae6e16960d8351736d8702/flexparser-0.4.tar.gz", hash = "sha256:266d98905595be2ccc5da964fe0a2c3526fbbffdc45b65b3146d75db992ef6b2", size = 31799 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fe/5e/3be305568fe5f34448807976dc82fc151d76c3e0e03958f34770286278c1/flexparser-0.4-py3-none-any.whl", hash = "sha256:3738b456192dcb3e15620f324c447721023c0293f6af9955b481e91d00179846", size = 27625 },
+]
+
+[[package]]
+name = "funcy"
+version = "2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/b8/c6081521ff70afdff55cd9512b2220bbf4fa88804dae51d1b57b4b58ef32/funcy-2.0.tar.gz", hash = "sha256:3963315d59d41c6f30c04bc910e10ab50a3ac4a225868bfa96feed133df075cb", size = 537931 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/08/c2409cb01d5368dcfedcbaffa7d044cc8957d57a9d0855244a5eb4709d30/funcy-2.0-py2.py3-none-any.whl", hash = "sha256:53df23c8bb1651b12f095df764bfb057935d49537a56de211b098f4c79614bb0", size = 30891 },
 ]
 
 [[package]]
@@ -1197,14 +1219,14 @@ wheels = [
 
 [[package]]
 name = "marshmallow"
-version = "3.25.0"
+version = "3.25.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/5c/cbfa41491d6c83b36471f2a2f75602349d20a8f88afd94f83c1e68bbc298/marshmallow-3.25.0.tar.gz", hash = "sha256:5ba94a4eb68894ad6761a505eb225daf7e5cb7b4c32af62d4a45e9d42665bc31", size = 176751 }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/85/43b8e95251312e8d0d3389263e87e368a5a015db475e140d5dd8cb8dcb47/marshmallow-3.25.1.tar.gz", hash = "sha256:f4debda3bb11153d81ac34b0d582bf23053055ee11e791b54b4b35493468040a", size = 217295 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/26/b347619b719d4c048e038929769f8f6b28c6d930149b40d950bbdde31d48/marshmallow-3.25.0-py3-none-any.whl", hash = "sha256:50894cd57c6b097a6c6ed2bf216af47d10146990a54db52d03e32edb0448c905", size = 49480 },
+    { url = "https://files.pythonhosted.org/packages/8e/25/5b300f0400078d9783fbe44d30fedd849a130fc3aff01f18278c12342b6f/marshmallow-3.25.1-py3-none-any.whl", hash = "sha256:ec5d00d873ce473b7f2ffcb7104286a376c354cab0c2fa12f5573dab03e87210", size = 49624 },
 ]
 
 [[package]]
