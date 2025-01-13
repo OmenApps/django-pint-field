@@ -1,0 +1,65 @@
+{% comment %}
+Usage:
+    {% include "laboratory/components/dimensional_stability_gauge.html" with
+        stability=object.dimensional_stability
+        size="sm|md|lg"
+        show_details=True|False
+    %}
+{% endcomment %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+<div class="dimensional-gauge {% if size %}gauge-{{ size }}{% endif %}">
+    <div class="gauge-container">
+        <svg viewBox="0 0 120 85" class="gauge">
+            <!-- Background track -->
+            <path class="gauge-track"
+                  d="M10 75 A50 50 0 0 1 110 75"
+                  stroke="#333"
+                  stroke-width="10"
+                  fill="none"/>
+
+            {% with stability_pct=stability|default:0|floatformat:1 %}
+                <!-- Calculate the arc length based on percentage -->
+                {% with path_length=157 %}
+                    {% with dash_offset=path_length|multiply:stability_pct|divide:100 %}
+                        {% with final_offset=path_length|subtract:dash_offset %}
+                            <!-- Colored arc showing the value -->
+                            <path class="gauge-value"
+                                  d="M10 75 A50 50 0 0 1 110 75"
+                                  stroke="{% if stability_pct|floatformat > '75' %}var(--sci-fi-blue){% elif stability_pct|floatformat > '50' %}var(--warning-orange){% else %}var(--danger-red){% endif %}"
+                                  stroke-width="10"
+                                  fill="none"
+                                  style="stroke-dasharray: {{ path_length }}; stroke-dashoffset: {{ final_offset }}"/>
+                        {% endwith %}
+                    {% endwith %}
+                {% endwith %}
+
+                <!-- Value text -->
+                <text x="60" y="65"
+                      class="gauge-text value"
+                      text-anchor="middle">
+                    {{ stability_pct }}%
+                </text>
+            {% endwith %}
+        </svg>
+
+        {% if show_details %}
+            <div class="gauge-labels">
+                <div class="gauge-label">
+                    Dimensional Stability
+                </div>
+                <div class="gauge-status">
+                    {% if stability|default:0 > 75 %}
+                        <span class="text-success">Stable</span>
+                    {% elif stability|default:0 > 50 %}
+                        <span class="text-warning">Fluctuating</span>
+                    {% else %}
+                        <span class="text-danger">Critical</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>

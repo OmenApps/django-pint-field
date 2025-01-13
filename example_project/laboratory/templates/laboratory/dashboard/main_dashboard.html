@@ -1,0 +1,316 @@
+{% extends "laboratory/base.html" %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}Command Center - F.L.M.N.{% endblock title %}
+
+{% block page_title %}F.L.M.N. Command Center{% endblock page_title %}
+
+{% block content %}
+    <!-- Critical Alerts Section -->
+    {% if critical_alerts %}
+        <div class="card mb-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Critical Alerts
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for alert in critical_alerts %}
+                    <div class="alert alert-{{ alert.severity }} d-flex align-items-center">
+                        {% if alert.type == 'stability' %}
+                            <i class="fas fa-radiation me-2"></i>
+                        {% elif alert.type == 'warping' %}
+                            <i class="fas fa-atom me-2"></i>
+                        {% elif alert.type == 'rift' %}
+                            <i class="fas fa-portal me-2"></i>
+                        {% endif %}
+                        <div>
+                            {{ alert.message }}
+                            <br>
+                            <small>
+                                <a href="{% url 'laboratory:laboratory_detail' alert.lab.pk %}"
+                                   class="alert-link">View Laboratory</a>
+                            </small>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Quick Stats Grid -->
+    <div class="row mb-4">
+        <!-- Universe Stats -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-globe me-2"></i>Monitored Universes
+                    </h6>
+                    <h2 class="mb-0">{{ universe_stats.total }}</h2>
+                    <small class="text-muted">
+                        Avg {{ universe_stats.labs_per_universe|floatformat:1 }} labs/universe
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Laboratory Stats -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-flask me-2"></i>Active Laboratories
+                    </h6>
+                    <h2 class="mb-0">{{ lab_stats.total }}</h2>
+                    <small class="text-muted">
+                        {{ lab_stats.high_risk }} high risk, {{ lab_stats.evil_labs }} evil
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dimensional Stability -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-balance-scale me-2"></i>Avg Stability
+                    </h6>
+                    {% include "laboratory/components/dimensional_stability_gauge.html" with stability=lab_stats.avg_stability size="sm" show_details=True %}
+                    {% if lab_stats.critical_stability > 0 %}
+                        <div class="text-danger mt-2">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            {{ lab_stats.critical_stability }} labs in critical condition
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Incidents -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-exclamation-circle me-2"></i>Recent Incidents
+                    </h6>
+                    <h2 class="mb-0">{{ incident_stats.last_24h }}</h2>
+                    <small class="text-muted">
+                        {{ incident_stats.severe }} severe in last 24h
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Metrics -->
+    <div class="row mb-4">
+        <!-- Device Metrics -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-microchip me-2"></i>Experimental Devices
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-4 mb-3">
+                            <label class="text-muted">Active Devices</label>
+                            <h3>{{ device_stats.total }}</h3>
+                        </div>
+                        <div class="col-sm-4 mb-3">
+                            <label class="text-muted">Total Power Output</label>
+                            <div>
+                                {% if device_stats.total_power %}
+                                    {% include "laboratory/components/measurement_display.html" with value=device_stats.total_power.quantity show_conversions=False %}
+                                {% else %}
+                                    <span class="text-muted">No data</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-4 mb-3">
+                            <label class="text-muted">Avg Quantum Uncertainty</label>
+                            <div>
+                                {% if device_stats.avg_uncertainty %}
+                                    {% include "laboratory/components/measurement_display.html" with value=device_stats.avg_uncertainty.quantity show_conversions=False %}
+                                {% else %}
+                                    <span class="text-muted">No data</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Substance Metrics -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-vial me-2"></i>Anomalous Substances
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-4 mb-3">
+                            <label class="text-muted">Stored Substances</label>
+                            <h3>{{ substance_stats.total }}</h3>
+                        </div>
+                        <div class="col-sm-4 mb-3">
+                            <label class="text-muted">Avg Temperature</label>
+                            <div>
+                                {% if substance_stats.avg_temp %}
+                                    {% include "laboratory/components/measurement_display.html" with value=substance_stats.avg_temp.quantity show_conversions=False %}
+                                {% else %}
+                                    <span class="text-muted">No data</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-4 mb-3">
+                            <label class="text-muted">Total Critical Mass</label>
+                            <div>
+                                {% if substance_stats.total_mass %}
+                                    {% include "laboratory/components/measurement_display.html" with value=substance_stats.total_mass.quantity show_conversions=False %}
+                                {% else %}
+                                    <span class="text-muted">No data</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <!-- Recent Incidents -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Recent Incidents
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Laboratory</th>
+                                    <th>Severity</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for incident in recent_incidents %}
+                                    <tr>
+                                        <td>{{ incident.timestamp|date:"H:i" }}</td>
+                                        <td>{{ incident.laboratory.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/danger_level_badge.html" with level=incident.severity show_icon=False size="sm" %}
+                                        </td>
+                                        <td>{{ incident.description|truncatechars:50 }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">
+                                            No recent incidents reported
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Dimensional Rifts -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-portal me-2"></i>Active Dimensional Rifts
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <label class="text-muted">Total Active</label>
+                            <h3 class="mb-0">{{ rift_stats.total_active }}</h3>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="text-muted">Avg Diameter</label>
+                            <div>
+                                {% if rift_stats.avg_diameter %}
+                                    {% include "laboratory/components/measurement_display.html" with value=rift_stats.avg_diameter.quantity show_conversions=False %}
+                                {% else %}
+                                    <span class="text-muted">No data</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="text-muted">Total Energy</label>
+                            <div>
+                                {% if rift_stats.total_energy %}
+                                    {% include "laboratory/components/measurement_display.html" with value=rift_stats.total_energy.quantity show_conversions=False %}
+                                {% else %}
+                                    <span class="text-muted">No data</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Detected</th>
+                                    <th>Laboratory</th>
+                                    <th>Diameter</th>
+                                    <th>Energy Output</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rift in active_rifts %}
+                                    <tr>
+                                        <td>{{ rift.detected_at|date:"H:i" }}</td>
+                                        <td>{{ rift.laboratory.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=rift.diameter.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=rift.energy_output.quantity show_conversions=False compact=True %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">
+                                            No active dimensional rifts detected
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh the dashboard every 30 seconds
+    setTimeout(function() {
+        window.location.reload();
+    }, 30000);
+</script>
+{% endblock extra_js %}

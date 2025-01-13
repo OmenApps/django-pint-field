@@ -1,0 +1,62 @@
+{% extends "laboratory/base.html" %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}Fictional Universes - F.L.M.N.{% endblock title %}
+
+{% block page_title %}Fictional Universes{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'laboratory:universe_create' %}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-plus"></i> New Universe
+        </a>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    <div class="row">
+        {% for universe in universes %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-globe me-2"></i>
+                            {{ universe.name }}
+                        </h5>
+                        <span class="badge bg-info">
+                            {{ lab_counts|get_item:universe.id }} Lab{{ lab_counts|get_item:universe.id|pluralize }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ universe.description|truncatewords:50 }}</p>
+                        {% if universe.year_introduced %}
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar-alt me-1"></i>
+                                    Introduced: {{ universe.year_introduced }}
+                                </small>
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer text-end">
+                        <a href="{% url 'laboratory:universe_update' universe.pk %}" class="btn btn-sm btn-outline-primary me-2">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="{% url 'laboratory:universe_detail' universe.pk %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-search"></i> View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No universes have been discovered yet. Create one to begin monitoring its laboratories!
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock content %}

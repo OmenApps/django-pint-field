@@ -11,7 +11,10 @@ from django_pint_field.models import DecimalPintField
 from django_pint_field.models import IntegerPintField
 
 
-unit_choices_list = ["kilogram", "milligram", "pounds"]
+unit_choices_list = ["kilogram", "milligram", "pound"]
+unit_choices_tuple = ("kilogram", "milligram", "pound")
+unit_choices_nested_list = [["kilogram", "kilogram"], ["milligram", "milligram"], ["pound", "pound"]]
+unit_choices_nested_tuple = (("kilogram", "kilogram"), ("milligram", "milligram"), ("pound", "pound"))
 
 
 class FieldSaveModel(models.Model):
@@ -36,12 +39,18 @@ class IntegerPintFieldSaveModel(FieldSaveModel):
 
     weight = IntegerPintField(default_unit="gram")
 
+    def __str__(self):
+        return self.get_weight_display("~#P")
+
 
 class IntegerPintFieldSaveWithIndexModel(FieldSaveModel):
     """Model for testing IntegerPintField."""
 
     weight = IntegerPintField(default_unit="gram")
     weight_two = IntegerPintField(default_unit="kilogram")
+
+    def __str__(self):
+        return self.get_weight_display("~#P")
 
     class Meta:
         """Meta class for IntegerPintFieldSaveWithIndexModel."""
@@ -57,11 +66,17 @@ class BigIntegerPintFieldSaveModel(FieldSaveModel):
 
     weight = BigIntegerPintField(default_unit="gram")
 
+    def __str__(self):
+        return self.get_weight_display("~#P")
+
 
 class DecimalPintFieldSaveModel(FieldSaveModel):
     """Model for testing DecimalPintField."""
 
-    weight = DecimalPintField(default_unit="gram", max_digits=5, decimal_places=2)
+    weight = DecimalPintField(default_unit="gram", display_decimal_places=2)
+
+    def __str__(self):
+        return self.get_weight_display("~#P")
 
 
 class HayBale(FieldSaveModel):
@@ -70,7 +85,10 @@ class HayBale(FieldSaveModel):
     name = models.CharField(max_length=20)
     weight_int = IntegerPintField(default_unit="gram", blank=True, null=True)
     weight_bigint = BigIntegerPintField(default_unit="gram", blank=True, null=True)
-    weight_decimal = DecimalPintField(default_unit="gram", blank=True, null=True, max_digits=10, decimal_places=2)
+    weight_decimal = DecimalPintField(default_unit="gram", blank=True, null=True, display_decimal_places=2)
+
+    def __str__(self):
+        return self.get_weight_int_display("~#P")
 
 
 class EmptyHayBaleInteger(FieldSaveModel):
@@ -91,7 +109,7 @@ class EmptyHayBaleDecimal(FieldSaveModel):
     """Model for testing DecimalPintField."""
 
     name = models.CharField(max_length=20)
-    weight = DecimalPintField(default_unit="gram", null=True, max_digits=10, decimal_places=2)
+    weight = DecimalPintField(default_unit="gram", null=True, display_decimal_places=2)
     # Value to compare with default implementation
     compare = DecimalField(max_digits=10, decimal_places=2, null=True)
 
@@ -102,7 +120,7 @@ class CustomUregHayBale(models.Model):
     # Custom is defined in settings in conftest.py
     custom_int = IntegerPintField(default_unit="custom")
     custom_bigint = BigIntegerPintField(default_unit="custom")
-    custom_decimal = DecimalPintField(default_unit="custom", max_digits=10, decimal_places=2)
+    custom_decimal = DecimalPintField(default_unit="custom", display_decimal_places=2)
 
 
 class ChoicesDefinedInModel(models.Model):
@@ -113,8 +131,7 @@ class ChoicesDefinedInModel(models.Model):
     weight_decimal = DecimalPintField(
         default_unit="kilogram",
         unit_choices=unit_choices_list,
-        max_digits=10,
-        decimal_places=2,
+        display_decimal_places=2,
     )
 
 
@@ -125,26 +142,44 @@ class DefaultsInModel(models.Model):
     weight_int = IntegerPintField(default_unit="gram", blank=True, null=True, default=1)
     weight_bigint = BigIntegerPintField(default_unit="gram", blank=True, null=True, default=1)
     weight_decimal = DecimalPintField(
-        default_unit="gram", blank=True, null=True, max_digits=10, decimal_places=2, default=Decimal("1.0")
+        default_unit="gram", blank=True, null=True, display_decimal_places=2, default=Decimal("1.0")
     )
 
 
-class IntegerPintFieldCachedModel(FieldSaveModel):
-    """Model for testing IntegerPintField with cached value."""
+class IntegerPintFieldCachalotModel(FieldSaveModel):
+    """Model for testing IntegerPintField with value cached by django-cachalot."""
 
     weight = IntegerPintField(default_unit="gram")
 
 
-class BigIntegerPintFieldCachedModel(FieldSaveModel):
-    """Model for testing BigIntegerPintField with cached value."""
+class BigIntegerPintFieldCachalotModel(FieldSaveModel):
+    """Model for testing BigIntegerPintField with value cached by django-cachalot."""
 
     weight = BigIntegerPintField(default_unit="gram")
 
 
-class DecimalPintFieldCachedModel(FieldSaveModel):
-    """Model for testing DecimalPintField with cached value."""
+class DecimalPintFieldCachalotModel(FieldSaveModel):
+    """Model for testing DecimalPintField with value cached by django-cachalot."""
 
-    weight = DecimalPintField(default_unit="gram", max_digits=5, decimal_places=2)
+    weight = DecimalPintField(default_unit="gram", display_decimal_places=2)
+
+
+class IntegerPintFieldCachopsModel(FieldSaveModel):
+    """Model for testing IntegerPintField with value cached by django-cachops."""
+
+    weight = IntegerPintField(default_unit="gram")
+
+
+class BigIntegerPintFieldCacheopsModel(FieldSaveModel):
+    """Model for testing BigIntegerPintField with value cached by django-cacheops."""
+
+    weight = BigIntegerPintField(default_unit="gram")
+
+
+class DecimalPintFieldCacheopsModel(FieldSaveModel):
+    """Model for testing DecimalPintField with value cached by django-cacheops."""
+
+    weight = DecimalPintField(default_unit="gram", display_decimal_places=2)
 
 
 class DjangoPintFieldWidgetComparisonModel(models.Model):
@@ -166,8 +201,7 @@ class DjangoPintFieldWidgetComparisonModel(models.Model):
         default_unit="gram",
         blank=True,
         null=True,
-        max_digits=10,
-        decimal_places=2,
+        display_decimal_places=2,
         unit_choices=unit_choices_list,
     )
     tabled_weight_int = IntegerPintField(
@@ -186,7 +220,25 @@ class DjangoPintFieldWidgetComparisonModel(models.Model):
         default_unit="gram",
         blank=True,
         null=True,
-        max_digits=10,
-        decimal_places=2,
+        display_decimal_places=2,
         unit_choices=unit_choices_list,
     )
+
+
+class DjangoPintFieldUnitChoicesComparrisonModel(models.Model):
+    """Model for testing unit_choices as list/tuple/nested list/nested tuple for each field type."""
+
+    weight_int_list = IntegerPintField(default_unit="gram", unit_choices=unit_choices_list)
+    weight_int_tuple = IntegerPintField(default_unit="gram", unit_choices=unit_choices_tuple)
+    weight_int_nested_list = IntegerPintField(default_unit="gram", unit_choices=unit_choices_nested_list)
+    weight_int_nested_tuple = IntegerPintField(default_unit="gram", unit_choices=unit_choices_nested_tuple)
+
+    weight_bigint_list = BigIntegerPintField(default_unit="gram", unit_choices=unit_choices_list)
+    weight_bigint_tuple = BigIntegerPintField(default_unit="gram", unit_choices=unit_choices_tuple)
+    weight_bigint_nested_list = BigIntegerPintField(default_unit="gram", unit_choices=unit_choices_nested_list)
+    weight_bigint_nested_tuple = BigIntegerPintField(default_unit="gram", unit_choices=unit_choices_nested_tuple)
+
+    weight_decimal_list = DecimalPintField(default_unit="gram", unit_choices=unit_choices_list)
+    weight_decimal_tuple = DecimalPintField(default_unit="gram", unit_choices=unit_choices_tuple)
+    weight_decimal_nested_list = DecimalPintField(default_unit="gram", unit_choices=unit_choices_nested_list)
+    weight_decimal_nested_tuple = DecimalPintField(default_unit="gram", unit_choices=unit_choices_nested_tuple)

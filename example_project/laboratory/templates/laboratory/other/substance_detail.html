@@ -1,0 +1,206 @@
+{% extends "laboratory/base.html" %}
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}{{ substance.name }} - Anomalous Substance - F.L.M.N.{% endblock title %}
+
+{% block page_title %}{{ substance.name }}{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'laboratory:substance_update' substance.pk %}" class="btn btn-sm btn-outline-primary me-2">
+            <i class="fas fa-edit"></i> Edit Substance
+        </a>
+        <a href="{% url 'laboratory:laboratory_detail' substance.laboratory.pk %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-flask"></i> View Laboratory
+        </a>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    <!-- Status Overview -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Substance Information</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Laboratory Info -->
+                    <div class="mb-3">
+                        <label class="text-muted">Laboratory</label>
+                        <div>
+                            <a href="{% url 'laboratory:laboratory_detail' substance.laboratory.pk %}"
+                               class="text-decoration-none">
+                                {{ substance.laboratory.name }}
+                            </a>
+                            <small class="text-muted">
+                                ({{ substance.laboratory.universe.name }})
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Substance Status -->
+                    <div class="mb-3">
+                        <label class="text-muted">Status</label>
+                        <div>
+                            {% include "laboratory/components/status_indicator.html" with status=stability_status show_label=True pulse=stability_status size="sm" %}
+                        </div>
+                    </div>
+
+                    <!-- Substance Classification -->
+                    <div class="mb-3">
+                        <label class="text-muted">Substance Classification</label>
+                        <div>
+                            {% if is_extreme %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> Extreme Properties
+                                </span>
+                            {% endif %}
+                            {% if measurements.reality_warping_field.magnitude > 250 %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-random"></i> Reality Warping
+                                </span>
+                            {% endif %}
+                            {% if measurements.containment_temperature.magnitude > 500 %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-thermometer-full"></i> High Temperature
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Decay Information -->
+                    <div class="mb-3">
+                        <label class="text-muted">Decay Properties</label>
+                        <div>
+                            <div>
+                                Half Life:
+                                {% include "laboratory/components/measurement_display.html" with value=measurements.half_life.value compact=True %}
+                                {% include "laboratory/components/measurement_display.html" with value=measurements.half_life.value.us compact=True %}
+                            </div>
+                            <div>
+                                Shelf Life:
+                                {% include "laboratory/components/measurement_display.html" with value=measurements.typical_shelf_life.value compact=True %}
+                                {% include "laboratory/components/measurement_display.html" with value=measurements.typical_shelf_life.value.kiloseconds compact=True %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Key Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Temperature -->
+                    <div class="mb-3">
+                        <label class="text-muted">Containment Temperature</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.containment_temperature.value.reaumur %}
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.containment_temperature.value conversion_units=measurements.containment_temperature.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if temp_percentage > 90 %}bg-danger{% elif temp_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ temp_percentage }}%"
+                                aria-valuenow="{{ temp_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reality Warping -->
+                    <div class="mb-3">
+                        <label class="text-muted">Reality Warping Field</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.reality_warping_field.value conversion_units=measurements.reality_warping_field.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if warping_percentage > 90 %}bg-danger{% elif warping_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ warping_percentage }}%"
+                                aria-valuenow="{{ warping_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Volume -->
+                    <div class="mb-3">
+                        <label class="text-muted">Container Volume</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.container_volume.value.hogshead %}
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.container_volume.value conversion_units=measurements.container_volume.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if volume_percentage > 90 %}bg-danger{% elif volume_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ volume_percentage }}%"
+                                aria-valuenow="{{ volume_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Critical Mass -->
+                    <div class="mb-3">
+                        <label class="text-muted">Critical Mass</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.critical_mass.value conversion_units=measurements.critical_mass.unit_choices %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warning Cards -->
+    {% if stability_status == "danger" %}
+        <div class="card border-danger mb-4">
+            <div class="card-body text-danger">
+                <h5 class="card-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Extreme Property Warning
+                </h5>
+                <p class="card-text">
+                    This substance is exhibiting extreme properties that require special containment measures:
+                </p>
+                <ul class="mb-0">
+                    {% if temp_percentage > 90 %}
+                        <li>Temperature exceeds safe containment thresholds</li>
+                    {% endif %}
+                    {% if warping_percentage > 90 %}
+                        <li>Reality warping field approaching critical levels</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Reality Warping Warning -->
+    {% if warping_percentage > 75 and substance.laboratory.dimensional_stability < 75 %}
+        <div class="card border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    <i class="fas fa-random me-2"></i>
+                    Reality Distortion Warning
+                </h5>
+                <p class="card-text">
+                    Strong reality warping fields in areas of low dimensional stability
+                    (currently {{ substance.laboratory.dimensional_stability }}%) may cause unpredictable effects.
+                </p>
+                <div class="mt-3">
+                    {% include "laboratory/components/dimensional_stability_gauge.html" with stability=substance.laboratory.dimensional_stability show_details=True %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock content %}

@@ -1,0 +1,207 @@
+{% extends "laboratory/base.html" %}
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}{{ title }} - F.L.M.N.{% endblock title %}
+
+{% block page_title %}{{ title }}{% endblock page_title %}
+
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Lab Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Basic Information</h5>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id_for_label }}" class="form-label">Laboratory Name</label>
+                                    {{ form.name }}
+                                    {% if form.name.help_text %}
+                                        <div class="form-text">{{ form.name.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ form.name.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.universe.id_for_label }}" class="form-label">Universe</label>
+                                    {{ form.universe }}
+                                    {% if form.universe.help_text %}
+                                        <div class="form-text">{{ form.universe.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.universe.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ form.universe.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.established_date.id_for_label }}" class="form-label">Established Date</label>
+                                    {{ form.established_date }}
+                                    {% if form.established_date.help_text %}
+                                        <div class="form-text">{{ form.established_date.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.established_date.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ form.established_date.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Location Details</h5>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.location.id_for_label }}" class="form-label">Location Description</label>
+                                    {{ form.location }}
+                                    {% if form.location.help_text %}
+                                        <div class="form-text">{{ form.location.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.location.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ form.location.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.location_lat.id_for_label }}" class="form-label">Latitude</label>
+                                            {{ form.location_lat }}
+                                            {% if form.location_lat.help_text %}
+                                                <div class="form-text">{{ form.location_lat.help_text }}</div>
+                                            {% endif %}
+                                            {% if form.location_lat.errors %}
+                                                <div class="invalid-feedback" style="display: block;">
+                                                    {{ form.location_lat.errors|join:", " }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.location_lng.id_for_label }}" class="form-label">Longitude</label>
+                                            {{ form.location_lng }}
+                                            {% if form.location_lng.help_text %}
+                                                <div class="form-text">{{ form.location_lng.help_text }}</div>
+                                            {% endif %}
+                                            {% if form.location_lng.errors %}
+                                                <div class="invalid-feedback" style="display: block;">
+                                                    {{ form.location_lng.errors|join:", " }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Safety & Stability -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Safety Classification</h5>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.containment_level.id_for_label }}" class="form-label">Containment Level</label>
+                                    {{ form.containment_level }}
+                                    {% if form.containment_level.help_text %}
+                                        <div class="form-text">{{ form.containment_level.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.containment_level.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ form.containment_level.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        {{ form.is_evil }}
+                                        <label class="form-check-label" for="{{ form.is_evil.id_for_label }}">
+                                            Evil Laboratory
+                                            <i class="fas fa-skull text-danger ms-1"></i>
+                                        </label>
+                                        {% if form.is_evil.help_text %}
+                                            <div class="form-text">{{ form.is_evil.help_text }}</div>
+                                        {% endif %}
+                                    </div>
+                                    {% if form.is_evil.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ form.is_evil.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Dimensional Stability</h5>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.dimensional_stability.id_for_label }}" class="form-label">Current Stability Level</label>
+                                    {{ form.dimensional_stability }}
+                                    {% if form.dimensional_stability.help_text %}
+                                        <div class="form-text">{{ form.dimensional_stability.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.dimensional_stability.errors %}
+                                        <div class="invalid-feedback" style="display: block;">
+                                            {{ form.dimensional_stability.errors|join:", " }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'laboratory:laboratory_list' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ submit_text }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // Update stability gauge preview when the input changes
+    const stabilityInput = document.getElementById('{{ form.dimensional_stability.id_for_label }}');
+    let currentGauge = null;
+
+    function updateGaugePreview() {
+        const value = parseFloat(stabilityInput) || 0;
+        if (!currentGauge) {
+            const container = document.createElement('div');
+            container.className = 'mt-3';
+            container.innerHTML = `
+                {% include "laboratory/components/dimensional_stability_gauge.html" with stability=0 size="sm" show_details=True %}
+            `;
+            stabilityInput.parentNode.appendChild(container);
+            currentGauge = container;
+        }
+        currentGauge.querySelector('.gauge-text').textContent = value.toFixed(1) + '%';
+        const statusText = value > 75 ? 'Stable' : value > 50 ? 'Fluctuating' : 'Critical';
+        const statusColor = value > 75 ? 'text-success' : value > 50 ? 'text-warning' : 'text-danger';
+        currentGauge.querySelector('.gauge-status').innerHTML = `<span class="${statusColor}">${statusText}</span>`;
+    }
+
+    stabilityInput.addEventListener('input', updateGaugePreview);
+    updateGaugePreview();
+</script>
+{% endblock extra_js %}

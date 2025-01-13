@@ -1,0 +1,179 @@
+{% extends "laboratory/base.html" %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}Laboratories - F.L.M.N.{% endblock title %}
+
+{% block page_title %}Monitored Laboratories{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'laboratory:laboratory_create' %}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-plus"></i> New Laboratory
+        </a>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-flask me-2"></i>Total Laboratories
+                    </h6>
+                    <h2 class="mb-0">{{ laboratories|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>High Risk Labs
+                    </h6>
+                    <h2 class="mb-0">{{ laboratories|filter_high_risk|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-skull me-2"></i>Evil Laboratories
+                    </h6>
+                    <h2 class="mb-0">{{ laboratories|filter_evil|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-balance-scale me-2"></i>Avg Stability
+                    </h6>
+                    <h2 class="mb-0">{{ laboratories|avg_stability|floatformat:1 }}%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Laboratories Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Active Laboratories</h5>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-sort"></i> Sort
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Laboratory</th>
+                            <th>Universe</th>
+                            <th>Risk Level</th>
+                            <th>Stability</th>
+                            <th>Status</th>
+                            <th>Devices</th>
+                            <th>Substances</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lab in laboratories %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if lab.is_evil %}
+                                            <i class="fas fa-skull text-danger me-2"
+                                               data-bs-toggle="tooltip"
+                                               title="Evil Laboratory"></i>
+                                        {% endif %}
+                                        {{ lab.name }}
+                                    </div>
+                                    <small class="text-muted d-block">{{ lab.location }}</small>
+                                </td>
+                                <td>
+                                    <a href="{% url 'laboratory:universe_detail' lab.universe.id %}"
+                                       class="text-decoration-none">
+                                        {{ lab.universe.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% include "laboratory/components/danger_level_badge.html" with level=lab.containment_level show_icon=False size="sm" %}
+                                </td>
+                                <td style="width: 150px">
+                                    {% include "laboratory/components/dimensional_stability_gauge.html" with stability=lab.dimensional_stability size="sm" %}
+                                </td>
+                                <td>
+                                    {% if lab.dimensional_stability > 75 %}
+                                        {% include "laboratory/components/status_indicator.html" with status="stable" show_label=True size="sm" %}
+                                    {% elif lab.dimensional_stability > 50 %}
+                                        {% include "laboratory/components/status_indicator.html" with status="warning" show_label=True size="sm" %}
+                                    {% else %}
+                                        {% include "laboratory/components/status_indicator.html" with status="danger" show_label=True size="sm" pulse=True %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-2">{{ stats|get_item:lab.id|get_item:'device_count' }}</span>
+                                        {% with power=stats|get_item:lab.id|get_item:'avg_power_output' %}
+                                            {% if power %}
+                                                <span class="d-inline">(</span>
+                                                <small class="text-muted d-inline">
+                                                    {% include "laboratory/components/measurement_display.html" with value=power.quantity compact=True %}
+                                                </small>
+                                                <span class="d-inline">)</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                                <td class="text-center">{{ stats|get_item:lab.id|get_item:'substance_count' }}</td>
+                                <td class="text-end">
+                                    <div class="btn-group">
+                                        <a href="{% url 'laboratory:laboratory_detail' lab.pk %}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           data-bs-toggle="tooltip"
+                                           title="View Detail">
+                                            <i class="fas fa-chart-line"></i>
+                                        </a>
+                                        <a href="{% url 'laboratory:laboratory_update' lab.pk %}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           data-bs-toggle="tooltip"
+                                           title="Edit Laboratory">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">
+                                    <div class="py-5">
+                                        <i class="fas fa-flask fa-3x mb-3"></i>
+                                        <h5>No Laboratories Found</h5>
+                                        <p>Start by creating a new laboratory facility.</p>
+                                        <a href="{% url 'laboratory:laboratory_create' %}" class="btn btn-primary">
+                                            <i class="fas fa-plus"></i> Add Laboratory
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

@@ -1,0 +1,204 @@
+{% extends "laboratory/base.html" %}
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}{{ protocol.name }} - Safety Protocol - F.L.M.N.{% endblock title %}
+
+{% block page_title %}Protocol: {{ protocol.name }}{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'laboratory:protocol_update' protocol.pk %}" class="btn btn-sm btn-outline-primary me-2">
+            <i class="fas fa-edit"></i> Edit Protocol
+        </a>
+        <a href="{% url 'laboratory:laboratory_detail' protocol.laboratory.pk %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-flask"></i> View Laboratory
+        </a>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    <!-- Status Overview -->
+    <div class="row mb-4">
+        <!-- Protocol Details -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Protocol Information</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Laboratory Info -->
+                    <div class="mb-3">
+                        <label class="text-muted">Laboratory</label>
+                        <div>
+                            <a href="{% url 'laboratory:laboratory_detail' protocol.laboratory.pk %}"
+                               class="text-decoration-none">
+                                {{ protocol.laboratory.name }}
+                            </a>
+                            <small class="text-muted">
+                                ({{ protocol.laboratory.universe.name }})
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Last Update -->
+                    <div class="mb-3">
+                        <label class="text-muted">Last Updated</label>
+                        <div>
+                            {{ protocol.last_updated }}
+                            {% if time_since_update %}
+                                <small class="text-muted">
+                                    ({{ time_since_update.days }} days ago)
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Protocol Status -->
+                    <div class="mb-3">
+                        <label class="text-muted">Status</label>
+                        <div>
+                            {% include "laboratory/components/status_indicator.html" with status=protocol_status show_label=True pulse=protocol_status size="sm" %}
+                        </div>
+                    </div>
+
+                    <!-- Resonance Risk -->
+                    {% if resonance_risk is not None %}
+                        <div class="mb-3">
+                            <label class="text-muted">Resonance Risk</label>
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <h3 class="mb-0 {% if resonance_risk > 75 %}text-danger{% elif resonance_risk > 50 %}text-warning{% endif %}">
+                                        {{ resonance_risk|floatformat:1 }}%
+                                    </h3>
+                                </div>
+                                {% if resonance_risk > 75 %}
+                                    <span class="badge bg-danger">Critical</span>
+                                {% elif resonance_risk > 50 %}
+                                    <span class="badge bg-warning">High</span>
+                                {% else %}
+                                    <span class="badge bg-success">Low</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Review Status -->
+                    <div class="mb-3">
+                        <label class="text-muted">Review Status</label>
+                        <div>
+                            {% if needs_review %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> Review Required
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> Up to Date
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Measurements -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Safety Measurements</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Containment Field -->
+                    <div class="mb-3">
+                        <label class="text-muted">Containment Field Strength</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.containment_field_strength.value conversion_units=measurements.containment_field_strength.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if field_percentage > 90 %}bg-danger{% elif field_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ field_percentage }}%"
+                                aria-valuenow="{{ field_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shield Frequency -->
+                    <div class="mb-3">
+                        <label class="text-muted">Shield Frequency</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.shield_frequency.value conversion_units=measurements.shield_frequency.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if frequency_percentage > 90 %}bg-danger{% elif frequency_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ frequency_percentage }}%"
+                                aria-valuenow="{{ frequency_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Protocol Description -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Protocol Description</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-0">{{ protocol.description|linebreaks }}</p>
+        </div>
+    </div>
+
+    <!-- Warning Cards -->
+    {% if protocol_status == "danger" %}
+        <div class="card border-danger mb-4">
+            <div class="card-body text-danger">
+                <h5 class="card-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Resonance Warning
+                </h5>
+                <p class="card-text">
+                    Current field strength and shield frequency settings are approaching resonance.
+                    This could lead to containment failure.
+                </p>
+                {% if protocol.laboratory.containment_level >= 4 %}
+                    <div class="alert alert-warning mb-0">
+                        <strong>High Risk Environment:</strong> Resonance in a high containment facility
+                        could have severe consequences. Immediate adjustment recommended.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Review Warning -->
+    {% if needs_review and time_since_update.days > 30 %}
+        <div class="card border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    <i class="fas fa-clock me-2"></i>
+                    Protocol Review Required
+                </h5>
+                <p class="card-text">
+                    This safety protocol hasn't been reviewed in {{ time_since_update.days }} days.
+                    Regular monthly reviews are required to maintain safety standards.
+                </p>
+                {% if protocol.laboratory.dimensional_stability < 75 %}
+                    <div class="mt-3">
+                        <strong class="text-warning">Note:</strong> Low dimensional stability increases
+                        the importance of up-to-date safety protocols.
+                        {% include "laboratory/components/dimensional_stability_gauge.html" with stability=protocol.laboratory.dimensional_stability show_details=True %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+{% endblock content %}

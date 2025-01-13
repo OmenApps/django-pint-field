@@ -39,7 +39,11 @@ class DefaultFormBigInteger(forms.ModelForm):
 class DefaultFormDecimal(forms.ModelForm):
     """Form for DecimalPintFieldSaveModel."""
 
-    weight = DecimalPintFormField(default_unit="gram", unit_choices=["ounce", "gram"], max_digits=10, decimal_places=2)
+    weight = DecimalPintFormField(
+        default_unit="gram",
+        unit_choices=["ounce", "gram"],
+        display_decimal_places=2,
+    )
 
     class Meta:
         """Meta class for DefaultFormDecimal."""
@@ -64,11 +68,21 @@ class DjangoPintFieldWidgetComparisonAdminForm(forms.ModelForm):
         default_unit = self.fields["tabled_weight_int"].default_unit
         unit_choices = self.fields["tabled_weight_int"].unit_choices
         self.fields["tabled_weight_int"].widget = TabledPintFieldWidget(
-            default_unit=default_unit, unit_choices=unit_choices, floatformat=0
+            default_unit=default_unit,
+            unit_choices=unit_choices,
+            floatformat=3,
         )
         self.fields["tabled_weight_bigint"].widget = TabledPintFieldWidget(
-            default_unit=default_unit, unit_choices=unit_choices, floatformat=2
+            default_unit=default_unit,
+            unit_choices=unit_choices,
+            floatformat=2,
         )
         self.fields["tabled_weight_decimal"].widget = TabledPintFieldWidget(
-            default_unit=default_unit, unit_choices=unit_choices, floatformat=10
+            default_unit=default_unit,
+            unit_choices=[
+                ["Kilogram", "kilogram"],
+                ["Milligram", "milligram"],
+                ["Lbs.", "pound"],
+            ],
+            floatformat="0",
         )

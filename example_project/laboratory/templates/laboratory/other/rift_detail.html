@@ -1,0 +1,213 @@
+{% extends "laboratory/base.html" %}
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}Dimensional Rift {{ rift.pk }} - F.L.M.N.{% endblock title %}
+
+{% block page_title %}Dimensional Rift #{{ rift.pk }}{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'laboratory:rift_update' rift.pk %}" class="btn btn-sm btn-outline-primary me-2">
+            <i class="fas fa-edit"></i> Edit Rift Data
+        </a>
+        <a href="{% url 'laboratory:laboratory_detail' rift.laboratory.pk %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-flask"></i> View Laboratory
+        </a>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    <!-- Status Overview -->
+    <div class="row mb-4">
+        <!-- Rift Details -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Rift Details</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Laboratory Info -->
+                    <div class="mb-3">
+                        <label class="text-muted">Laboratory</label>
+                        <div>
+                            <a href="{% url 'laboratory:laboratory_detail' rift.laboratory.pk %}"
+                               class="text-decoration-none">
+                                {{ rift.laboratory.name }}
+                            </a>
+                            <small class="text-muted">
+                                ({{ rift.laboratory.universe.name }})
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Detection Time -->
+                    <div class="mb-3">
+                        <label class="text-muted">First Detected</label>
+                        <div>{{ rift.detected_at }}</div>
+                        {% if time_since %}
+                            <small class="text-muted">
+                                {{ time_since.days }} days ago
+                            </small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Rift Status -->
+                    <div class="mb-3">
+                        <label class="text-muted">Status</label>
+                        <div>
+                            {% include "laboratory/components/status_indicator.html" with status=rift_status show_label=True pulse=rift_status size="sm" %}
+                        </div>
+                    </div>
+
+                    <!-- Stability Risk -->
+                    <div class="mb-3">
+                        <label class="text-muted">Stability Risk</label>
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <h3 class="mb-0 {% if stability_risk > 75 %}text-danger{% elif stability_risk > 50 %}text-warning{% endif %}">
+                                    {{ stability_risk|floatformat:1 }}%
+                                </h3>
+                            </div>
+                            <div>
+                                {% if rift.is_stable %}
+                                    <span class="badge bg-success">Stable</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Unstable</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Classification -->
+                    <div class="mb-3">
+                        <label class="text-muted">Classification</label>
+                        <div>
+                            {% if is_critical %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> Critical Instability
+                                </span>
+                            {% endif %}
+                            {% if energy_percentage > 75 %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-bolt"></i> High Energy
+                                </span>
+                            {% endif %}
+                            {% if curvature_percentage > 75 %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-project-diagram"></i> Extreme Curvature
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Measurements -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Rift Measurements</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Diameter -->
+                    <div class="mb-3">
+                        <label class="text-muted">Rift Diameter</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.diameter.value conversion_units=measurements.diameter.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if diameter_percentage > 90 %}bg-danger{% elif diameter_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ diameter_percentage }}%"
+                                aria-valuenow="{{ diameter_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Energy Output -->
+                    <div class="mb-3">
+                        <label class="text-muted">Energy Output</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.energy_output.value conversion_units=measurements.energy_output.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if energy_percentage > 90 %}bg-danger{% elif energy_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ energy_percentage }}%"
+                                aria-valuenow="{{ energy_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spacetime Curvature -->
+                    <div class="mb-3">
+                        <label class="text-muted">Spacetime Curvature</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.spacetime_curvature.value conversion_units=measurements.spacetime_curvature.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if curvature_percentage > 90 %}bg-danger{% elif curvature_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ curvature_percentage }}%"
+                                aria-valuenow="{{ curvature_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warning Cards -->
+    {% if is_critical %}
+        <div class="card border-danger mb-4">
+            <div class="card-body text-danger">
+                <h5 class="card-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Critical Rift Warning
+                </h5>
+                <p class="card-text">
+                    This dimensional rift has reached critical instability levels:
+                </p>
+                <ul class="mb-0">
+                    {% if diameter_percentage > 90 %}
+                        <li>Dangerous rift size ({{ measurements.diameter }})</li>
+                    {% endif %}
+                    {% if energy_percentage > 90 %}
+                        <li>Extreme energy output ({{ measurements.energy_output }})</li>
+                    {% endif %}
+                    {% if curvature_percentage > 90 %}
+                        <li>Severe spacetime curvature ({{ measurements.spacetime_curvature }})</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Stability Warning -->
+    {% if not rift.is_stable and rift.laboratory.dimensional_stability < 75 %}
+        <div class="card border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    <i class="fas fa-random me-2"></i>
+                    Environmental Instability Warning
+                </h5>
+                <p class="card-text">
+                    Unstable rifts in areas of low dimensional stability
+                    (currently {{ rift.laboratory.dimensional_stability }}%) may experience rapid, unpredictable changes.
+                </p>
+                <div class="mt-3">
+                    {% include "laboratory/components/dimensional_stability_gauge.html" with stability=rift.laboratory.dimensional_stability show_details=True %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock content %}

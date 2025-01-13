@@ -1,0 +1,69 @@
+{% comment %}
+Usage:
+    {% include "laboratory/components/measurement_display.html" with
+        value=object.measurement_field
+        show_conversions=True|False
+        compact=True|False
+    %}
+{% endcomment %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+<div class="measurement-display">
+    {% if not compact %}
+        <div class="measurement-primary mb-2">
+            <span class="measurement-value">{{ value|magnitude_only }}</span>
+            <span class="measurement-unit">{{ value|pint_str_format:".2g~P"|units_only }}</span>
+        </div>
+    {% else %}
+        <span class="measurement-value">{{ value|magnitude_only|floatformat:"2" }}</span>
+        <span class="measurement-unit">{{ value|pint_str_format:"~P"|units_only }}</span>
+    {% endif %}
+
+    {% if show_conversions and value %}
+        <div class="measurement-conversions">
+            <table class="table table-sm table-dark">
+                <thead>
+                    <tr>
+                        <th>Unit</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for choice_name, choice_unit in value.field.unit_choices %}
+                        {% if choice_unit != value.units %}
+                            <tr>
+                                <td>{{ choice_name }}</td>
+                                <td>{{ value }}</td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    {% if conversion_units and value %}
+        <div class="measurement-conversions">
+            <table class="table table-sm table-dark">
+                <thead>
+                    <tr>
+                        <th>Unit</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, units in conversion_units %}
+                        {% if units != value.quantity.units %}
+                            <tr>
+                                <td>{{ name }}</td>
+                                <td>{{ value.quantity|units_display:units|decimal_display:4|magnitude_only }}</td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>

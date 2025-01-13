@@ -1,0 +1,188 @@
+/* Status Indicator Styles */
+.status-indicator {
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.status-indicator[data-pulse="true"] {
+  animation: pulse 2s infinite;
+}
+
+.status-stable {
+  background-color: #00ff00;
+  border-color: #00cc00;
+  box-shadow: 0 0 8px #00ff00;
+}
+
+.status-warning {
+  background-color: #ff7700;
+  border-color: #cc6000;
+  box-shadow: 0 0 8px #ff7700;
+}
+
+.status-danger {
+  background-color: #ff0033;
+  border-color: #cc0029;
+  box-shadow: 0 0 8px #ff0033;
+}
+
+.status-unknown {
+  background-color: #666;
+  border-color: #444;
+  box-shadow: 0 0 8px #666;
+}
+
+/* Measurement Display Styles */
+.measurement-display {
+  font-family: "Courier New", monospace;
+}
+
+.measurement-primary {
+  font-size: 1.2em;
+  color: var(--sci-fi-blue);
+}
+
+.measurement-value {
+  font-weight: bold;
+}
+
+.measurement-unit {
+  margin-left: 0.3em;
+  opacity: 0.8;
+}
+
+.measurement-conversions {
+  font-size: 0.9em;
+  margin-top: 0.5em;
+}
+
+/* Danger Level Badge Styles */
+.danger-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25em 0.75em;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.danger-level-1 {
+  background-color: rgba(0, 255, 0, 0.2);
+  border: 1px solid #00ff00;
+  color: #00ff00;
+}
+
+.danger-level-2 {
+  background-color: rgba(255, 255, 0, 0.2);
+  border: 1px solid #ffff00;
+  color: #ffff00;
+}
+
+.danger-level-3 {
+  background-color: rgba(255, 119, 0, 0.2);
+  border: 1px solid #ff7700;
+  color: #ff7700;
+}
+
+.danger-level-4 {
+  background-color: rgba(255, 0, 51, 0.2);
+  border: 1px solid #ff0033;
+  color: #ff0033;
+}
+
+.danger-level-5 {
+  background-color: rgba(255, 0, 255, 0.2);
+  border: 1px solid #ff00ff;
+  color: #ff00ff;
+  animation: danger-pulse 1s infinite;
+}
+
+.badge-sm {
+  font-size: 0.8em;
+}
+
+.badge-lg {
+  font-size: 1.2em;
+}
+
+/* Dimensional Stability Gauge Styles */
+.dimensional-gauge {
+  position: relative;
+  width: 150px;
+  height: 100px;
+}
+
+.gauge-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.gauge-arc {
+  position: absolute;
+  width: 100%;
+  height: 200%;
+  bottom: 0;
+  left: 0;
+  border-radius: 150px 150px 0 0;
+  border: 10px solid var(--color);
+  border-bottom: 0;
+  transform-origin: 50% 100%;
+  transform: rotate(var(--rotation));
+  transition: all 0.5s ease-in-out;
+}
+
+.gauge-value {
+  position: absolute;
+  bottom: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5em;
+  font-weight: bold;
+  color: var(--sci-fi-blue);
+}
+
+.gauge-label {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8em;
+  color: #888;
+}
+
+.gauge-sm {
+  width: 100px;
+  height: 75px;
+}
+
+.gauge-lg {
+  width: 200px;
+  height: 150px;
+}
+
+/* Animations */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes danger-pulse {
+  0% {
+    box-shadow: 0 0 10px var(--color);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--color);
+  }
+  100% {
+    box-shadow: 0 0 10px var(--color);
+  }
+}

@@ -1,0 +1,472 @@
+{% extends "laboratory/base.html" %}
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}{{ laboratory.name }} - F.L.M.N.{% endblock title %}
+
+{% block page_title %}{{ laboratory.name }}
+    {% if laboratory.is_evil %}
+        <button class="btn btn-sm btn-danger ms-3" disabled>
+            <i class="fas fa-skull"></i> Evil Laboratory
+        </button>
+    {% endif %}
+{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'laboratory:laboratory_update' laboratory.pk %}" class="btn btn-sm btn-outline-primary me-2">
+            <i class="fas fa-edit"></i> Edit Laboratory
+        </a>
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()">
+            <i class="fas fa-sync"></i> Refresh Data
+        </button>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    <!-- Quick Stats Row -->
+    <div class="row mb-4">
+        <!-- Status Card -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Current Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted">Universe</label>
+                        <div>
+                            <a href="{% url 'laboratory:universe_detail' laboratory.universe.pk %}"
+                               class="text-decoration-none">
+                                {{ laboratory.universe.name }}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted">Overall Risk Level</label>
+                        <div>
+                            {% include "laboratory/components/danger_level_badge.html" with level=laboratory.containment_level show_icon=True %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted">Dimensional Stability</label>
+                        <div>
+                            {% include "laboratory/components/dimensional_stability_gauge.html" with stability=laboratory.dimensional_stability show_details=True %}
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="text-muted">Status</label>
+                        <div>
+                            {% if laboratory.dimensional_stability > 75 %}
+                                {% include "laboratory/components/status_indicator.html" with status="stable" show_label=True size="sm" %}
+                            {% elif laboratory.dimensional_stability > 50 %}
+                                {% include "laboratory/components/status_indicator.html" with status="warning" show_label=True size="sm" %}
+                            {% else %}
+                                {% include "laboratory/components/status_indicator.html" with status="danger" show_label=True pulse=True size="sm" %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Metrics -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Lab Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted">Active Devices</label>
+                        <h3 class="mb-0">{{ stats.total_devices }}</h3>
+                        {% if stats.avg_power_output %}
+                            <small class="text-muted">
+                                Avg Power: {{ stats.avg_power_output|decimal_display:"1" }} <span class="text-secondary">({{ stats.avg_power_output.horsepower|decimal_display:"1" }})</span>
+                            </small>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted">Stored Substances</label>
+                        <h3 class="mb-0">{{ stats.total_substances }}</h3>
+                        {% if substance_stats.total_volume %}
+                            <small class="text-muted">
+                                Total Volume: {{ substance_stats.total_volume|decimal_display:"1" }}
+                            </small>
+                        {% endif %}
+                    </div>
+                    <div class="mb-0">
+                        <label class="text-muted">Lab Age</label>
+                        <div>
+                            {% if time_metrics.days_since_established %}
+                                <h3 class="mb-0">{{ time_metrics.days_since_established }} days</h3>
+                                <small class="text-muted">Since establishment</small>
+                            {% else %}
+                                <span class="text-muted">Unknown</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Metrics -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Risk Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted">High-Risk Elements</label>
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                {{ high_risk_metrics.dangerous_devices }} dangerous devices
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-radiation text-warning me-2"></i>
+                                {{ high_risk_metrics.unstable_substances }} unstable substances
+                            </li>
+                            <li>
+                                <i class="fas fa-portal text-warning me-2"></i>
+                                {{ high_risk_metrics.dimensional_portals }} large portals
+                            </li>
+                        </ul>
+                    </div>
+                    {% if laboratory.is_evil %}
+                        <div class="alert alert-danger mb-0">
+                            <i class="fas fa-skull me-2"></i>
+                            This is a known evil laboratory. Exercise extreme caution.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Recent Devices</h5>
+                        <a href="{% url 'laboratory:device_create' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus"></i> Add Device
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Device</th>
+                                    <th>Power</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for device in recent_devices %}
+                                    <tr>
+                                        <td>{{ device.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=device.power_output.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% if device.power_output > 1000 %}
+                                                {% include "laboratory/components/status_indicator.html" with status="danger" show_label=True size="sm" pulse=True %}
+                                            {% elif device.power_output > 500 %}
+                                                {% include "laboratory/components/status_indicator.html" with status="warning" show_label=True size="sm" %}
+                                            {% else %}
+                                                {% include "laboratory/components/status_indicator.html" with status="stable" show_label=True size="sm" %}
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="{% url 'laboratory:device_detail' device.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-search"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">No devices recorded</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Recent Substances</h5>
+                        <a href="{% url 'laboratory:substance_create' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus"></i> Add Substance
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Substance</th>
+                                    <th>Temperature</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for substance in recent_substances %}
+                                    <tr>
+                                        <td>{{ substance.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=substance.containment_temperature.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% if substance.reality_warping_field > 1000 %}
+                                                {% include "laboratory/components/status_indicator.html" with status="danger" show_label=True size="sm" pulse=True %}
+                                            {% elif substance.reality_warping_field > 500 %}
+                                                {% include "laboratory/components/status_indicator.html" with status="warning" show_label=True size="sm" %}
+                                            {% else %}
+                                                {% include "laboratory/components/status_indicator.html" with status="stable" show_label=True size="sm" %}
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="{% url 'laboratory:substance_detail' substance.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-search"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">No substances recorded</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Listings -->
+    <div class="row">
+        <!-- All Devices -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">All Experimental Devices</h5>
+                        <a href="{% url 'laboratory:device_create' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus"></i> Add Device
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Device Name</th>
+                                    <th>Power Output</th>
+                                    <th>Quantum Uncertainty</th>
+                                    <th>Memory</th>
+                                    <th>Portal Size</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for device in devices %}
+                                    <tr>
+                                        <td>{{ device.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=device.power_output.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=device.quantum_uncertainty.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=device.memory_capacity.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% if device.portal_diameter %}
+                                                {% include "laboratory/components/measurement_display.html" with value=device.portal_diameter.quantity show_conversions=False compact=True %}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="btn-group">
+                                                <a href="{% url 'laboratory:device_detail' device.id %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-search"></i>
+                                                </a>
+                                                <a href="{% url 'laboratory:device_update' device.id %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">
+                                            <div class="py-4">
+                                                <i class="fas fa-microchip fa-2x mb-2"></i>
+                                                <p>No experimental devices recorded yet.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Substances -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">All Anomalous Substances</h5>
+                        <a href="{% url 'laboratory:substance_create' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus"></i> Add Substance
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Substance Name</th>
+                                    <th>Temperature</th>
+                                    <th>Critical Mass</th>
+                                    <th>Half Life</th>
+                                    <th>Warping Field</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for substance in substances %}
+                                    <tr>
+                                        <td>{{ substance.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=substance.containment_temperature.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=substance.critical_mass.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=substance.half_life.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=substance.reality_warping_field.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="btn-group">
+                                                <a href="{% url 'laboratory:substance_detail' substance.id %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-search"></i>
+                                                </a>
+                                                <a href="{% url 'laboratory:substance_update' substance.id %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">
+                                            <div class="py-4">
+                                                <i class="fas fa-vial fa-2x mb-2"></i>
+                                                <p>No anomalous substances recorded yet.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Incidents -->
+        <div class="col-12 mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Incident Reports</h5>
+                        <a href="{% url 'laboratory:incident_create' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus"></i> Add Incident Report
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Incident ID</th>
+                                    <th>Timestamp</th>
+                                    <th>Description</th>
+                                    <th class="text-center">Severity</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for incident in incidents %}
+                                    <tr>
+                                        <td>{{ incident.pk }}</td>
+                                        <td>{{ incident.timestamp }}</td>
+                                        <td>{{ incident.description }}</td>
+                                        <td class="text-center">
+                                            {% include "laboratory/components/danger_level_badge.html" with level=incident.severity show_icon=True %}
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="btn-group">
+                                                <a href="{% url 'laboratory:incident_detail' incident.pk %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-search"></i>
+                                                </a>
+                                                <a href="{% url 'laboratory:incident_update' incident.pk %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">
+                                            <div class="py-4">
+                                                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                                                <p>No incident reports recorded yet.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh the overview every 30 seconds
+    setTimeout(function() {
+        window.location.reload();
+    }, 30000);
+</script>
+{% endblock extra_js %}

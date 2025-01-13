@@ -1,0 +1,31 @@
+{% comment %}
+Usage:
+    {% include "laboratory/components/status_indicator.html" with
+        status=object.status
+        pulse=True|False
+        size="sm|md|lg"
+        show_label=True|False
+    %}
+{% endcomment %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+<div class="d-inline-flex align-items-center">
+    {% with sizes="sm:8,md:12,lg:16"|slice_map %}
+        {% with indicator_size=sizes|get_item:size|default:"12" %}
+            <span class="status-indicator status-{{ status|default:'unknown' }}"
+                  style="width: {{ indicator_size }}px; height: {{ indicator_size }}px;"
+                  {% if pulse %}data-pulse="true"{% endif %}
+                  data-bs-toggle="tooltip"
+                  title="{{ status|title }}">
+            </span>
+        {% endwith %}
+    {% endwith %}
+
+    {% if show_label %}
+        <span class="ms-2 status-label text-{{ status|default:'secondary' }}">
+            {{ status|title }}
+        </span>
+    {% endif %}
+</div>

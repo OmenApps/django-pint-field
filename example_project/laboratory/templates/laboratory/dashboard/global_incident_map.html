@@ -1,0 +1,364 @@
+{% extends "laboratory/base.html" %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}Global Incident Map - F.L.M.N.{% endblock title %}
+
+{% block extra_css %}
+    <!-- Leaflet CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" rel="stylesheet">
+    <style>
+        .list-group {
+            --bs-list-group-bg: rgba(0, 26, 51, 0.9);
+        }
+
+        #incident-map {
+            height: calc(100vh - 200px);
+            min-height: 500px;
+            border-radius: 8px;
+            border: 1px solid var(--sci-fi-blue);
+        }
+
+        .map-sidebar {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: #333;
+            color: #fff;
+            box-shadow: 0 3px 14px rgba(0,0,0,.4);
+        }
+
+        .incident-popup .popup-laboratory {
+            font-weight: bold;
+            color: var(--sci-fi-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .incident-popup .popup-details {
+            font-size: 0.9em;
+        }
+
+        .incident-popup .popup-timestamp {
+            color: #888;
+            font-size: 0.8em;
+        }
+
+        /* Custom Leaflet marker colors */
+        .marker-incident {
+            background-color: #ff0033;
+            border-color: #cc0029;
+        }
+
+        .marker-rift {
+            background-color: #ff00ff;
+            border-color: #cc00cc;
+        }
+
+        .marker-critical {
+            background-color: #ff7700;
+            border-color: #cc6000;
+        }
+
+        .marker-warning {
+            background-color: #ffcc00;
+            border-color: #ccbb00;
+        }
+    </style>
+{% endblock extra_css %}
+
+{% block page_title %}Global Incident Map{% endblock page_title %}
+
+{% block content %}
+    <div class="row">
+        <!-- Map Container -->
+        <div class="col-md-9">
+            <div class="card h-100">
+                <div class="card-body p-0">
+                    <div id="incident-map"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-3">
+            <div class="map-sidebar">
+                <!-- Incidents List -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Recent Incidents
+                        </h5>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for incident in recent_incidents|slice:":10" %}
+                            <a href="#" class="list-group-item list-group-item-action"
+                               onclick="focusIncident({{ incident.laboratory.id }}, {{ incident.laboratory.location_lat }}, {{ incident.laboratory.location_lng }}); return false;">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ incident.laboratory.name }}</h6>
+                                    <small>{{ incident.timestamp|timesince }}</small>
+                                </div>
+                                <p class="mb-1">{{ incident.description|truncatewords:20 }}</p>
+                                {% include "laboratory/components/danger_level_badge.html" with level=incident.severity show_icon=False size="sm" %}
+                            </a>
+                        {% empty %}
+                            <div class="list-group-item text-muted text-center">
+                                No recent incidents
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Active Rifts -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-portal me-2"></i>Active Rifts
+                        </h5>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for rift in active_rifts|slice:":5" %}
+                            <a href="#" class="list-group-item list-group-item-action"
+                               onclick="focusRift({{ rift.laboratory.id }}, {{ rift.laboratory.location_lat }}, {{ rift.laboratory.location_lng }}); return false;">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ rift.laboratory.name }}</h6>
+                                    <small>{{ rift.detected_at|timesince }}</small>
+                                </div>
+                                <div class="mb-1">
+                                    {% include "laboratory/components/measurement_display.html" with value=rift.diameter.quantity show_conversions=False compact=True %}
+                                    | Energy: {% include "laboratory/components/measurement_display.html" with value=rift.energy_output.quantity show_conversions=False compact=True %}
+                                </div>
+                            </a>
+                        {% empty %}
+                            <div class="list-group-item text-muted text-center">
+                                No active rifts
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Critical Labs -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-radiation me-2"></i>Critical Stability
+                        </h5>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for lab in critical_labs %}
+                            <a href="#" class="list-group-item list-group-item-action"
+                               onclick="focusLab({{ lab.id }}, {{ lab.location_lat }}, {{ lab.location_lng }}); return false;">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ lab.name }}</h6>
+                                    <small>{{ lab.universe.name }}</small>
+                                </div>
+                                <div class="mb-1">
+                                    {% include "laboratory/components/dimensional_stability_gauge.html" with stability=lab.dimensional_stability size="sm" %}
+                                </div>
+                            </a>
+                        {% empty %}
+                            <div class="list-group-item text-muted text-center">
+                                No critical laboratories
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+    // Initialize map
+    var map = L.map('incident-map').setView([0, 0], 2);
+
+    // Add dark theme tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Add markers from GeoJSON data
+    var geojsonLayer = L.geoJSON({{ geojson|safe }}, {
+        pointToLayer: function(feature, latlng) {
+            // Create custom icon based on marker type
+            var icon = L.divIcon({
+                className: 'marker-' + feature.properties.marker_type,
+                html: feature.properties.marker_type === 'critical' ?
+                      '<i class="fas fa-radiation"></i>' :
+                      feature.properties.marker_type === 'recent' ?
+                      '<i class="fas fa-exclamation-circle"></i>' :
+                      '<i class="fas fa-exclamation-triangle"></i>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30],
+                popupAnchor: [0, -30]
+            });
+
+            // Create the marker
+            var marker = L.marker(latlng, {icon: icon});
+
+            // Store lab information directly on marker
+            marker.labId = feature.properties.id;
+            marker.coordinates = latlng;
+
+            return marker;
+        },
+        onEachFeature: function(feature, layer) {
+            // Create popup content
+            var popupContent = '<div class="incident-popup">' +
+                '<div class="popup-laboratory">' + feature.properties.name + '</div>' +
+                '<div class="popup-details">';
+
+            // Add stability info
+            popupContent += '<div>Stability: ' + feature.properties.stability.toFixed(1) + '%</div>';
+
+            // Add incident counts
+            if (feature.properties.recent_incidents > 0) {
+                popupContent += '<div class="text-warning">' +
+                    feature.properties.recent_incidents + ' incidents in last 24h</div>';
+            }
+            if (feature.properties.total_incidents > feature.properties.recent_incidents) {
+                popupContent += '<div>' +
+                    (feature.properties.total_incidents - feature.properties.recent_incidents) +
+                    ' incidents this week</div>';
+            }
+
+            // Add rift counts
+            if (feature.properties.recent_rifts > 0) {
+                popupContent += '<div class="text-warning">' +
+                    feature.properties.recent_rifts + ' active rifts in last 24h</div>';
+            }
+            if (feature.properties.total_rifts > feature.properties.recent_rifts) {
+                popupContent += '<div>' +
+                    (feature.properties.total_rifts - feature.properties.recent_rifts) +
+                    ' rifts this week</div>';
+            }
+
+            // Add universe info and evil status
+            popupContent += '<div>Universe: ' + feature.properties.universe + '</div>';
+            if (feature.properties.is_evil) {
+                popupContent += '<div class="text-danger"><i class="fas fa-skull"></i> Evil Laboratory</div>';
+            }
+
+            popupContent += '</div></div>';
+            layer.bindPopup(popupContent);
+        }
+    }).addTo(map);
+
+    // Create filtered layers for the layer control
+    var recentLayer = L.geoJSON({{ geojson|safe }}, {
+        pointToLayer: function(feature, latlng) {
+            if (feature.properties.recent_incidents > 0 || feature.properties.recent_rifts > 0) {
+                var icon = L.divIcon({
+                    className: 'marker-recent',
+                    html: '<i class="fas fa-exclamation-circle"></i>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30],
+                    popupAnchor: [0, -30]
+                });
+                var marker = L.marker(latlng, {icon: icon});
+                marker.labId = feature.properties.id;
+                return marker;
+            }
+            return null;
+        },
+        onEachFeature: function(feature, layer) {
+            if (feature.properties.recent_incidents > 0 || feature.properties.recent_rifts > 0) {
+                var popupContent = '<div class="incident-popup">' +
+                    '<div class="popup-laboratory">' + feature.properties.name + '</div>' +
+                    '<div class="popup-details">';
+
+                if (feature.properties.recent_incidents > 0) {
+                    popupContent += '<div class="text-warning">' +
+                        feature.properties.recent_incidents + ' incidents in last 24h</div>';
+                }
+                if (feature.properties.recent_rifts > 0) {
+                    popupContent += '<div class="text-warning">' +
+                        feature.properties.recent_rifts + ' active rifts in last 24h</div>';
+                }
+
+                popupContent += '<div>Universe: ' + feature.properties.universe + '</div>';
+                popupContent += '</div></div>';
+                layer.bindPopup(popupContent);
+            }
+        }
+    });
+
+    var criticalLayer = L.geoJSON({{ geojson|safe }}, {
+        pointToLayer: function(feature, latlng) {
+            if (feature.properties.stability < 25) {
+                var icon = L.divIcon({
+                    className: 'marker-critical',
+                    html: '<i class="fas fa-radiation"></i>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30],
+                    popupAnchor: [0, -30]
+                });
+                var marker = L.marker(latlng, {icon: icon});
+                marker.labId = feature.properties.id;
+                return marker;
+            }
+            return null;
+        },
+        onEachFeature: function(feature, layer) {
+            if (feature.properties.stability < 25) {
+                var popupContent = '<div class="incident-popup">' +
+                    '<div class="popup-laboratory">' + feature.properties.name + '</div>' +
+                    '<div class="popup-details">' +
+                    '<div class="text-danger">Critical Stability: ' +
+                    feature.properties.stability.toFixed(1) + '%</div>' +
+                    '<div>Universe: ' + feature.properties.universe + '</div>' +
+                    '</div></div>';
+                layer.bindPopup(popupContent);
+            }
+        }
+    });
+
+    // Add layer controls
+    var overlays = {
+        "All Laboratories": geojsonLayer,
+        "Recent Activity (24h)": recentLayer,
+        "Critical Stability": criticalLayer
+    };
+    L.control.layers(null, overlays).addTo(map);
+
+    // Functions to focus on specific locations
+    function focusIncident(labId, lat, lng) {
+        map.setView([lat, lng], 8);
+        geojsonLayer.eachLayer(function(layer) {
+            if (layer.labId === labId) {
+                layer.openPopup();
+            }
+        });
+    }
+
+    function focusRift(labId, lat, lng) {
+        map.setView([lat, lng], 8);
+        geojsonLayer.eachLayer(function(layer) {
+            if (layer.labId === labId) {
+                layer.openPopup();
+            }
+        });
+    }
+
+    function focusLab(labId, lat, lng) {
+        map.setView([lat, lng], 8);
+        geojsonLayer.eachLayer(function(layer) {
+            if (layer.labId === labId) {
+                layer.openPopup();
+            }
+        });
+    }
+
+    // Auto-refresh the map every 30 seconds
+    setTimeout(function() {
+        window.location.reload();
+    }, 30000);
+</script>
+{% endblock extra_js %}

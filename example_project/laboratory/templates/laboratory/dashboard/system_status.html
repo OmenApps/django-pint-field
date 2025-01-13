@@ -1,0 +1,160 @@
+{% extends "laboratory/base.html" %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}System Status - F.L.M.N.{% endblock title %}
+
+{% block page_title %}System Status Monitor{% endblock page_title %}
+
+{% block content %}
+    <!-- Overall System Health -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4 text-center">
+                    <div class="display-1 mb-3">
+                        {% if system_health >= 75 %}
+                            <i class="fas fa-check-circle text-success"></i>
+                        {% elif system_health >= 50 %}
+                            <i class="fas fa-exclamation-circle text-warning"></i>
+                        {% else %}
+                            <i class="fas fa-times-circle text-danger"></i>
+                        {% endif %}
+                    </div>
+                    <h3>System Health</h3>
+                    <div class="h4 mb-0">{{ system_health|floatformat:1 }}%</div>
+                </div>
+                <div class="col-md-8">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted">Total Laboratories</h6>
+                                    <h2 class="mb-0">{{ total_labs }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted">Stable Laboratories</h6>
+                                    <h2 class="mb-0">{{ stable_labs }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Energy Readings -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-bolt me-2"></i>Recent Energy Readings
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Laboratory</th>
+                            <th>Background Radiation</th>
+                            <th>Tachyon Flux</th>
+                            <th>Dark Energy Density</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reading in recent_readings %}
+                            <tr>
+                                <td>{{ reading.timestamp|date:"H:i:s" }}</td>
+                                <td>{{ reading.laboratory.name }}</td>
+                                <td>
+                                    {% include "laboratory/components/measurement_display.html" with value=reading.background_radiation.quantity show_conversions=False compact=True %}
+                                </td>
+                                <td>
+                                    {% include "laboratory/components/measurement_display.html" with value=reading.tachyon_flux.quantity show_conversions=False compact=True %}
+                                </td>
+                                <td>
+                                    {% include "laboratory/components/measurement_display.html" with value=reading.dark_energy_density.quantity show_conversions=False compact=True %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">
+                                    No recent energy readings available
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Safety Protocols -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-shield-alt me-2"></i>Active Safety Protocols
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Protocol</th>
+                            <th>Laboratory</th>
+                            <th>Containment Field</th>
+                            <th>Shield Frequency</th>
+                            <th>Last Update</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for protocol in active_protocols %}
+                            <tr>
+                                <td>{{ protocol.name }}</td>
+                                <td>{{ protocol.laboratory.name }}</td>
+                                <td>
+                                    {% include "laboratory/components/measurement_display.html" with value=protocol.containment_field_strength.quantity show_conversions=False compact=True %}
+                                </td>
+                                <td>
+                                    {% include "laboratory/components/measurement_display.html" with value=protocol.shield_frequency.quantity show_conversions=False compact=True %}
+                                </td>
+                                <td>{{ protocol.last_updated|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    {% if protocol.laboratory.dimensional_stability >= 50 %}
+                                        {% include "laboratory/components/status_indicator.html" with status="stable" show_label=True size="sm" %}
+                                    {% else %}
+                                        {% include "laboratory/components/status_indicator.html" with status="warning" show_label=True size="sm" pulse=True %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">
+                                    No active safety protocols
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh the system status every 15 seconds
+    setTimeout(function() {
+        window.location.reload();
+    }, 15000);
+</script>
+{% endblock extra_js %}

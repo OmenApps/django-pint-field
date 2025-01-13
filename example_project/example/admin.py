@@ -1,17 +1,12 @@
 """Admin configuration for the example app."""
 
+from django.apps import apps
 from django.contrib import admin
 
 from .forms import DjangoPintFieldWidgetComparisonAdminForm
 from .models import BigIntegerPintFieldSaveModel
-from .models import ChoicesDefinedInModel
-from .models import CustomUregHayBale
 from .models import DecimalPintFieldSaveModel
 from .models import DjangoPintFieldWidgetComparisonModel
-from .models import EmptyHayBaleBigInteger
-from .models import EmptyHayBaleDecimal
-from .models import EmptyHayBaleInteger
-from .models import HayBale
 from .models import IntegerPintFieldSaveModel
 from .models import IntegerPintFieldSaveWithIndexModel
 
@@ -54,16 +49,24 @@ class DecimalPintFieldSaveModelAdmin(admin.ModelAdmin):
     list_display = ("id", "weight", "weight__kilogram", "weight__pound")
 
 
-admin.site.register(HayBale)
-admin.site.register(EmptyHayBaleInteger)
-admin.site.register(EmptyHayBaleBigInteger)
-admin.site.register(EmptyHayBaleDecimal)
-admin.site.register(CustomUregHayBale)
-admin.site.register(ChoicesDefinedInModel)
-
-
 @admin.register(DjangoPintFieldWidgetComparisonModel)
 class DjangoPintFieldWidgetComparisonAdmin(admin.ModelAdmin):
     """Admin for DjangoPintFieldWidgetComparisonModel."""
 
     form = DjangoPintFieldWidgetComparisonAdminForm
+
+
+class ListAdminMixin(object):
+    """Mixin to automatically set list_display to all fields on a model."""
+
+    def __init__(self, model, admin_site):  # pylint: disable=W0621
+        self.list_display = [field.name for field in model._meta.fields]
+        super().__init__(model, admin_site)
+
+
+for model in apps.get_app_config("example").get_models():
+    admin_class = type("AdminClass", (ListAdminMixin, admin.ModelAdmin), {})  # pylint: disable=C0103
+    try:
+        admin.site.register(model, admin_class)
+    except admin.sites.AlreadyRegistered:
+        pass

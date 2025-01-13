@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}F.L.M.N. - Fictional Laboratory Management Network{% endblock title %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --sci-fi-blue:rgb(0, 209, 224);
+            --sci-fi-dark: #001a33;
+            --warning-orange: #ff7700;
+            --danger-red: #ff0033;
+            --bs-body-color: #ffffff;
+            --bs-secondary-color: #ffffff;
+        }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+        }
+
+        /* Custom navbar styling */
+        .navbar {
+            background-color: var(--sci-fi-dark);
+            border-bottom: 2px solid var(--sci-fi-blue);
+        }
+
+        .navbar-brand {
+            color: var(--sci-fi-blue) !important;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .dropdown-text-dark {
+            color: #000000 !important;
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            background-color: rgba(0, 26, 51, 0.95);
+            border-right: 1px solid var(--sci-fi-blue);
+            min-height: calc(100vh - 56px);
+        }
+
+        .nav-link {
+            color: #fff;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--sci-fi-blue);
+            background-color: rgba(0, 240, 255, 0.1);
+            border-left-color: var(--sci-fi-blue);
+        }
+
+        .nav-link.active {
+            color: var(--sci-fi-blue);
+            background-color: rgba(0, 240, 255, 0.15);
+            border-left-color: var(--sci-fi-blue);
+        }
+
+        .nav-link i {
+            margin-right: 8px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main content area */
+        .content {
+            background-color: rgba(0, 26, 51, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px;
+        }
+
+        /* Cards styling */
+        .card {
+            background-color: rgba(0, 26, 51, 0.9);
+            border: 1px solid var(--sci-fi-blue);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background-color: rgba(0, 240, 255, 0.1);
+            border-bottom: 1px solid var(--sci-fi-blue);
+            color: var(--sci-fi-blue);
+        }
+
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+
+        .toast {
+            background-color: rgba(0, 26, 51, 0.95);
+            border: 1px solid var(--sci-fi-blue);
+        }
+
+        .toast-header {
+            background-color: rgba(0, 240, 255, 0.1);
+            color: var(--sci-fi-blue);
+        }
+
+        /* Forms styling */
+        .form-control, .form-select {
+            background-color: rgba(0, 26, 51, 0.9);
+            border: 1px solid var(--sci-fi-blue);
+            color: #fff;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: rgba(0, 26, 51, 0.95);
+            border-color: var(--sci-fi-blue);
+            box-shadow: 0 0 0 0.25rem rgba(0, 240, 255, 0.25);
+            color: #fff;
+        }
+
+        /* Tables styling */
+        .table {
+            --bs-table-bg: rgba(0, 26, 51, 0.9);
+            --bs-table-color: #ffffff;
+        }
+
+        .table-hover tbody tr:hover {
+            --bs-table-bg: rgba(0, 240, 255, 0.1);
+            --bs-table-hover-color: #ffffff;
+        }
+
+        /* Status Indicator Styles */
+        .status-indicator {
+            display: inline-block;
+            border-radius: 50%;
+            border: 2px solid transparent;
+
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .status-indicator[data-pulse="true"] {
+            animation: pulse 2s infinite;
+        }
+
+        .status-stable {
+            background-color: #00ff00;
+            border-color: #00cc00;
+            box-shadow: 0 0 8px #00ff00;
+        }
+
+        .status-warning {
+            /* background-color: #ff7700;
+            border-color: #cc6000; */
+            box-shadow: 0 0 8px #ff7700;
+
+            background-color: var(--warning-orange);
+            box-shadow: 0 0 5px var(--warning-orange);
+        }
+
+        .status-danger {
+            /* background-color: #ff0033;
+            border-color: #cc0029; */
+            box-shadow: 0 0 8px #ff0033;
+
+            background-color: var(--danger-red);
+            box-shadow: 0 0 5px var(--danger-red);
+        }
+
+        .status-unknown {
+            background-color: #666;
+            border-color: #444;
+            box-shadow: 0 0 8px #666;
+        }
+
+        .text-stable {
+            color: #00ff00;
+        }
+
+        /* Measurement Display Styles */
+        .measurement-display {
+            font-family: "Courier New", monospace;
+        }
+
+        .measurement-primary {
+            font-size: 1.2em;
+            color: var(--sci-fi-blue);
+        }
+
+        .measurement-value {
+            font-weight: bold;
+        }
+
+        .measurement-unit {
+            margin-left: 0.3em;
+            opacity: 0.8;
+        }
+
+        .measurement-conversions {
+            font-size: 0.9em;
+            margin-top: 0.5em;
+        }
+
+        /* Danger Level Badge Styles */
+        .danger-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25em 0.75em;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .danger-level-1 {
+            background-color: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+        }
+
+        .danger-level-2 {
+            background-color: rgba(255, 255, 0, 0.2);
+            border: 1px solid #ffff00;
+            color: #ffff00;
+        }
+
+        .danger-level-3 {
+            background-color: rgba(255, 119, 0, 0.2);
+            border: 1px solid #ff7700;
+            color: #ff7700;
+        }
+
+        .danger-level-4 {
+            background-color: rgba(255, 0, 51, 0.2);
+            border: 1px solid #ff0033;
+            color: #ff0033;
+        }
+
+        .danger-level-5 {
+            background-color: rgba(255, 0, 255, 0.2);
+            border: 1px solid #ff00ff;
+            color: #ff00ff;
+            animation: danger-pulse 1s infinite;
+        }
+
+        .badge-sm {
+            font-size: 0.8em;
+        }
+
+        .badge-lg {
+            font-size: 1.2em;
+        }
+
+        /* Dimensional Stability Gauge Styles */
+        .dimensional-gauge {
+            position: relative;
+            width: 150px;
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .gauge {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Size variants */
+        .gauge-sm {
+            width: 100px;
+        }
+
+        .gauge-lg {
+            width: 200px;
+        }
+
+        /* SVG styles */
+        .gauge-track {
+            opacity: 0.3;
+        }
+
+        .gauge-value {
+            transition: stroke-dashoffset 0.5s ease-in-out;
+        }
+
+        .gauge-text {
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: bold;
+            fill: var(--sci-fi-blue);
+        }
+
+        /* Labels */
+        .gauge-labels {
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        .gauge-label {
+            font-size: 0.8em;
+            color: #888;
+            margin-bottom: 0.25rem;
+        }
+
+        .gauge-status {
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% {
+            opacity: 1;
+            }
+            50% {
+            opacity: 0.5;
+            }
+            100% {
+            opacity: 1;
+            }
+        }
+
+        @keyframes danger-pulse {
+            0% {
+            box-shadow: 0 0 10px var(--color);
+            }
+            50% {
+            box-shadow: 0 0 20px var(--color);
+            }
+            100% {
+            box-shadow: 0 0 10px var(--color);
+            }
+        }
+
+    </style>
+
+    {% block extra_css %}{% endblock extra_css %}
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'laboratory:dashboard' %}" title="Fictional Laboratory Management Network">
+                <i class="fa-solid fa-flask-vial" title="Fictional Laboratory Management Network"></i> F.L.M.N.
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'laboratory:dashboard' %}">
+                            <i class="fa-solid fa-home"></i> Command Center
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'laboratory:system_status' %}">
+                            <span class="status-indicator status-stable"></span>
+                            System Status
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'laboratory:dimensional_stability' %}">
+                            <i class="fa-solid fa-bolt"></i> Dimensional Stability Monitor
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'laboratory:global_incident_map' %}">
+                            <i class="fa-solid fa-globe"></i> Incident Map
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                               data-bs-toggle="dropdown">
+                                <i class="fa-solid fa-user-circle"></i> {{ user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item dropdown-text-dark" href="{% url 'admin:index' %}">
+                                        <i class="fa-solid fa-cog"></i> Admin Console
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">
+                                <i class="fa-solid fa-sign-in-alt"></i> Login
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:universe_list' %}active{% endif %}"
+                               href="{% url 'laboratory:universe_list' %}">
+                                <i class="fa-solid fa-globe"></i> Universes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:laboratory_list' %}active{% endif %}"
+                               href="{% url 'laboratory:laboratory_list' %}">
+                                <i class="fa-solid fa-flask"></i> Laboratories
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:device_list' %}active{% endif %}"
+                               href="{% url 'laboratory:device_list' %}">
+                                <i class="fa-solid fa-microchip"></i> Devices
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:substance_list' %}active{% endif %}"
+                               href="{% url 'laboratory:substance_list' %}">
+                                <i class="fa-solid fa-vial"></i> Substances
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:subject_list' %}active{% endif %}"
+                               href="{% url 'laboratory:subject_list' %}">
+                                <i class="fa-solid fa-person-rays"></i> Test Subjects
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:incident_list' %}active{% endif %}"
+                               href="{% url 'laboratory:incident_list' %}">
+                                <i class="fa-solid fa-exclamation-triangle"></i> Incidents
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:rift_list' %}active{% endif %}"
+                               href="{% url 'laboratory:rift_list' %}">
+                                <i class="fa-solid fa-dice-d20"></i> Dimensional Rifts
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:protocol_list' %}active{% endif %}"
+                               href="{% url 'laboratory:protocol_list' %}">
+                                <i class="fa-solid fa-shield-alt"></i> Safety Protocols
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:energy_list' %}active{% endif %}"
+                               href="{% url 'laboratory:energy_list' %}">
+                                <i class="fa-solid fa-bolt"></i> Energy Readings
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                {% if messages %}
+                    <div class="toast-container">
+                        {% for message in messages %}
+                            <div class="toast" role="alert" data-bs-delay="3000">
+                                <div class="toast-header {% if message.tags %}bg-{{ message.tags }}{% endif %}">
+                                    <strong class="me-auto">System Notice</strong>
+                                    <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                                </div>
+                                <div class="toast-body">
+                                    {{ message }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="content">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">{% block page_title %}{% endblock page_title %}</h1>
+                        {% block page_actions %}{% endblock page_actions %}
+                    </div>
+
+                    {% block content %}{% endblock content %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Initialize all toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+            var toastList = toastElList.map(function(toastEl) {
+                return new bootstrap.Toast(toastEl);
+            });
+            toastList.forEach(toast => toast.show());
+        });
+
+        // Add pulsing effect to status indicators
+        function pulseStatusIndicators() {
+            document.querySelectorAll('.status-indicator').forEach(indicator => {
+                indicator.style.opacity = '0.7';
+                setTimeout(() => {
+                    indicator.style.opacity = '1';
+                }, 1000);
+            });
+        }
+
+        // Pulse status indicators every 2 seconds
+        setInterval(pulseStatusIndicators, 2000);
+
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    </script>
+
+    {% block extra_js %}{% endblock extra_js %}
+</body>
+</html>

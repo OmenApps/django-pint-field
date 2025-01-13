@@ -1,0 +1,28 @@
+{% comment %}
+Usage:
+    {% include "laboratory/components/danger_level_badge.html" with
+        level=object.danger_level
+        show_icon=True|False
+        size="sm|md|lg"
+    %}
+{% endcomment %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+<div class="danger-badge danger-level-{{ level }} {% if size %}badge-{{ size }}{% endif %}">
+    {% if show_icon %}
+        <i class="fas fa-exclamation-triangle me-1"></i>
+    {% endif %}
+
+    {% with levels="1:Minimal,2:Moderate,3:High,4:Extreme,5:Ultimate"|slice_map %}
+        <span class="danger-text">{{ levels|get_item:level|default:"Unknown" }} Risk</span>
+
+        {% if level >= 4 %}
+            <span class="danger-warning-text ms-2">
+                <i class="fas fa-radiation"></i>
+                Reality Distortion Possible
+            </span>
+        {% endif %}
+    {% endwith %}
+</div>

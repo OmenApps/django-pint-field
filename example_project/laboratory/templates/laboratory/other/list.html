@@ -1,0 +1,100 @@
+{% extends "laboratory/base.html" %}
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}{{ model_name_plural|title }} - F.L.M.N.{% endblock title %}
+
+{% block page_title %}{{ model_name_plural|title }}{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url create_url %}{% if laboratory %}?laboratory={{ laboratory.pk }}{% endif %}"
+           class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-plus"></i> New {{ model_name|title }}
+        </a>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    {% if laboratory %}
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-filter me-2"></i>
+            Showing items for laboratory:
+            <a href="{% url 'laboratory:laboratory_detail' laboratory.pk %}"
+               class="alert-link">{{ laboratory.name }}</a>
+        </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            {% block table_headers %}
+                                <th>{{ display_field_name|default:"Name"|title }}</th>
+                                {% if not laboratory %}
+                                    <th>Laboratory</th>
+                                {% endif %}
+                                <th class="text-end">Actions</th>
+                            {% endblock table_headers %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                {% block table_cells %}
+                                    <td>
+                                        {% with value=item|get_display_value:display_field %}
+                                            {% if display_field in timestamp_fields %}
+                                                {{ value|date:"Y-m-d H:i" }}
+                                            {% else %}
+                                                {{ value }}
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    {% if not laboratory %}
+                                        <td>
+                                            <a href="{% url 'laboratory:laboratory_detail' item.laboratory.pk %}"
+                                               class="text-decoration-none">
+                                                {{ item.laboratory.name }}
+                                            </a>
+                                        </td>
+                                    {% endif %}
+                                    <td class="text-end">
+                                        <div class="btn-group">
+                                            <a href="{{ item.get_absolute_url }}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               data-bs-toggle="tooltip"
+                                               title="View Details">
+                                                <i class="fas fa-search"></i>
+                                            </a>
+                                            <a href="{% url update_url item.pk %}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               data-bs-toggle="tooltip"
+                                               title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                {% endblock table_cells %}
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="100%" class="text-center text-muted py-5">
+                                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                                    <h5>No {{ model_name_plural }} Found</h5>
+                                    <p>Get started by creating a new {{ model_name }}.</p>
+                                    <a href="{% url create_url %}{% if laboratory %}?laboratory={{ laboratory.pk }}{% endif %}"
+                                       class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Add {{ model_name|title }}
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

@@ -4,9 +4,28 @@ from rest_framework import serializers
 
 from django_pint_field.rest import DecimalPintRestField
 from django_pint_field.rest import IntegerPintRestField
+from django_pint_field.rest import PintRestField
 from example_project.example.models import BigIntegerPintFieldSaveModel
 from example_project.example.models import DecimalPintFieldSaveModel
 from example_project.example.models import IntegerPintFieldSaveModel
+
+
+class GeneralIntegerModelSerializer(serializers.ModelSerializer):
+    """Serializer for IntegerPintFieldSaveModel."""
+
+    weight = PintRestField()
+
+    class Meta:
+        """Meta class for IntegerModelSerializer using PintRestField."""
+
+        model = IntegerPintFieldSaveModel
+
+        fields = (
+            "id",
+            "weight",
+        )
+        read_only_fields = fields
+
 
 
 class IntegerModelSerializer(serializers.ModelSerializer):

@@ -1,0 +1,185 @@
+{% extends "laboratory/base.html" %}
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}{{ device.name }} - Experimental Device - F.L.M.N.{% endblock title %}
+
+{% block page_title %}{{ device.name }}{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'laboratory:device_update' device.pk %}" class="btn btn-sm btn-outline-primary me-2">
+            <i class="fas fa-edit"></i> Edit Device
+        </a>
+        <a href="{% url 'laboratory:laboratory_detail' device.laboratory.pk %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-flask"></i> View Laboratory
+        </a>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    <!-- Status Overview -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Device Information</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Laboratory Info -->
+                    <div class="mb-3">
+                        <label class="text-muted">Laboratory</label>
+                        <div>
+                            <a href="{% url 'laboratory:laboratory_detail' device.laboratory.pk %}"
+                               class="text-decoration-none">
+                                {{ device.laboratory.name }}
+                            </a>
+                            <small class="text-muted">
+                                ({{ device.laboratory.universe.name }})
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Device Status -->
+                    <div class="mb-3">
+                        <label class="text-muted">Status</label>
+                        <div>
+                            {% include "laboratory/components/status_indicator.html" with status=device_status show_label=True pulse=device_status size="sm" %}
+                        </div>
+                    </div>
+
+                    <!-- Device Classification -->
+                    <div class="mb-3">
+                        <label class="text-muted">Device Classification</label>
+                        <div>
+                            {% if is_dimensional %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-portal"></i> Dimensional Manipulation
+                                </span>
+                            {% endif %}
+                            {% if power_per_memory > 1000 %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-bolt"></i> High Energy
+                                </span>
+                            {% endif %}
+                            {% if device.portal_diameter %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-door-open"></i> Portal Generator
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if power_per_memory %}
+                        <div class="mb-3">
+                            <label class="text-muted">Power Efficiency</label>
+                            <div>
+                                {{ power_per_memory|floatformat:2 }} watts/GB
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Key Metrics</h5>
+                </div>
+                <div class="card-body">
+                    {% for key, measurement in measurements.items %}
+                        {% if measurement %}
+                            <div class="mb-3">
+                                <label class="text-muted">{{ measurement.label }}</label>
+                                <div>
+                                    {% include "laboratory/components/measurement_display.html" with value=measurement.value conversion_units=measurement.unit_choices %}
+                                </div>
+
+                                {% if key == 'power_output' %}
+                                    <div class="mb-4">
+                                        <div class="progress mt-2" style="height: 5px;">
+                                            <div class="progress-bar {% if power_percentage > 90 %}bg-danger{% elif power_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                                role="progressbar"
+                                                style="width: {{ power_percentage }}%"
+                                                aria-valuenow="{{ power_percentage }}"
+                                                aria-valuemin="0"
+                                                aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% elif key == 'quantum_uncertainty' %}
+                                    <div class="mb-4">
+                                        <div class="progress mt-2" style="height: 5px;">
+                                            <div class="progress-bar {% if quantum_percentage > 90 %}bg-danger{% elif quantum_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                                role="progressbar"
+                                                style="width: {{ quantum_percentage }}%"
+                                                aria-valuenow="{{ quantum_percentage }}"
+                                                aria-valuemin="0"
+                                                aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% elif key == 'portal_diameter' %}
+                                    <div class="mb-4">
+                                        <div class="progress mt-2" style="height: 5px;">
+                                            <div class="progress-bar {% if portal_percentage > 90 %}bg-danger{% elif portal_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                                role="progressbar"
+                                                style="width: {{ portal_percentage }}%"
+                                                aria-valuenow="{{ portal_percentage }}"
+                                                aria-valuemin="0"
+                                                aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warning Card for High Energy Devices -->
+    {% if device_status == "danger" %}
+        <div class="card border-danger mb-4">
+            <div class="card-body text-danger">
+                <h5 class="card-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    High Energy Warning
+                </h5>
+                <p class="card-text">
+                    This device is operating at extremely high power levels. Regular monitoring and enhanced
+                    safety protocols are required.
+                </p>
+                {% if device.laboratory.containment_level < 4 %}
+                    <div class="alert alert-warning mb-0">
+                        <strong>Note:</strong> Current laboratory containment level may be insufficient for
+                        these power levels. Consider upgrading containment protocols.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Dimensional Warning -->
+    {% if is_dimensional and device.laboratory.dimensional_stability < 75 %}
+        <div class="card border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    <i class="fas fa-random me-2"></i>
+                    Dimensional Stability Warning
+                </h5>
+                <p class="card-text">
+                    Operating dimensional manipulation devices in areas of low dimensional stability
+                    (currently {{ device.laboratory.dimensional_stability }}%) may lead to unpredictable results.
+                </p>
+                <div class="mt-3">
+                    {% include "laboratory/components/dimensional_stability_gauge.html" with stability=device.laboratory.dimensional_stability show_details=True %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock content %}

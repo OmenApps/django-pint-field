@@ -1,0 +1,205 @@
+{% extends "laboratory/base.html" %}
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}Incident Report {{ incident.pk }} - F.L.M.N.{% endblock title %}
+
+{% block page_title %}Incident Report #{{ incident.pk }}{% endblock page_title %}
+
+{% block page_actions %}
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'laboratory:incident_update' incident.pk %}" class="btn btn-sm btn-outline-primary me-2">
+            <i class="fas fa-edit"></i> Edit Report
+        </a>
+        <a href="{% url 'laboratory:laboratory_detail' incident.laboratory.pk %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-flask"></i> View Laboratory
+        </a>
+    </div>
+{% endblock page_actions %}
+
+{% block content %}
+    <!-- Status Overview -->
+    <div class="row mb-4">
+        <!-- Incident Details -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Incident Details</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Laboratory Info -->
+                    <div class="mb-3">
+                        <label class="text-muted">Laboratory</label>
+                        <div>
+                            <a href="{% url 'laboratory:laboratory_detail' incident.laboratory.pk %}"
+                               class="text-decoration-none">
+                                {{ incident.laboratory.name }}
+                            </a>
+                            <small class="text-muted">
+                                ({{ incident.laboratory.universe.name }})
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Timestamp -->
+                    <div class="mb-3">
+                        <label class="text-muted">Incident Time</label>
+                        <div>{{ incident.timestamp }}</div>
+                        {% if time_since %}
+                            <small class="text-muted">
+                                {{ time_since.days }} days ago
+                            </small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Incident Status -->
+                    <div class="mb-3">
+                        <label class="text-muted">Status</label>
+                        <div>
+                            {% include "laboratory/components/status_indicator.html" with status=incident_status show_label=True pulse=incident_status size="sm" %}
+                        </div>
+                    </div>
+
+                    <!-- Severity Level -->
+                    <div class="mb-3">
+                        <label class="text-muted">Severity Level</label>
+                        <div>
+                            {% include "laboratory/components/danger_level_badge.html" with level=incident.severity show_icon=True %}
+                        </div>
+                    </div>
+
+                    <!-- Incident Effects -->
+                    <div class="mb-3">
+                        <label class="text-muted">Effects</label>
+                        <div>
+                            {% if has_temporal_effects %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-clock"></i> Temporal Distortion
+                                </span>
+                            {% endif %}
+                            {% if radius_percentage > 75 %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-expand-arrows-alt"></i> Large Area Impact
+                                </span>
+                            {% endif %}
+                            {% if stability_change %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> Dimensional Instability
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Impact Metrics -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Impact Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Affected Radius -->
+                    <div class="mb-3">
+                        <label class="text-muted">Affected Radius</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.affected_radius.value conversion_units=measurements.affected_radius.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if radius_percentage > 90 %}bg-danger{% elif radius_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ radius_percentage }}%"
+                                aria-valuenow="{{ radius_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Temporal Displacement -->
+                    <div class="mb-3">
+                        <label class="text-muted">Temporal Displacement</label>
+                        <div>
+                            {% include "laboratory/components/measurement_display.html" with value=measurements.temporal_displacement.value conversion_units=measurements.temporal_displacement.unit_choices %}
+                        </div>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar {% if temporal_percentage > 90 %}bg-danger{% elif temporal_percentage > 75 %}bg-warning{% else %}bg-success{% endif %}"
+                                role="progressbar"
+                                style="width: {{ temporal_percentage }}%"
+                                aria-valuenow="{{ temporal_percentage }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if stability_change %}
+                        <!-- Dimensional Stability Impact -->
+                        <div class="mb-3">
+                            <label class="text-muted">Dimensional Stability Change</label>
+                            <div class="{% if stability_change < -10 %}text-danger{% elif stability_change < -5 %}text-warning{% endif %}">
+                                {{ stability_change|floatformat:1 }}%
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incident Description -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Incident Description</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-0">{{ incident.description|linebreaks }}</p>
+        </div>
+    </div>
+
+    <!-- Warning Cards -->
+    {% if incident.severity >= 4 %}
+        <div class="card border-danger mb-4">
+            <div class="card-body text-danger">
+                <h5 class="card-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Severe Incident Warning
+                </h5>
+                <p class="card-text">
+                    This incident has been classified as severe with potential long-term consequences:
+                </p>
+                <ul class="mb-0">
+                    {% if radius_percentage > 90 %}
+                        <li>Large area affected ({{ measurements.affected_radius }})</li>
+                    {% endif %}
+                    {% if temporal_percentage > 90 %}
+                        <li>Significant temporal displacement ({{ measurements.temporal_displacement }})</li>
+                    {% endif %}
+                    {% if stability_change and stability_change < -10 %}
+                        <li>Critical dimensional stability impact ({{ stability_change|floatformat:1 }}%)</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Temporal Warning -->
+    {% if has_temporal_effects and incident.laboratory.dimensional_stability < 75 %}
+        <div class="card border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    <i class="fas fa-clock me-2"></i>
+                    Temporal Anomaly Warning
+                </h5>
+                <p class="card-text">
+                    Temporal displacement effects in areas of low dimensional stability
+                    (currently {{ incident.laboratory.dimensional_stability }}%) may cause cascading time distortions.
+                </p>
+                <div class="mt-3">
+                    {% include "laboratory/components/dimensional_stability_gauge.html" with stability=incident.laboratory.dimensional_stability show_details=True %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock content %}

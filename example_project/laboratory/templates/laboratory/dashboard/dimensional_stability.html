@@ -1,0 +1,218 @@
+{% extends "laboratory/base.html" %}
+
+{% load lab_filters %}
+{% load django_pint_field %}
+
+{% block title %}Dimensional Stability Monitor - F.L.M.N.{% endblock title %}
+
+{% block page_title %}Dimensional Stability Monitor{% endblock page_title %}
+{% block extra_css %}
+<style>
+    .table-warning {
+        --bs-table-bg: #fff8e3;
+    }
+
+    .table-danger {
+        --bs-table-bg: #fcedee;
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+    <!-- Stability Overview -->
+    <div class="row mb-4">
+        <!-- Critical Stability -->
+        <div class="col-md-3">
+            <div class="card text-danger border-danger h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Critical
+                    </h6>
+                    <h2 class="mb-0">{{ stability_ranges.critical.count }}</h2>
+                    <small class="text-muted">
+                        Avg Curvature:
+                        {% if stability_ranges.critical_curvature %}
+                            {% include "laboratory/components/measurement_display.html" with value=stability_ranges.critical_curvature.quantity show_conversions=False compact=True %}
+                        {% else %}
+                            <br>N/A
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unstable -->
+        <div class="col-md-3">
+            <div class="card text-warning border-warning h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-exclamation-circle me-2"></i>Unstable
+                    </h6>
+                    <h2 class="mb-0">{{ stability_ranges.unstable.count }}</h2>
+                    <small class="text-muted">
+                        Avg Curvature:
+                        {% if stability_ranges.unstable_curvature %}
+                            {% include "laboratory/components/measurement_display.html" with value=stability_ranges.unstable_curvature.quantity show_conversions=False compact=True %}
+                        {% else %}
+                            <br>N/A
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fluctuating -->
+        <div class="col-md-3">
+            <div class="card text-info border-info h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-wave-square me-2"></i>Fluctuating
+                    </h6>
+                    <h2 class="mb-0">{{ stability_ranges.fluctuating.count }}</h2>
+                    <small class="text-muted">
+                        Avg Curvature:
+                        {% if stability_ranges.fluctuating_curvature %}
+                            {% include "laboratory/components/measurement_display.html" with value=stability_ranges.fluctuating_curvature.quantity show_conversions=False compact=True %}
+                        {% else %}
+                            <br>N/A
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stable -->
+        <div class="col-md-3">
+            <div class="card text-success border-success h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-3">
+                        <i class="fas fa-check-circle me-2"></i>Stable
+                    </h6>
+                    <h2 class="mb-0">{{ stability_ranges.stable.count }}</h2>
+                    <small class="text-muted">
+                        Avg Curvature:
+                        {% if stability_ranges.stable_curvature %}
+                            {% include "laboratory/components/measurement_display.html" with value=stability_ranges.stable_curvature.quantity show_conversions=False compact=True %}
+                        {% else %}
+                            <br>N/A
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stability Details -->
+    <div class="row">
+        <!-- Critical & Unstable Labs -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Critical & Unstable Laboratories
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Laboratory</th>
+                                    <th>Stability</th>
+                                    <th>Risk Level</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lab in stability_ranges.critical %}
+                                    <tr class="table-danger">
+                                        <td>{{ lab.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/dimensional_stability_gauge.html" with stability=lab.dimensional_stability size="sm" %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/danger_level_badge.html" with level=lab.containment_level show_icon=False size="sm" %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/status_indicator.html" with status="danger" show_label=True size="sm" pulse=True %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                {% for lab in stability_ranges.unstable %}
+                                    <tr class="table-warning">
+                                        <td>{{ lab.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/dimensional_stability_gauge.html" with stability=lab.dimensional_stability size="sm" %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/danger_level_badge.html" with level=lab.containment_level show_icon=False size="sm" %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/status_indicator.html" with status="warning" show_label=True size="sm" %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Dimensional Rifts -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-portal me-2"></i>Active Dimensional Rifts
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Laboratory</th>
+                                    <th>Diameter</th>
+                                    <th>Energy</th>
+                                    <th>Curvature</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rift in active_rifts %}
+                                    <tr>
+                                        <td>{{ rift.laboratory.name }}</td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=rift.diameter.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=rift.energy_output.quantity show_conversions=False compact=True %}
+                                        </td>
+                                        <td>
+                                            {% include "laboratory/components/measurement_display.html" with value=rift.spacetime_curvature.quantity show_conversions=False compact=True %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">
+                                            No active dimensional rifts detected
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh the dimensional stability monitor every 20 seconds
+    setTimeout(function() {
+        window.location.reload();
+    }, 20000);
+</script>
+{% endblock extra_js %}
