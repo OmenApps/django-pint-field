@@ -9,6 +9,8 @@ from django.db.models import IntegerField
 from django.db.models.expressions import Star
 from django.db.models.functions import Cast
 
+from .helpers import PintFieldConverter
+from .helpers import PintFieldProxy
 from .units import ureg
 
 
@@ -21,6 +23,7 @@ TEMPLATE = "%(function)s((%(distinct)s%(expressions)s).comparator)"
 class QuantityOutputFieldMixin:
     """Mixin to convert aggregate results to Pint Quantity objects."""
 
+    is_pint_aggregate = True
     original_field = None
     template = TEMPLATE
 
@@ -66,8 +69,8 @@ class QuantityOutputFieldMixin:
         self.original_field = resolved.source_expressions[0].field
         return resolved
 
-    def convert_value(self, value, expression, connection):  # pylint: disable=W0613
-        """Prepare to convert the value, based on the field type."""
+    def convert_value(self, value, expression, connection):
+        """Convert the value to a Quantity object."""
         field = self.output_field
         internal_type = field.get_internal_type()
 
@@ -76,17 +79,22 @@ class QuantityOutputFieldMixin:
         if value is None:
             return None
 
+        quantity_value = None
         if internal_type == "DecimalPintField":
-            converted = self.convert_to_quantity(Decimal(str(value)), self.original_field)
-            return converted
-        elif internal_type == "IntegerPintField":
-            converted = self.convert_to_quantity(value, self.original_field)
-            return converted
-        elif internal_type == "BigIntegerPintField":
-            converted = self.convert_to_quantity(value, self.original_field)
-            return converted
+            quantity_value = self.convert_to_quantity(Decimal(str(value)), self.original_field)
+        elif internal_type in ("IntegerPintField", "BigIntegerPintField"):
+            quantity_value = self.convert_to_quantity(value, self.original_field)
 
-        return self._convert_value_noop
+        if quantity_value is None:
+            return None
+
+        # Always wrap in a proxy
+        if self.original_field is not None:
+            converter = PintFieldConverter(self.original_field)
+            return PintFieldProxy(quantity_value, converter)
+
+        # Fallback if something is off
+        return quantity_value
 
     def __rand__(self, other: Any):
         """Return None for bitwise operations."""

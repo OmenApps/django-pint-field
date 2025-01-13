@@ -22,7 +22,7 @@ register = template.Library()
 def decimal_display(obj, decimal_places):
     """Display a Pint Field value with a specific number of decimal places."""
     if isinstance(obj, PintFieldProxy):
-        obj = obj.value
+        obj = obj.quantity
     if not isinstance(obj, Quantity):
         return obj
 
@@ -46,7 +46,7 @@ def decimal_display(obj, decimal_places):
 def units_display(obj, units):
     """Display a Pint Field converted to a specific unit."""
     if isinstance(obj, PintFieldProxy):
-        obj = obj.value
+        obj = obj.quantity
     if not isinstance(obj, Quantity):
         return obj
     if units:
@@ -63,7 +63,7 @@ def units_display(obj, units):
 def magnitude_only(obj, units=None):
     """Display only the magnitude of a Pint Field value."""
     if isinstance(obj, PintFieldProxy):
-        obj = obj.value
+        obj = obj.quantity
     if not isinstance(obj, Quantity):
         return obj
 
@@ -80,7 +80,7 @@ def magnitude_only(obj, units=None):
 def pint_str_format(obj, format_str):
     """Display a Pint Field value as a string using a specific format string."""
     if isinstance(obj, PintFieldProxy):
-        obj = obj.value
+        obj = obj.quantity
     if not isinstance(obj, Quantity):
         return obj
 
@@ -97,7 +97,7 @@ def units_only(obj: Quantity | PintFieldProxy | str) -> str:
     if isinstance(obj, str) and len(obj.split(" ")) > 1:
         return obj.split(" ")[1]
     if isinstance(obj, PintFieldProxy):
-        obj = obj.value
+        obj = obj.quantity
     if not isinstance(obj, Quantity):
         return obj
 

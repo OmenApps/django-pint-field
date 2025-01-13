@@ -15,6 +15,7 @@ from pint import DimensionalityError
 from pint import UndefinedUnitError
 from pint import UnitRegistry
 
+from .helpers import PintFieldProxy
 from .helpers import check_matching_unit_dimension
 from .units import ureg
 
@@ -229,6 +230,7 @@ class QuantityConverter:
                 Quantity: self._handle_base_quantity,
                 (list, tuple): self._handle_sequence,
                 dict: self._handle_dictionary,
+                PintFieldProxy: self._handle_proxy,
             }
 
             # Find and execute the appropriate handler
@@ -328,3 +330,7 @@ class QuantityConverter:
 
         magnitude = self._convert_magnitude(magnitude)
         return self._create_quantity(magnitude, units)
+
+    def _handle_proxy(self, value: PintFieldProxy) -> Quantity:
+        """Handle PintFieldProxy input type."""
+        return value.quantity

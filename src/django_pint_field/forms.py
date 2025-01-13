@@ -241,8 +241,8 @@ class IntegerPintFormField(BasePintFormField):
         """Initialize the integer Pint form field."""
         super().__init__(*args, **kwargs)
 
-        self.min_value = kwargs.pop("min_value", -2147483648)
-        self.max_value = kwargs.pop("max_value", 2147483647)
+        self.min_value = kwargs.pop("min_value", -9223372036854775808)
+        self.max_value = kwargs.pop("max_value", 9223372036854775807)
 
 
 class DecimalPintFormField(BasePintFormField):

@@ -27,6 +27,8 @@ from psycopg.types.composite import register_composite
 from .adapters import PintDumper
 from .forms import DecimalPintFormField
 from .forms import IntegerPintFormField
+from .helpers import PintFieldConverter
+from .helpers import PintFieldProxy
 from .helpers import check_matching_unit_dimension
 from .helpers import get_pint_unit
 from .units import ureg
@@ -79,83 +81,6 @@ class FieldType(Enum):
     DECIMAL_FIELD = 3
 
 
-class PintFieldConverter:
-    """Handles unit conversions for PintField values in admin displays."""
-
-    def __init__(self, field_instance: Field):
-        """Initialize the converter with the field instance."""
-        self.field = field_instance
-        self.ureg = field_instance.ureg
-        # Add display_decimal_places from the field instance
-        self.display_decimal_places = getattr(field_instance, "display_decimal_places", None)
-
-    def convert_to_unit(self, value: Quantity, target_unit: str) -> Optional[Quantity]:
-        """Convert a quantity to the target unit."""
-        if value is None:
-            return None
-
-        try:
-            target_unit_obj = get_pint_unit(self.ureg, target_unit)
-            return value.to(target_unit_obj)
-        except (AttributeError, UndefinedUnitError):
-            return None
-
-
-class PintFieldProxy:
-    """Proxy for PintField values that enables unit conversion via attribute access."""
-
-    def __init__(self, value: Quantity, converter: PintFieldConverter):
-        """Initialize the proxy with the value and converter."""
-        self.value = value
-        self.converter = converter
-
-    def __str__(self):
-        """Return the string representation of the value."""
-        if self.value is None:
-            return ""
-
-        # Format magnitude according to display_decimal_places if set
-        if (
-            hasattr(self.converter.field, "display_decimal_places")
-            and self.converter.field.display_decimal_places is not None
-        ):
-            magnitude = float(self.value.magnitude)
-            formatted_magnitude = f"{magnitude:.{self.converter.field.display_decimal_places}f}"
-            # Remove trailing zeros after decimal point, but keep the decimal point if places > 0
-            if "." in formatted_magnitude:
-                formatted_magnitude = formatted_magnitude.rstrip("0").rstrip(".")
-            return f"{formatted_magnitude} {self.value.units}"
-
-        return str(self.value)
-
-    def __format__(self, format_spec: str) -> str:
-        """Format the value according to the format specification."""
-        if not format_spec:
-            return str(self)
-
-        if self.value is None:
-            return ""
-
-        # Delegate formatting to the underlying Quantity object
-        return format(self.value, format_spec)
-
-    def __getattr__(self, name: str) -> Quantity | str:
-        """Handle attribute access for unit conversions."""
-        if name.startswith("__"):
-            raise AttributeError(name)
-
-        # If the attribute starts with get_, remove it
-        if name.startswith("get_"):
-            name = name[4:]
-
-        # Convert the value to the requested unit
-        converted = self.converter.convert_to_unit(self.value, name)
-        if converted is not None:
-            return converted
-
-        raise AttributeError(f"Invalid unit conversion: {name}")
-
-
 class PintFieldDescriptor:
     """Descriptor for handling PintField attribute access and unit conversions."""
 
@@ -192,7 +117,7 @@ class PintFieldMixin:
 
             try:
                 if isinstance(value, PintFieldProxy):
-                    value = value.value
+                    value = value.quantity
                 converted = value.to(unit_name)
 
                 # Format according to display_decimal_places if set
@@ -383,6 +308,9 @@ class BasePintField(PintFieldMixin, models.Field):
         if value in self.empty_values:
             return value
 
+        if isinstance(value, PintFieldProxy):
+            value = value.quantity  # Unwrap proxy before preparing value
+
         # If we're doing a range query, handle each value individually
         if (
             isinstance(value, (tuple, list))
@@ -408,28 +336,49 @@ class BasePintField(PintFieldMixin, models.Field):
         # to allow database operations to work with full precision
         return value
 
-    def from_db_value(
-        self, value, expression, connection  # pylint: disable=W0621 disable=W0613
-    ) -> Optional[BaseQuantity]:
-        """Converts a value as returned by the database to a Python object.
+    def from_db_value(self, value, expression, connection):  # pylint: disable=W0613
+        """Convert database value to Python object."""
+        if value is None:
+            return None
 
-        Marks database-sourced values to skip decimal place validation.
-        """
         converter = QuantityConverter(
             default_unit=self.default_unit,
-            field_type="decimal" if self.field_type == FieldType.DECIMAL_FIELD else "integer",
+            field_type="decimal",
             unit_registry=self.ureg,
         )
-        return converter.convert(value)
+        converted = converter.convert(value)
+        if converted is None:
+            return None
+
+        # Always wrap in our new, pickle-friendly PintFieldProxy
+        converter = PintFieldConverter(self)
+        return PintFieldProxy(converted, converter)
 
     def to_python(self, value):
         """Converts the value into the correct Python object."""
+        if isinstance(value, PintFieldProxy):
+            return value.quantity  # Unwrap proxy when converting to Python
+
         converter = QuantityConverter(
             default_unit=self.default_unit,
             field_type="decimal" if self.field_type == FieldType.DECIMAL_FIELD else "integer",
             unit_registry=self.ureg,
         )
         return converter.convert(value)
+
+    def value_from_object(self, obj):
+        """Get the value from the object."""
+        value = super().value_from_object(obj)
+        if isinstance(value, PintFieldProxy):
+            return value.quantity  # Return unwrapped value for form fields
+        return value
+
+    def value_to_string(self, obj):
+        """Convert the value to a string, respecting display_decimal_places, if applicable."""
+        value = self.value_from_object(obj)
+        if isinstance(value, PintFieldProxy):
+            return str(value)
+        return str(value) if value is not None else ""
 
     def validate(self, value, model_instance):
         """Validate value and raise ValidationError if necessary."""
@@ -595,6 +544,37 @@ class DecimalPintField(BasePintField):
         if not self._should_skip_validation(value, model_instance):
             validate_decimal_precision(value, allow_rounding=self.rounding_method is not None)
 
+    def clean(self, value: Any, model_instance: Optional[models.Model]) -> BaseQuantity:
+        """Convert the value's type and run validation."""
+        if value is None:
+            if self.null:
+                return None
+            raise ValidationError(self.error_messages["null"])
+
+        if hasattr(value, "magnitude") and self.rounding_method:
+            try:
+                _ = value.magnitude
+            except (TypeError, ValueError) as e:
+                raise ValidationError(str(e)) from e
+
+        return super().clean(value, model_instance)
+
+    def format_value(self, value):
+        """Format a value with the proper decimal places."""
+        if value is None:
+            return ""
+
+        if hasattr(value, "magnitude") and self.display_decimal_places is not None:
+            # Format the magnitude to the specified decimal places
+            magnitude = float(value.magnitude)
+            formatted_magnitude = f"{magnitude:.{self.display_decimal_places}f}"
+            # Remove trailing zeros after decimal point, but keep the decimal point if places > 0
+            if "." in formatted_magnitude:
+                formatted_magnitude = formatted_magnitude.rstrip("0").rstrip(".")
+            return f"{formatted_magnitude} {value.units}"
+
+        return str(value)
+
     def get_db_prep_save(self, value, connection) -> Decimal:  # pylint: disable=W0621
         """Get value that shall be saved to database."""
         if value is None:
@@ -618,77 +598,3 @@ class DecimalPintField(BasePintField):
             self.validate(value, None)
 
         return self.get_prep_value(value)
-
-    def clean(self, value: Any, model_instance: Optional[models.Model]) -> BaseQuantity:
-        """Convert the value's type and run validation."""
-        if value is None:
-            if self.null:
-                return None
-            raise ValidationError(self.error_messages["null"])
-
-        if hasattr(value, "magnitude") and self.rounding_method:
-            try:
-                _ = value.magnitude
-            except (TypeError, ValueError) as e:
-                raise ValidationError(str(e)) from e
-
-        return super().clean(value, model_instance)
-
-    def value_to_string(self, obj):
-        """Convert the value to a string, respecting display_decimal_places."""
-        value = self.value_from_object(obj)
-        if isinstance(value, PintFieldProxy):
-            return str(value)
-        return str(value) if value is not None else ""
-
-    def format_value(self, value):
-        """Format a value with the proper decimal places."""
-        if value is None:
-            return ""
-
-        if hasattr(value, "magnitude") and self.display_decimal_places is not None:
-            # Format the magnitude to the specified decimal places
-            magnitude = float(value.magnitude)
-            formatted_magnitude = f"{magnitude:.{self.display_decimal_places}f}"
-            # Remove trailing zeros after decimal point, but keep the decimal point if places > 0
-            if "." in formatted_magnitude:
-                formatted_magnitude = formatted_magnitude.rstrip("0").rstrip(".")
-            return f"{formatted_magnitude} {value.units}"
-
-        return str(value)
-
-    def get_prep_value(self, value):
-        """Converts Python objects to query values."""
-        if isinstance(value, PintFieldProxy):
-            value = value.value  # Unwrap proxy before preparing value
-        return super().get_prep_value(value)
-
-    def from_db_value(self, value, expression, connection):  # pylint: disable=W0613
-        """Convert database value to Python object."""
-        if value is None:
-            return None
-
-        converter = QuantityConverter(
-            default_unit=self.default_unit,
-            field_type="decimal",
-            unit_registry=self.ureg,
-        )
-        converted = converter.convert(value)
-
-        # Only wrap in proxy for form display, not for database operations
-        if hasattr(expression, "_constructor"):
-            return converted
-        return PintFieldProxy(converted, PintFieldConverter(self)) if converted is not None else None
-
-    def to_python(self, value):
-        """Converts the value into the correct Python object."""
-        if isinstance(value, PintFieldProxy):
-            return value.value  # Unwrap proxy when converting to Python
-        return super().to_python(value)
-
-    def value_from_object(self, obj):
-        """Get the value from the object."""
-        value = super().value_from_object(obj)
-        if isinstance(value, PintFieldProxy):
-            return value.value  # Return unwrapped value for form fields
-        return value

@@ -2,18 +2,163 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from decimal import Decimal
 from typing import Any
 from typing import Optional
 
 from django.core.exceptions import ValidationError
+from django.db.models import Field
 from pint import Unit
+from pint.errors import UndefinedUnitError
 
 from .units import ureg
 
 
+logger = logging.getLogger(__name__)
+
 Quantity = ureg.Quantity
+
+
+class PintFieldConverter:
+    """Handles unit conversions for PintField values in admin displays."""
+
+    def __init__(self, field_instance: Field):
+        """Initialize the converter with the field instance."""
+        self.field = field_instance
+        self.ureg = field_instance.ureg
+        # Add display_decimal_places from the field instance
+        self.display_decimal_places = getattr(field_instance, "display_decimal_places", None)
+
+    def convert_to_unit(self, value: Quantity, target_unit: str) -> Optional[Quantity]:
+        """Convert a quantity to the target unit."""
+        if value is None:
+            return None
+
+        try:
+            target_unit_obj = get_pint_unit(self.ureg, target_unit)
+            return value.to(target_unit_obj)
+        except (AttributeError, UndefinedUnitError):
+            return None
+
+
+class PintFieldProxy:
+    """Proxy for PintField values that enables unit conversion via attribute access."""
+
+    def __init__(self, value: Quantity, converter: PintFieldConverter):
+        """Initialize the proxy with the value and converter.
+
+        :param value: A pint.Quantity instance
+        :param converter: A PintFieldConverter instance
+        """
+        self.quantity = value
+        self.converter = converter
+
+    def __str__(self):
+        """Return the string representation of the value."""
+        if self.quantity is None:
+            return ""
+
+        # Format magnitude according to display_decimal_places if set
+        if (
+            hasattr(self.converter.field, "display_decimal_places")
+            and self.converter.field.display_decimal_places is not None
+        ):
+            magnitude = float(self.quantity.magnitude)
+            formatted_magnitude = f"{magnitude:.{self.converter.field.display_decimal_places}f}"
+            # Remove trailing zeros after decimal point, but keep the decimal point if places > 0
+            if "." in formatted_magnitude:
+                formatted_magnitude = formatted_magnitude.rstrip("0").rstrip(".")
+            return f"{formatted_magnitude} {self.quantity.units}"
+
+        return str(self.quantity)
+
+    def __format__(self, format_spec: str) -> str:
+        """Format the value according to the format specification."""
+        if not format_spec:
+            return str(self)
+
+        if self.quantity is None:
+            return ""
+
+        # Delegate formatting to the underlying Quantity object
+        return format(self.quantity, format_spec)
+
+    def __getattr__(self, name: str) -> Quantity | str:
+        """Handle attribute access for unit conversions."""
+        if name.startswith("__"):
+            raise AttributeError(name)
+
+        # If the attribute starts with get_, remove it
+        if name.startswith("get_"):
+            name = name[4:]
+
+        # Convert the value to the requested unit
+        converted = self.converter.convert_to_unit(self.quantity, name)
+        if converted is not None:
+            return converted
+
+        raise AttributeError(f"Invalid unit conversion: {name}")
+
+    def __getstate__(self):
+        """Return a state that can be safely pickled.
+        We'll store:
+          - The numeric magnitude as a string
+          - The string representation of units
+          - Enough info to reconstruct self.converter
+        """
+        magnitude_str = str(self.quantity.magnitude)
+        units_str = str(self.quantity.units)
+
+        # Gather the minimal info needed to rebuild the converter’s field
+        field_info = {
+            "default_unit": self.converter.field.default_unit,
+            "unit_choices": getattr(self.converter.field, "unit_choices", None),
+            "rounding_method": getattr(self.converter.field, "rounding_method", None),
+            "display_decimal_places": getattr(self.converter.field, "display_decimal_places", None),
+            # add rounding_method or other attributes if relevant
+        }
+
+        return {
+            "magnitude": magnitude_str,
+            "units": units_str,
+            "field_info": field_info,
+        }
+
+    def __setstate__(self, state):
+        """Rebuild our Quantity and re-init the converter so the proxy works again."""
+        from django_pint_field.models import BasePintField  # pylint: disable=C0415
+
+        magnitude_str = state["magnitude"]
+        units_str = state["units"]
+        field_info = state["field_info"]
+
+        # Rebuild the raw pint.Quantity
+        magnitude = Decimal(magnitude_str)
+        unit_obj = get_pint_unit(ureg, units_str)
+        quantity = ureg.Quantity(magnitude, unit_obj)
+
+        # Create a minimal "dummy" field to hold the same config
+        class DummyField(BasePintField):
+            """Dummy field to hold the same config as the original field."""
+
+            def __init__(self):
+                """We skip real __init__ calls to BasePintField."""
+
+        dummy_field = DummyField()
+        dummy_field.default_unit = field_info["default_unit"]
+        dummy_field.unit_choices = field_info["unit_choices"]
+        dummy_field.rounding_method = field_info["rounding_method"]
+        dummy_field.display_decimal_places = field_info["display_decimal_places"]
+        dummy_field.ureg = ureg
+
+        # Rebuild the converter
+        converter = PintFieldConverter(field_instance=dummy_field)
+
+        # Assign back to self
+        self.quantity = quantity
+        self.converter = converter
 
 
 def get_pint_unit(registry, unit_name: str) -> Optional[object]:
@@ -25,9 +170,8 @@ def get_pint_unit(registry, unit_name: str) -> Optional[object]:
     unit = getattr(registry, str(unit_name))
 
     # Configure the formatter for this unit if needed
-    if hasattr(registry, "formatter"):
+    if hasattr(registry, "formatter") and not registry.formatter.default_format:
         registry.formatter.default_format = "D"  # Use default format
-        # Note: fmt_locale can be set here if locale formatting is needed
 
     return unit
 
@@ -158,3 +302,14 @@ def get_quantizing_string(*, max_digits: Optional[int] = None, decimal_places: i
     if decimal_places == 0:
         return "1."
     return f".{'1' * decimal_places}"
+
+
+def is_aggregate_expression(expr):
+    """Check if an expression is an aggregate expression."""
+    if getattr(expr, "is_pint_aggregate", False) or hasattr(expr, "_constructor"):
+        return True
+
+    # Fallback for safety:
+    return expr.__class__.__module__.startswith("django_pint_field.aggregates") or expr.__class__.__module__.startswith(
+        "django.db.models.aggregates"
+    )

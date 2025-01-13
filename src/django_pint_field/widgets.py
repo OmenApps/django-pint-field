@@ -78,7 +78,7 @@ class PintFieldWidget(MultiWidget):
             return [None, None]
 
         if hasattr(value, "value"):
-            value = value.value
+            value = value.quantity
 
         return [value.magnitude, str(value.units)]
 
@@ -130,8 +130,8 @@ class TabledPintFieldWidget(PintFieldWidget):
             return None, self.default_unit
 
         # Handle PintFieldProxy
-        if hasattr(value, "value") and hasattr(value.value, "magnitude"):
-            return value.value.magnitude, value.value.units
+        if hasattr(value, "value") and hasattr(value.quantity, "magnitude"):
+            return value.quantity.magnitude, value.quantity.units
 
         # Handle Quantity
         if hasattr(value, "magnitude"):
@@ -158,29 +158,41 @@ class TabledPintFieldWidget(PintFieldWidget):
         if magnitude is None:
             magnitude = 0
 
+        # Ensure magnitude is numeric
+        if isinstance(magnitude, str):
+            magnitude = Decimal(magnitude)
+        elif isinstance(magnitude, (list, tuple)):
+            magnitude = Decimal(str(magnitude[0]))
+
         if isinstance(unit, str):
             unit = get_pint_unit(self.ureg, unit)
 
-        return self.ureg.Quantity(magnitude * unit)
+        return self.ureg.Quantity(magnitude) * unit
 
     def create_table(self, value):
-        """Create a list of converted quantities for the table display.
-
-        Args:
-            value: The current Pint Quantity value
-
-        Returns:
-            list: List of Pint Quantities in different units
-        """
+        """Create a list of converted quantities for the table display."""
         if value is None:
             return []
 
         # If value is a proxy, get the actual value
         if hasattr(value, "value"):
-            value = value.value
+            value = value.quantity
 
-        if isinstance(value, Iterable) and len(value) == 2:
+        # Handle tuple/list input
+        if isinstance(value, (list, tuple)) and len(value) == 2:
             value = self._create_quantity(*value)
+
+        # Ensure we have a proper Quantity object
+        if not isinstance(value, Quantity):
+            raise ValueError(f"Expected Pint Quantity, got {type(value)}")
+
+        # Ensure magnitude is numeric
+        if not isinstance(value.magnitude, (int, float, Decimal)):
+            try:
+                float(value.magnitude)
+                value = Quantity(Decimal(str(value.magnitude)), value.units)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"Invalid magnitude type: {type(value.magnitude)}") from e
 
         # Convert value to each available unit
         converted_values = []
