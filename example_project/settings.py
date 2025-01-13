@@ -7,6 +7,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+from decimal import Decimal
 from pathlib import Path
 
 from pint import UnitRegistry
@@ -27,7 +28,7 @@ SECRET_KEY = "django-insecure-r88%=*g)x(&-&67duelz$=8mat90+aq^wo+6niu!rd2v4(#f#t
 
 DEBUG = True
 
-ALLOWED_HOSTS = ["0.0.0.0", "127.0.0.1"]  # nosec
+ALLOWED_HOSTS = ["*"]  # nosec
 
 # Application definition
 
@@ -40,8 +41,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_extensions",
     "rest_framework",
+    "ninja",
     "cachalot",
+    "cacheops",
     "example_project.example",
+    "example_project.laboratory",
     "django_pint_field",
 ]
 
@@ -102,7 +106,7 @@ DATABASES = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://rediscelery:6379/0",
+        "LOCATION": "redis://redis:6379/0",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "IGNORE_EXCEPTIONS": True,
@@ -119,11 +123,21 @@ CACHES = {
 # Which tables to cache using django-cachalot
 CACHALOT_ONLY_CACHABLE_TABLES = frozenset(
     (
-        "example_integerpintfieldcachedmodel",
-        "example_bigintegerpintfieldcachedmodel",
-        "example_decimalpintfieldcachedmodel",
+        "example_integerpintfieldcachalotmodel",
+        "example_bigintegerpintfieldcachalotmodel",
+        "example_decimalpintfieldcachalotmodel",
     )
 )
+
+# Which tables to cache using cacheops
+CACHEOPS_REDIS = "redis://redis:6379/1"
+
+CACHEOPS = {
+    "example.integer_pint_field_cachops_model": {"ops": "all", "timeout": 60 * 15},
+    "example.big_integer_pint_field_cacheops_model": {"ops": "all", "timeout": 60 * 15},
+    "example.decimal_pint_field_cacheops_model": {"ops": "all", "timeout": 60 * 15},
+    "*.*": {"timeout": 60 * 15},
+}
 
 
 # Password validation
@@ -167,11 +181,65 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # django-pint-field settings
 # https://django-pint-field.readthedocs.io/en/latest/
-custom_ureg = UnitRegistry()
-custom_ureg.define("custom = [custom]")
-custom_ureg.define("kilocustom = 1000 * custom")
+DJANGO_PINT_FIELD_DEFAULT_FORMAT = "P"
 
-DJANGO_PINT_FIELD_UNIT_REGISTER = custom_ureg
+DJANGO_PINT_FIELD_UNIT_REGISTER = UnitRegistry(non_int_type=Decimal)
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("custom = [custom]")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("kilocustom = 1000 * custom")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("gram_per_milliliter = gram / milliliter = _ = g_per_ml")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("kilogram_per_cubic_meter = kilogram / meter**3 = _ = kg_per_cubic_m")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("gram_per_cubic_centimeter = gram / centimeter**3 = _ = g_per_cubic_cm")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("mole_per_liter_second = mole/(liter*second) = _ = mol_per_l_s")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("millimole_per_liter_second = millimole/(liter*second) = _ = mmol_per_l_s")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("square_meter = m**2 = square_m")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("square_centimeter = cm**2 = square_cm")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("square_millimeter = mm**2 = square_mm")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("cubic_meter = m**3 = cubic_m")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("cubic_centimeter = cm**3 = cubic_cm")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("cubic_millimeter = mm**3 = cubic_mm")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("pascal_second = pascal * second = Pa_s")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("roentgen_per_hour = roentgen / hour = R_per_h")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("milliroentgen_per_hour = milliroentgen / hour = mR_per_h")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("microroentgen_per_hour = microroentgen / hour = uR_per_h")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("kilowatt_hour = kilowatt * hour = kWh")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("millielectronvolt = eV / 1000 = meV")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("microelectronvolt = eV / 1000000 = ueV")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("teraelectronvolt = eV * 1000000000000 = TeV")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("gigaelectronvolt = eV * 1000000000 = GeV")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("megaelectronvolt = eV * 1000000 = MeV")
+
+# Base unit of instruction
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("instruction = []")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("instructions_per_second = instruction / second = IPS")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("million_instructions_per_second = 1000000 * IPS = MIPS")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("giga_instructions_per_second = 1000000000 * IPS = GIPS")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("tera_instructions_per_second = 1000000000000 * IPS = TIPS")
+
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("inverse_meter_squared = 1 / meter**2")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("inverse_kilometer_squared = 1 / kilometer**2")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("megavolt_per_meter = megavolt / meter = MV_per_m")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("kilovolt_per_meter = kilovolt / meter = kV_per_m")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("volt_per_meter = volt / meter = V_per_m")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("microsievert_per_hour = microsievert / hour = uSv_per_h")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("millisievert_per_hour = millisievert / hour = mSv_per_h")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("sievert_per_hour = sievert / hour = Sv_per_h")
+
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("joule_per_cubic_meter = joule / meter**3 = J_per_m3")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("kilojoule_per_cubic_meter = kilojoule / meter**3 = kJ_per_m3")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define(
+    "megajoule_per_cubic_meter = megajoule / meter**3 = MJ_per_m3 = megajoule_per_m3"
+)
 
 
 LOGGING = {
@@ -184,7 +252,15 @@ LOGGING = {
         },
     },
     "loggers": {
-        "django.db.backends": {
+        "django_pint_field": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+        },
+        "example_project": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+        },
+        "": {
             "level": "DEBUG",
             "handlers": ["console"],
         },
