@@ -14,7 +14,6 @@ Use IntegerPintRestField / DecimalPintRestField when:
 - Working with APIs where string representation is preferred
 - Dealing with systems that expect string-based representations
 """
-
 from decimal import Decimal
 from decimal import InvalidOperation
 from typing import Any
@@ -24,6 +23,7 @@ from pint import UndefinedUnitError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from .helpers import PintFieldProxy
 from .helpers import is_decimal_or_int
 from .units import ureg
 
@@ -45,13 +45,15 @@ class PintRestField(serializers.Field):
         "incompatible_units": "Incompatible unit dimensions.",
     }
 
-    def to_representation(self, value: Optional[Quantity]) -> Optional[dict[str, Any]]:
+    def to_representation(self, value: Optional[PintFieldProxy | Quantity]) -> Optional[dict[str, Any]]:
         """Convert a Pint Quantity to a dictionary representation."""
         if value is None:
             return None
 
+        if isinstance(value, PintFieldProxy):
+            value = value.quantity
         if not isinstance(value, Quantity):
-            raise ValidationError("Value must be a Pint Quantity")
+            raise ValidationError("Value must be a Pint Quantity or PintFieldProxy object.")
 
         return {"magnitude": value.magnitude, "units": str(value.units)}
 
@@ -106,13 +108,15 @@ class BasePintRestField(serializers.Field):
         self.wrap = kwargs.pop("wrap", False)
         super().__init__(*args, **kwargs)
 
-    def to_representation(self, value: Optional[Quantity]) -> Optional[str]:
-        """Convert Quantity to string representation."""
+    def to_representation(self, value: Optional[PintFieldProxy | Quantity]) -> Optional[str]:
+        """Convert PintFieldProxy to string representation."""
         if value is None:
             return None
 
+        if isinstance(value, PintFieldProxy):
+            value = value.quantity
         if not isinstance(value, Quantity):
-            raise ValidationError(f"Expected Quantity type but got {type(value)}", code="invalid_type")
+            raise ValidationError(f"Expected PintFieldProxy type but got {type(value)}", code="invalid_type")
 
         if self.wrap:
             return f"Quantity({value.magnitude} {value.units})"
@@ -147,8 +151,10 @@ class BasePintRestField(serializers.Field):
         """Create Quantity object with proper type handling."""
         raise NotImplementedError("Subclasses must implement _create_quantity")
 
-    def to_internal_value(self, data: str | Quantity) -> Quantity:
+    def to_internal_value(self, data: str | PintFieldProxy | Quantity) -> Quantity:
         """Convert string or Quantity to Quantity object."""
+        if isinstance(data, PintFieldProxy):
+            return data.quantity
         if isinstance(data, Quantity):
             return data
         if isinstance(data, str):
