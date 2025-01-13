@@ -2,7 +2,7 @@ volumes:
   postgres_data:
 
 services:
-  django_test:
+  django:
     build:
       context: .
       dockerfile: ./compose/django/Dockerfile
@@ -28,3 +28,10 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=postgres
+
+  redis:
+    image: redis:6
+    container_name: django_test_redis
+    ports:
+      - "6390:6379"
+
