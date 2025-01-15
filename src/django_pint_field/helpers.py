@@ -86,13 +86,45 @@ class PintFieldProxy:
         return format(self.quantity, format_spec)
 
     def __getattr__(self, name: str) -> Quantity | str:
-        """Handle attribute access for unit conversions."""
+        """Handle attribute access for unit conversions.
+
+        Supports the following:
+        - Simple unit conversion: instance.fieldname.MW
+        - Unit conversion with decimal places: instance.fieldname.MW__4 (4 decimal places in new unit)
+        - Decimal places only: instance.fieldname.digits__4 (4 decimal places, original units)
+        """
         if name.startswith("__"):
             raise AttributeError(name)
 
         # If the attribute starts with get_, remove it
         if name.startswith("get_"):
             name = name[4:]
+
+        # Check if we have a decimal places specification
+        parts = name.split('__')
+        if len(parts) == 2:
+            try:
+                prefix, decimal_places = parts
+                decimal_places = int(decimal_places)
+
+                # If prefix is digits, just format decimal places without unit conversion
+                if prefix == 'digits':
+                    quantizing_string = '0.' + '0' * decimal_places
+                    magnitude = Decimal(str(self.quantity.magnitude)).quantize(Decimal(quantizing_string))
+                    return type(self.quantity)(magnitude, self.quantity.units)
+
+                # Otherwise treat prefix as unit name and do unit conversion
+                converted = self.converter.convert_to_unit(self.quantity, prefix)
+                if converted is None:
+                    raise AttributeError(f"Invalid unit conversion: {prefix}")
+
+                # Then format to the specified decimal places
+                quantizing_string = '0.' + '0' * decimal_places
+                magnitude = Decimal(str(converted.magnitude)).quantize(Decimal(quantizing_string))
+                return type(converted)(magnitude, converted.units)
+
+            except ValueError:
+                raise AttributeError(f"Invalid decimal places specification: {parts[1]}")
 
         # Convert the value to the requested unit
         converted = self.converter.convert_to_unit(self.quantity, name)

@@ -94,7 +94,7 @@
                             <div class="mb-3">
                                 <label class="text-muted">{{ measurement.label }}</label>
                                 <div>
-                                    {% include "laboratory/components/measurement_display.html" with value=measurement.value conversion_units=measurement.unit_choices %}
+                                    {% include "laboratory/components/measurement_display.html" with value=measurement.value.digits__8 conversion_units=measurement.unit_choices %}
                                 </div>
 
                                 {% if key == 'power_output' %}
