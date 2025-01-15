@@ -101,15 +101,15 @@ class PintFieldProxy:
             name = name[4:]
 
         # Check if we have a decimal places specification
-        parts = name.split('__')
+        parts = name.split("__")
         if len(parts) == 2:
             try:
                 prefix, decimal_places = parts
                 decimal_places = int(decimal_places)
 
                 # If prefix is digits, just format decimal places without unit conversion
-                if prefix == 'digits':
-                    quantizing_string = '0.' + '0' * decimal_places
+                if prefix == "digits":
+                    quantizing_string = "0." + "0" * decimal_places
                     magnitude = Decimal(str(self.quantity.magnitude)).quantize(Decimal(quantizing_string))
                     return type(self.quantity)(magnitude, self.quantity.units)
 
@@ -119,7 +119,7 @@ class PintFieldProxy:
                     raise AttributeError(f"Invalid unit conversion: {prefix}")
 
                 # Then format to the specified decimal places
-                quantizing_string = '0.' + '0' * decimal_places
+                quantizing_string = "0." + "0" * decimal_places
                 magnitude = Decimal(str(converted.magnitude)).quantize(Decimal(quantizing_string))
                 return type(converted)(magnitude, converted.units)
 
@@ -315,7 +315,7 @@ def get_quantizing_string(*, max_digits: Optional[int] = None, decimal_places: i
         get_full_quantizing_string(max_digits=5, decimal_places=3) -> "11.111"  # Preserve 5 digits and 3 decimal places
         get_full_quantizing_string(decimal_places=3) -> ".111"  # Preserve 3 decimal places
     """
-    if max_digits and max_digits < 1:
+    if max_digits is not None and max_digits < 1:
         raise ValidationError("max_digits must be greater than 0")
     if decimal_places < 0:
         raise ValidationError("decimal_places must be non-negative")

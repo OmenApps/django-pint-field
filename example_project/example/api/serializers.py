@@ -27,7 +27,6 @@ class GeneralIntegerModelSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-
 class IntegerModelSerializer(serializers.ModelSerializer):
     """Serializer for IntegerPintFieldSaveModel."""
 

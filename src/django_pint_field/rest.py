@@ -14,6 +14,7 @@ Use IntegerPintRestField / DecimalPintRestField when:
 - Working with APIs where string representation is preferred
 - Dealing with systems that expect string-based representations
 """
+
 from decimal import Decimal
 from decimal import InvalidOperation
 from typing import Any

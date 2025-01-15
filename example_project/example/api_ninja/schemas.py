@@ -1,4 +1,5 @@
 """Schemas for the django-ninja API."""
+
 from typing import Any
 
 from ninja import Schema
@@ -21,6 +22,7 @@ class IntegerWeight(WeightBase):
 
     class Config:
         """Configuration for IntegerWeight."""
+
         model = "example.IntegerPintFieldSaveModel"
 
 
@@ -29,6 +31,7 @@ class BigIntegerWeight(WeightBase):
 
     class Config:
         """Configuration for BigIntegerWeight."""
+
         model = "example.BigIntegerPintFieldSaveModel"
 
 
@@ -37,4 +40,5 @@ class DecimalWeight(WeightBase):
 
     class Config:
         """Configuration for DecimalWeight."""
+
         model = "example.DecimalPintFieldSaveModel"

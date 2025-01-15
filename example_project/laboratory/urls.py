@@ -48,6 +48,11 @@ app_name = "laboratory"
 
 
 urlpatterns = [
+    # Dashboard URLs
+    path("", main_dashboard, name="dashboard"),
+    path("dashboard/status/", system_status, name="system_status"),
+    path("dashboard/stability/", dimensional_stability, name="dimensional_stability"),
+    path("dashboard/incidents/", global_incident_map, name="global_incident_map"),
     # Universe URLs
     path("universes/", universe_list, name="universe_list"),
     path("universes/create/", universe_create, name="universe_create"),
@@ -58,11 +63,6 @@ urlpatterns = [
     path("laboratories/create/", laboratory_create, name="laboratory_create"),
     path("laboratories/<int:pk>/", laboratory_detail, name="laboratory_detail"),
     path("laboratories/<int:pk>/update/", laboratory_update, name="laboratory_update"),
-    # Dashboard URLs
-    path("dashboard/", main_dashboard, name="dashboard"),
-    path("dashboard/status/", system_status, name="system_status"),
-    path("dashboard/stability/", dimensional_stability, name="dimensional_stability"),
-    path("dashboard/incidents/", global_incident_map, name="global_incident_map"),
     # Experimental Device URLs
     path("devices/", device_list, name="device_list"),
     path("devices/create/", device_create, name="device_create"),
