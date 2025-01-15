@@ -49,6 +49,13 @@
     :members:
 ```
 
+## indexes.py
+
+```{eval-rst}
+.. automodule:: django_pint_field.indexes
+    :members:
+```
+
 ## lookups.py
 
 ```{eval-rst}
