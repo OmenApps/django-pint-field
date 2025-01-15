@@ -96,11 +96,11 @@ class ExperimentalDevice(models.Model):
     fuel_tank_capacity = IntegerPintField(
         default_unit=["L", "liter"],
         unit_choices=[
-            ["L", "liter"],
+            # ["L", "liter"],
             ["gal", "gallon"],
             ["m³", "cubic_meter"],
-            ["shot", "shot"],
-            ["hogshead", "hogshead"],
+            "shot",
+            "hogshead",
         ],
         help_text="Total fuel tank capacity in whole units",
     )
@@ -118,7 +118,7 @@ class ExperimentalDevice(models.Model):
     power_output = DecimalPintField(
         default_unit=["GW", "gigawatt"],  # Perfect for Doc Brown's flux capacitor
         unit_choices=[
-            ["GW", "gigawatt"],
+            # ["GW", "gigawatt"],
             ["MW", "megawatt"],
             ["kW", "kilowatt"],
             ["W", "watt"],
@@ -129,30 +129,30 @@ class ExperimentalDevice(models.Model):
         default_unit=["meV", "meV"],
         unit_choices=[
             # rydberg:
-            ["Ry", "rydberg"],
+            ("Ry", "rydberg"),
             ["Eh", "hartree"],
-            ["meV", "meV"],
-            ["µeV", "ueV"],
+            ("meV", "meV"),
+            ("µeV", "ueV"),
             ["Ton of TNT", "ton_TNT"],
-            ["Ton of Oil Equivalent", "toe"],
+            ("Ton of Oil Equivalent", "toe"),
         ],
     )
 
     dimensional_wavelength = DecimalPintField(
-        default_unit=["Å", "angstrom"],
-        unit_choices=[
-            ["Å", "angstrom"],
-            ["nm", "nanometer"],
-            ["µm", "micrometer"],
-        ],
+        default_unit=("Å", "angstrom"),
+        unit_choices=(
+            ("Å", "angstrom"),
+            ("nm", "nanometer"),
+            ("µm", "micrometer"),
+        ),
     )
 
     portal_diameter = DecimalPintField(
-        default_unit=["m", "meter"],
+        default_unit="meter",
         unit_choices=[
-            ["m", "meter"],
-            ["cm", "centimeter"],
-            ["ft", "foot"],
+            "meter",
+            "centimeter",
+            "foot",
         ],
     )
 
@@ -172,11 +172,11 @@ class AnomalousSubstance(models.Model):
 
     containment_temperature = DecimalPintField(
         default_unit=["K", "kelvin"],
-        unit_choices=[
+        unit_choices=(
             ["K", "kelvin"],
             ["°C", "degC"],
             ["°F", "degF"],
-        ],
+        ),
     )
 
     container_volume = IntegerPintField(
@@ -184,47 +184,48 @@ class AnomalousSubstance(models.Model):
         unit_choices=[
             ["mL", "milliliter"],
             ["L", "liter"],
-            ["gal", "gallon"],
+            "gallon",
         ],
         help_text="Standard container volume in whole units",
     )
 
     critical_mass = DecimalPintField(
         default_unit=["µg", "microgram"],
-        unit_choices=[
-            ["µg", "microgram"],
-            ["mg", "milligram"],
-            ["g", "gram"],
-        ],
+        unit_choices=(
+            ("µg", "microgram"),
+            ("mg", "milligram"),
+            ("g", "gram"),
+        ),
     )
 
     half_life = DecimalPintField(
-        default_unit=["d", "day"],
+        default_unit=["day", "day"],
         unit_choices=[
-            ["d", "day"],
-            ["h", "hour"],
-            ["min", "minute"],
+            # "day",
+            "hour",
+            "minute",
         ],
     )
 
     typical_shelf_life = IntegerPintField(
-        default_unit=["d", "day"],
-        unit_choices=[
-            ["d", "day"],
+        default_unit="day",
+        unit_choices=(
+            ["day", "day"],
             ["mo", "month"],
-            ["y", "year"],
-        ],
+            ["yr", "year"],
+        ),
         help_text="Shelf life in whole time units",
     )
 
     reality_warping_field = DecimalPintField(
-        default_unit=["mT", "millitesla"],
+        default_unit=("mT", "millitesla"),
         unit_choices=[
-            ["mT", "millitesla"],
-            ["µT", "microtesla"],
-            ["nT", "nanotesla"],
-            ["gigagamma", "gigagamma"],
+            ("mT", "millitesla"),
+            ("µT", "microtesla"),
+            ("nT", "nanotesla"),
+            ("gigagamma", "gigagamma"),
         ],
+        help_text="Typical field strength of any reality warping effect",
     )
 
     def __str__(self):
@@ -254,9 +255,9 @@ class TestSubject(models.Model):
     )
 
     power_consumption = DecimalPintField(
-        default_unit=["W", "watt"],
+        default_unit=("W", "watt"),
         unit_choices=[
-            ["W", "watt"],
+            ("W", "watt"),
             ["kW", "kilowatt"],
             ["mW", "milliwatt"],
         ],
@@ -335,17 +336,17 @@ class DimensionalRift(models.Model):
 
     energy_output = DecimalPintField(
         default_unit=["TeV", "teraelectronvolt"],
-        unit_choices=[
-            ["TeV", "teraelectronvolt"],
-            ["GeV", "gigaelectronvolt"],
-            ["MeV", "megaelectronvolt"],
-        ],
+        unit_choices=(
+            ("TeV", "teraelectronvolt"),
+            ("GeV", "gigaelectronvolt"),
+            ("MeV", "megaelectronvolt"),
+        ),
     )
 
     spacetime_curvature = DecimalPintField(
         default_unit=["m⁻2", "inverse_meter_squared"],
         unit_choices=[
-            ["m⁻2", "inverse_meter_squared"],
+            ("m⁻2", "inverse_meter_squared"),
             ["km⁻2", "inverse_kilometer_squared"],
         ],
     )
@@ -367,7 +368,7 @@ class SafetyProtocol(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
 
     containment_field_strength = DecimalPintField(
-        default_unit=["MV/m", "megavolt_per_meter"],
+        default_unit=("MV/m", "megavolt_per_meter"),
         unit_choices=[
             ["MV/m", "megavolt_per_meter"],
             ["kV/m", "kilovolt_per_meter"],
