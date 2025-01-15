@@ -49,7 +49,7 @@ python manage.py migrate django_pint_field
 ```{caution}
 Failure to run django-pint-field migrations before running migrations for models using PintFields will result in errors. The migration creates a required composite type in your PostgreSQL database.
 
-Previous versions of the package added three compsite types to the database. The newest migration modifies the columns with these types to use a single composite type.
+Previous versions of the package added three composite types to the database. The newest migration modifies the columns with these types to use a single composite type.
 ```
 
 ### Tips for Upgrading from Legacy django-pint-field
@@ -74,7 +74,6 @@ Reinstall the triggers after the migrations are complete:
 python manage.py pgtrigger install
 ```
 
-
 ## Quick Start
 
 1. Define your model:
@@ -87,8 +86,6 @@ class Product(models.Model):
     name = models.CharField(max_length=100)
     weight = DecimalPintField(
         default_unit="gram",
-        max_digits=10,
-        decimal_places=2,
         unit_choices=["gram", "kilogram", "pound", "ounce"]
     )
 ```
@@ -120,7 +117,7 @@ print(product.weight.to("kilogram"))  # 0.34 kilogram
 
 - **IntegerPintField**: For whole number quantities
 - **DecimalPintField**: For precise decimal quantities
-- **BigIntegerPintField**: For large whole number quantities
+- **BigIntegerPintField**: For large whole number quantities (deprecated, use IntegerPintField instead)
 
 ### Form Fields and Widgets
 
@@ -198,7 +195,7 @@ Django Pint Field supports creating indexes on the comparator components of Pint
 from django_pint_field.indexes import PintFieldComparatorIndex
 
 class Package(models.Model):
-    weight = DecimalPintField("gram", max_digits=10, decimal_places=2)
+    weight = DecimalPintField("gram")
 
     class Meta:
         indexes = [
@@ -212,8 +209,8 @@ class Package(models.Model):
 from django_pint_field.indexes import PintFieldComparatorIndex
 
 class Package(models.Model):
-    weight = DecimalPintField("gram", max_digits=10, decimal_places=2)
-    volume = DecimalPintField("liter", max_digits=10, decimal_places=2)
+    weight = DecimalPintField("gram")
+    volume = DecimalPintField("liter")
 
     class Meta:
         indexes = [
@@ -238,6 +235,9 @@ DJANGO_PINT_FIELD_DECIMAL_PRECISION = 40
 
 # Configure custom unit registry
 DJANGO_PINT_FIELD_UNIT_REGISTER = custom_ureg
+
+# Set default format for quantity display
+DJANGO_PINT_FIELD_DEFAULT_FORMAT = "D"  # Options: D, P, ~P, etc.
 ```
 
 ## Credits
