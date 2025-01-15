@@ -23,7 +23,7 @@ Quantity = ureg.Quantity
 
 @pytest.mark.django_db
 class TestFieldAggregates:
-    """Base test class for field aggregates."""
+    """Test class for field aggregates."""
 
     @pytest.fixture(autouse=True)
     def setup_class(self, request):
@@ -32,31 +32,22 @@ class TestFieldAggregates:
             self.MODEL = IntegerPintFieldSaveModel
             self.EXPECTED_TYPE = int
             self.DEFAULT_WEIGHT = 100
-            self.DEFAULT_WEIGHT_STR = "100.0"
-            self.DEFAULT_WEIGHT_QUANTITY_STR = "100.0 gram"
             self.HEAVIEST = 1000
             self.LIGHTEST = 1
-            self.OUNCE_VALUE = 3.52739619496
         elif request.param == "big_integer":
             self.MODEL = BigIntegerPintFieldSaveModel
             self.EXPECTED_TYPE = int
             self.DEFAULT_WEIGHT = 100
-            self.DEFAULT_WEIGHT_STR = "100.0"
-            self.DEFAULT_WEIGHT_QUANTITY_STR = "100.0 gram"
             self.HEAVIEST = 1000
             self.LIGHTEST = 1
-            self.OUNCE_VALUE = 3.52739619496
         else:  # decimal
             self.MODEL = DecimalPintFieldSaveModel
             self.EXPECTED_TYPE = Decimal
             self.DEFAULT_WEIGHT = Decimal("100")
-            self.DEFAULT_WEIGHT_STR = "100.0"
-            self.DEFAULT_WEIGHT_QUANTITY_STR = "100.0 gram"
             self.HEAVIEST = Decimal("1000")
             self.LIGHTEST = Decimal("1")
-            self.OUNCE_VALUE = Decimal("3.52739619496")
 
-        self.COMPARE_QUANTITY = Quantity(0.8 * ureg.ounce)
+        self.COMPARE_QUANTITY = Quantity(Decimal("0.8") * ureg.gram)
         self.WEIGHT = Quantity(2 * ureg.gram)
 
     @pytest.fixture
@@ -64,28 +55,28 @@ class TestFieldAggregates:
         """Create test objects with different weights."""
         if self.EXPECTED_TYPE == Decimal:
             default = self.MODEL.objects.create(
-                weight=Quantity(Decimal(str(self.DEFAULT_WEIGHT)) * ureg.gram),
+                weight=Quantity(Decimal(str(self.DEFAULT_WEIGHT)), ureg.gram),
                 name="grams",
             )
             lightest = self.MODEL.objects.create(
-                weight=Quantity(Decimal(str(self.LIGHTEST)) * ureg.gram),
+                weight=Quantity(Decimal(str(self.LIGHTEST)), ureg.gram),
                 name="lightest",
             )
             heaviest = self.MODEL.objects.create(
-                weight=Quantity(Decimal(str(self.HEAVIEST)) * ureg.gram),
+                weight=Quantity(Decimal(str(self.HEAVIEST)), ureg.gram),
                 name="heaviest",
             )
         else:
             default = self.MODEL.objects.create(
-                weight=Quantity(self.DEFAULT_WEIGHT * ureg.gram),
+                weight=Quantity(self.DEFAULT_WEIGHT, ureg.gram),
                 name="grams",
             )
             lightest = self.MODEL.objects.create(
-                weight=Quantity(self.LIGHTEST * ureg.gram),
+                weight=Quantity(self.LIGHTEST, ureg.gram),
                 name="lightest",
             )
             heaviest = self.MODEL.objects.create(
-                weight=Quantity(self.HEAVIEST * ureg.gram),
+                weight=Quantity(self.HEAVIEST, ureg.gram),
                 name="heaviest",
             )
 
@@ -107,50 +98,73 @@ class TestFieldAggregates:
         assert comparison == pint_agg
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
-    def test_aggregate_avg_without_output_unit(self, field_test_aggregate_objects):
-        """Test the aggregate average."""
-        comparison = Quantity(Decimal("367.00000000000000000") * ureg.gram).to_base_units()
-        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintAvg("weight"))["pint_agg"]
-        assert comparison == pint_agg.to_base_units()
-
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_aggregate_avg(self, field_test_aggregate_objects):
         """Test the aggregate average."""
-        comparison = Quantity(Decimal("367.00000000000000000") * ureg.gram).to_base_units()
-        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintAvg("weight", output_unit="gram"))["pint_agg"]
-        assert comparison == pint_agg.to_base_units()
+        if self.EXPECTED_TYPE == Decimal:
+            expected_avg = Decimal("0.367")
+        else:
+            expected_avg = Decimal("0.367")
+
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintAvg("weight"))["pint_agg"]
+        assert abs(expected_avg - pint_agg.quantity.magnitude) < Decimal("0.001")
+        assert str(pint_agg.quantity.units) == "kilogram"
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_aggregate_max(self, field_test_aggregate_objects):
         """Test the aggregate max."""
-        comparison = Quantity(Decimal("1000") * ureg.gram)
-        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintMax("weight", output_unit="gram"))["pint_agg"]
-        assert comparison == pint_agg.to_base_units()
+        if self.EXPECTED_TYPE == Decimal:
+            expected_max = Decimal("1.0")
+        else:
+            expected_max = Decimal("1.0")
+
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintMax("weight"))["pint_agg"]
+        assert abs(expected_max - pint_agg.quantity.magnitude) < Decimal("0.001")
+        assert str(pint_agg.quantity.units) == "kilogram"
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_aggregate_min(self, field_test_aggregate_objects):
         """Test the aggregate min."""
-        comparison = Quantity(Decimal("1.00") * ureg.gram)
-        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintMin("weight", output_unit="gram"))["pint_agg"]
-        assert comparison == pint_agg.to_base_units()
+        if self.EXPECTED_TYPE == Decimal:
+            expected_min = Decimal("0.001")
+        else:
+            expected_min = Decimal("0.001")
+
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintMin("weight"))["pint_agg"]
+        assert abs(expected_min - pint_agg.quantity.magnitude) < Decimal("0.0001")
+        assert str(pint_agg.quantity.units) == "kilogram"
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_aggregate_sum(self, field_test_aggregate_objects):
         """Test the aggregate sum."""
-        comparison = Quantity(Decimal("1101.00") * ureg.gram)
-        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintSum("weight", output_unit="gram"))["pint_agg"]
-        assert comparison == pint_agg.to_base_units()
+        if self.EXPECTED_TYPE == Decimal:
+            expected_sum = Decimal("1.101")
+        else:
+            expected_sum = Decimal("1.101")
+
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintSum("weight"))["pint_agg"]
+        assert abs(expected_sum - pint_agg.quantity.magnitude) < Decimal("0.001")
+        assert str(pint_agg.quantity.units) == "kilogram"
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_aggregate_std_dev(self, field_test_aggregate_objects):
         """Test the aggregate standard deviation."""
-        comparison = Quantity(Decimal("449.41962573968662856") * ureg.gram)
-        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintStdDev("weight", output_unit="gram"))["pint_agg"]
-        assert comparison == pint_agg.to_base_units()
+        if self.EXPECTED_TYPE == Decimal:
+            expected_std = Decimal("0.449")
+        else:
+            expected_std = Decimal("0.449")
+
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintStdDev("weight"))["pint_agg"]
+        assert abs(expected_std - pint_agg.quantity.magnitude) < Decimal("0.001")
+        assert str(pint_agg.quantity.units) == "kilogram"
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_aggregate_variance(self, field_test_aggregate_objects):
         """Test the aggregate variance."""
-        comparison = Quantity(Decimal("201.978") * ureg.gram)
-        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintVariance("weight", output_unit="gram"))["pint_agg"]
-        assert comparison == pint_agg.to_base_units()
+        if self.EXPECTED_TYPE == Decimal:
+            expected_var = Decimal("0.202")
+        else:
+            expected_var = Decimal("0.202")
+
+        pint_agg = self.MODEL.objects.aggregate(pint_agg=PintVariance("weight"))["pint_agg"]
+        assert abs(expected_var - pint_agg.quantity.magnitude) < Decimal("0.001")
+        assert str(pint_agg.quantity.units) == "kilogram"

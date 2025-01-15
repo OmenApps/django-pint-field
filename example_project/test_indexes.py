@@ -14,7 +14,7 @@ from django_pint_field.units import ureg
 class SingleFieldModel(models.Model):
     """Model with a single Pint field."""
 
-    measurement = DecimalPintField(default_unit="meter", max_digits=10, decimal_places=2)
+    measurement = DecimalPintField(default_unit="meter", display_decimal_places=2)
 
     class Meta:
         """Meta class for SingleFieldModel."""
@@ -26,8 +26,8 @@ class SingleFieldModel(models.Model):
 class MultiFieldModel(models.Model):
     """Model with multiple Pint fields."""
 
-    weight = DecimalPintField(default_unit="gram", max_digits=10, decimal_places=2)
-    height = DecimalPintField(default_unit="meter", max_digits=10, decimal_places=2)
+    weight = DecimalPintField(default_unit="gram", display_decimal_places=2)
+    height = DecimalPintField(default_unit="meter", display_decimal_places=2)
 
     class Meta:
         """Meta class for MultiFieldModel."""
@@ -39,7 +39,7 @@ class MultiFieldModel(models.Model):
 class ConditionalIndexModel(models.Model):
     """Model with a conditional index."""
 
-    weight = DecimalPintField(default_unit="gram", max_digits=10, decimal_places=2)
+    weight = DecimalPintField(default_unit="gram", display_decimal_places=2)
 
     class Meta:
         """Meta class for ConditionalIndexModel."""
@@ -59,22 +59,22 @@ test_migration.operations = [
         name="SingleFieldModel",
         fields=[
             ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-            ("measurement", DecimalPintField(default_unit="meter", max_digits=10, decimal_places=2)),
+            ("measurement", DecimalPintField(default_unit="meter", display_decimal_places=2)),
         ],
     ),
     migrations.CreateModel(
         name="MultiFieldModel",
         fields=[
             ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-            ("weight", DecimalPintField(default_unit="gram", max_digits=10, decimal_places=2)),
-            ("height", DecimalPintField(default_unit="meter", max_digits=10, decimal_places=2)),
+            ("weight", DecimalPintField(default_unit="gram", display_decimal_places=2)),
+            ("height", DecimalPintField(default_unit="meter", display_decimal_places=2)),
         ],
     ),
     migrations.CreateModel(
         name="ConditionalIndexModel",
         fields=[
             ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-            ("weight", DecimalPintField(default_unit="gram", max_digits=10, decimal_places=2)),
+            ("weight", DecimalPintField(default_unit="gram", display_decimal_places=2)),
         ],
     ),
 ]

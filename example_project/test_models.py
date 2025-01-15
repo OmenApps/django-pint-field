@@ -3,6 +3,7 @@
 from decimal import ROUND_DOWN
 from decimal import ROUND_HALF_UP
 from decimal import Decimal
+from decimal import getcontext
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -34,14 +35,15 @@ class TestBasePintFieldInitialization:
 
     def test_valid_unit_choices(self):
         """Test initializing with valid unit choices."""
-        field = BasePintField(default_unit="gram", unit_choices=["gram", "kilogram"])
-        assert field.unit_choices == ["gram", "kilogram"]
+        field = BasePintField(default_unit="gram", unit_choices=["kilogram", "pound"])
+        assert len(field.unit_choices) == 3  # Including default unit
+        assert field.unit_choices[0] == ("gram", "gram")
 
     def test_default_unit_added_to_choices(self):
         """Test that default_unit is added to unit_choices if not present."""
         field = BasePintField(default_unit="gram", unit_choices=["kilogram", "pound"])
-        assert "gram" in field.unit_choices
-        assert field.unit_choices[0] == "gram"  # Default unit should be first
+        assert ("gram", "gram") in field.unit_choices
+        assert field.unit_choices[0] == ("gram", "gram")  # Default unit should be first
 
     def test_dimensionality_check(self):
         """Test that unit choices must have same dimensionality as default unit."""
@@ -53,12 +55,16 @@ class TestBasePintFieldInitialization:
 class TestFieldValidation:
     """Test field validation."""
 
-    def test_decimal_field_precision(self):
+    def test_decimal_field_validation(self):
         """Test decimal field precision validation."""
-        field = DecimalPintField(default_unit="gram", max_digits=5, decimal_places=2)
-        with pytest.raises(ValidationError):
-            # Value with too many digits
-            field.clean(ureg.Quantity(Decimal("1234.567"), "gram"), None)
+        field = DecimalPintField(default_unit="gram", display_decimal_places=2)
+        value = ureg.Quantity(Decimal("1234.567"), "gram")
+
+        # Test with a model instance that's being added (not loaded from DB)
+        validate_obj = type("ValidateObj", (), {"_state": type("State", (), {"adding": True})()})
+
+        # This should pass since we're no longer enforcing max_digits/decimal_places
+        field.validate(value, validate_obj)
 
 
 @pytest.mark.django_db
@@ -76,7 +82,7 @@ class TestValueConversion:
     def test_to_python_conversion(self, field_class, input_value, expected_type):
         """Test conversion of various input types to python values."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2)
+            field = field_class(default_unit="gram", display_decimal_places=2)
         else:
             field = field_class(default_unit="gram")
 
@@ -105,7 +111,7 @@ class TestEdgeCases:
     def test_invalid_input_values(self, field_class, invalid_value):
         """Test handling of invalid input values."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2)
+            field = field_class(default_unit="gram", display_decimal_places=2)
         else:
             field = field_class(default_unit="gram")
 
@@ -116,7 +122,7 @@ class TestEdgeCases:
     def test_none_value_handling(self, field_class):
         """Test handling of None values."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2, null=True)
+            field = field_class(default_unit="gram", display_decimal_places=2, null=True)
         else:
             field = field_class(default_unit="gram", null=True)
 
@@ -126,7 +132,7 @@ class TestEdgeCases:
     def test_none_value_handling_fails(self, field_class):
         """Test handling of None values."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2)
+            field = field_class(default_unit="gram", display_decimal_places=2)
         else:
             field = field_class(default_unit="gram")
 
@@ -137,7 +143,7 @@ class TestEdgeCases:
     def test_empty_string_handling(self, field_class):
         """Test handling of empty strings."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2)
+            field = field_class(default_unit="gram", display_decimal_places=2)
         else:
             field = field_class(default_unit="gram")
 
@@ -149,68 +155,39 @@ class TestEdgeCases:
 class TestDecimalPintFieldSpecifics:
     """Test DecimalPintField specific functionality."""
 
-    def test_invalid_decimal_places(self):
-        """Test validation of decimal_places parameter."""
+    def test_decimal_precision_validation(self):
+        """Test validation of decimal precision against context precision."""
+        field = DecimalPintField(default_unit="gram", display_decimal_places=2)
+        validate_obj = type("ValidateObj", (), {"_state": type("State", (), {"adding": True})()})
+
+        # Test value within context precision
+        value = ureg.Quantity(Decimal("123.45"), "gram")
+        field.validate(value, validate_obj)
+
+        # Test value exceeding context precision
+        large_value = ureg.Quantity(Decimal("1" + "0" * getcontext().prec), "gram")
         with pytest.raises(ValidationError):
-            DecimalPintField(default_unit="gram", max_digits=5, decimal_places=-1)
-
-    def test_invalid_max_digits(self):
-        """Test validation of max_digits parameter."""
-        with pytest.raises(ValidationError):
-            DecimalPintField(default_unit="gram", max_digits=0, decimal_places=2)
-
-    def test_decimal_places_greater_than_max_digits(self):
-        """Test validation when decimal_places > max_digits."""
-        with pytest.raises(ValidationError):
-            DecimalPintField(default_unit="gram", max_digits=2, decimal_places=3)
-
-    @pytest.mark.parametrize(
-        "value,max_digits,decimal_places,should_raise",
-        [
-            (Decimal("123.45"), 5, 2, False),
-            (Decimal("1234.56"), 5, 2, True),
-            (Decimal("123.456"), 5, 2, True),
-            (Decimal("12.345"), 5, 3, False),
-        ],
-    )
-    def test_decimal_precision_validation(self, value, max_digits, decimal_places, should_raise):
-        """Test validation of decimal precision."""
-        field = DecimalPintField(default_unit="gram", max_digits=max_digits, decimal_places=decimal_places)
-        quantity = ureg.Quantity(value, "gram")
-
-        if should_raise:
-            with pytest.raises(ValidationError):
-                field.clean(quantity, None)
-        else:
-            cleaned = field.clean(quantity, None)
-            assert isinstance(cleaned, ureg.Quantity)
-            assert isinstance(cleaned.magnitude, Decimal)
+            field.validate(large_value, validate_obj)
 
 
 @pytest.mark.django_db
 class TestUnitRegistryHandling:
     """Test handling of different unit registries."""
 
-    @pytest.fixture
-    def different_ureg(self):
-        """Create a different unit registry for testing."""
-        return UnitRegistry()
-
     @pytest.mark.parametrize("field_class", [IntegerPintField, BigIntegerPintField, DecimalPintField])
-    def test_unit_registry_mismatch(self, field_class, different_ureg):
-        """Test handling of quantities from different unit registries."""
-        if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2)
-            value = different_ureg.Quantity(Decimal("100.00"), "gram")
-        else:
-            field = field_class(default_unit="gram")
-            value = different_ureg.Quantity(100, "gram")
+    def test_quantity_conversion_maintains_value(self, field_class):
+        """Test that quantity conversion maintains the value correctly."""
+        field = field_class(default_unit="gram")
 
-        # Should warn but not fail
-        with pytest.warns(RuntimeWarning):
-            result = field.fix_unit_registry(value)
-            assert result.units == ureg.gram
-            assert result._REGISTRY == ureg
+        # Test with a direct quantity
+        if field_class == DecimalPintField:
+            value = ureg.Quantity(Decimal("100.00"), "gram")
+        else:
+            value = ureg.Quantity(100, "gram")
+
+        converted = field.to_python(value)
+        assert converted == value
+        assert converted._REGISTRY is ureg
 
     def test_composite_factory_function(self):
         """Test the create_quantity_from_composite factory function."""
@@ -240,7 +217,7 @@ class TestFormFieldGeneration:
     def test_formfield_generation(self, field_class, expected_form_field):
         """Test that correct form fields are generated."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2, unit_choices=["gram", "kilogram"])
+            field = field_class(default_unit="gram", display_decimal_places=2, unit_choices=["gram", "kilogram"])
         else:
             field = field_class(default_unit="gram", unit_choices=["gram", "kilogram"])
 
@@ -251,7 +228,7 @@ class TestFormFieldGeneration:
 
     def test_formfield_custom_kwargs(self):
         """Test passing custom kwargs to formfield."""
-        field = DecimalPintField(default_unit="gram", max_digits=5, decimal_places=2)
+        field = DecimalPintField(default_unit="gram", display_decimal_places=2)
         form_field = field.formfield(help_text="Custom help", label="Custom label")
         assert form_field.help_text == "Custom help"
         assert form_field.label == "Custom label"
@@ -266,12 +243,12 @@ class TestFieldDeconstructionAndCloning:
         [
             (IntegerPintField, {}),
             (BigIntegerPintField, {}),
-            (DecimalPintField, {"max_digits": 5, "decimal_places": 2}),
+            (DecimalPintField, {"display_decimal_places": 2}),
         ],
     )
     def test_field_deconstruction(self, field_class, extra_kwargs):
         """Test that fields can be deconstructed properly."""
-        kwargs = {"default_unit": "gram", "unit_choices": ["gram", "kilogram"], **extra_kwargs}
+        kwargs = {"default_unit": "gram", "unit_choices": [("gram", "gram"), ("kilogram", "kilogram")], **extra_kwargs}
         field = field_class(**kwargs)
 
         name, path, args, new_kwargs = field.deconstruct()
@@ -279,11 +256,12 @@ class TestFieldDeconstructionAndCloning:
         assert "default_unit" in new_kwargs
         assert new_kwargs["default_unit"] == "gram"
         assert "unit_choices" in new_kwargs
-        assert set(new_kwargs["unit_choices"]) == {"gram", "kilogram"}
+        assert len(new_kwargs["unit_choices"]) == 2
+        assert ("gram", "gram") in new_kwargs["unit_choices"]
+        assert ("kilogram", "kilogram") in new_kwargs["unit_choices"]
 
         if field_class == DecimalPintField:
-            assert "max_digits" in new_kwargs
-            assert "decimal_places" in new_kwargs
+            assert "display_decimal_places" in new_kwargs
 
 
 @pytest.mark.django_db
@@ -301,7 +279,7 @@ class TestAdditionalEdgeCases:
     def test_invalid_dictionary_values(self, field_class, value, expected_error):
         """Test handling of invalid dictionary input values."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2)
+            field = field_class(default_unit="gram", display_decimal_places=2)
         else:
             field = field_class(default_unit="gram")
 
@@ -319,31 +297,43 @@ class TestAdditionalEdgeCases:
     def test_empty_container_values(self, field_class, value):
         """Test handling of empty container values."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=5, decimal_places=2)
+            field = field_class(default_unit="gram", display_decimal_places=2)
         else:
             field = field_class(default_unit="gram")
 
         result = field.get_prep_value(value)
         assert result == value
 
-    def test_decimal_rounding_methods(self):
-        """Test different rounding methods for DecimalPintField."""
-        field_up = DecimalPintField(default_unit="gram", max_digits=5, decimal_places=2, rounding_method=ROUND_HALF_UP)
-
-        field_down = DecimalPintField(default_unit="gram", max_digits=5, decimal_places=2, rounding_method=ROUND_DOWN)
+    def test_decimal_display_formatting(self):
+        """Test decimal display formatting with different display_decimal_places settings."""
+        # Test with 2 decimal places
+        field = DecimalPintField(default_unit="gram", display_decimal_places=2)
 
         value = ureg.Quantity(Decimal("123.4564"), "gram")
+        validate_obj = type("ValidateObj", (), {"_state": type("State", (), {"adding": True})()})
 
-        result_up = field_up.clean(value, None)
-        result_down = field_down.clean(value, None)
+        # Should pass validation
+        field.validate(value, validate_obj)
 
-        assert result_up.magnitude == Decimal("123.46")
-        assert result_down.magnitude == Decimal("123.45")
+        # Verify display formatting
+        assert str(field.format_value(value)) == "123.46 gram"
 
-    def test_invalid_rounding_method(self):
-        """Test that invalid rounding method raises ValueError."""
-        with pytest.raises(ValidationError):
-            DecimalPintField(default_unit="gram", max_digits=5, decimal_places=2, rounding_method="INVALID_METHOD")
+        # Test with 3 decimal places
+        field_three = DecimalPintField(default_unit="gram", display_decimal_places=3)
+        assert str(field_three.format_value(value)) == "123.456 gram"
+
+    def test_decimal_display_without_decimal_places(self):
+        """Test decimal display formatting without specifying display_decimal_places."""
+        field = DecimalPintField(default_unit="gram")
+
+        value = ureg.Quantity(Decimal("123.4564"), "gram")
+        validate_obj = type("ValidateObj", (), {"_state": type("State", (), {"adding": True})()})
+
+        # Should pass validation
+        field.validate(value, validate_obj)
+
+        # Without display_decimal_places, should show full precision
+        assert str(field.format_value(value)) == "123.4564 gram"
 
 
 @pytest.mark.django_db
@@ -361,7 +351,7 @@ class TestDatabaseOperations:
     def test_db_type_and_value_conversion(self, field_class, test_values):
         """Test database type and value conversion."""
         if field_class == DecimalPintField:
-            field = field_class(default_unit="gram", max_digits=10, decimal_places=2)
+            field = field_class(default_unit="gram", display_decimal_places=2)
         else:
             field = field_class(default_unit="gram")
 
@@ -374,169 +364,70 @@ class TestDatabaseOperations:
             db_value = field.get_prep_value(quantity)
             assert isinstance(db_value, ureg.Quantity)
 
-    def test_decimal_field_db_prep_save_with_error(self):
-        """Test DecimalPintField's get_db_prep_save method."""
-        field = DecimalPintField(default_unit="gram", max_digits=10, decimal_places=2)
-
-        # Test with Quantity
-        value = ureg.Quantity(Decimal("100.456"), "gram")
-        with pytest.raises(ValidationError):
-            field.get_db_prep_save(value, connection=None)
-
-        # Test with None
-        assert field.get_db_prep_save(None, connection=None) is None
-
-        # Test with dictionary
-        dict_value = {"magnitude": "100.456", "units": "gram"}
-        with pytest.raises(ValidationError):
-            field.get_db_prep_save(dict_value, connection=None)
-
     def test_decimal_field_db_prep_save(self):
         """Test DecimalPintField's get_db_prep_save method."""
-        field = DecimalPintField(
-            default_unit="gram",
-            max_digits=10,
-            decimal_places=2,
-            rounding_method=ROUND_HALF_UP,
-        )
+        field = DecimalPintField(default_unit="gram", display_decimal_places=2, rounding_method=ROUND_HALF_UP)
 
-        # Test with Quantity
+        # Test with a high-precision value
         value = ureg.Quantity(Decimal("100.456"), "gram")
-        result = field.get_db_prep_save(value, connection=None)
+        result = field.get_prep_value(value)
+
+        # Should preserve full precision in the database
         assert isinstance(result, ureg.Quantity)
-        assert result.magnitude == Decimal("100.46")  # Rounded to 2 decimal places
+        assert result.magnitude == Decimal("100.456")
 
         # Test with None
         assert field.get_db_prep_save(None, connection=None) is None
-
-        # # Test with dictionary
-        dict_value = {"magnitude": "100.456", "units": "gram"}
-        result = field.get_db_prep_save(dict_value, connection=None)
-        assert isinstance(result, ureg.Quantity)
-        assert result.magnitude == Decimal("100.46")
-
-        # Test with dictionary and Decimal
-        dict_value = {"magnitude": Decimal("100.456"), "units": "gram"}
-        result = field.get_db_prep_save(dict_value, connection=None)
-        assert isinstance(result, ureg.Quantity)
-        assert result.magnitude == Decimal("100.46")
 
 
 @pytest.mark.django_db
 class TestDecimalValidationBehavior:
     """Test the decimal validation behavior in different contexts."""
 
-    def test_db_aggregation_bypasses_validation(self, monkeypatch):
-        """Test that values from database aggregation bypass decimal validation."""
-        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
+    def test_form_input_validation(self):
+        """Test that form input respects context precision."""
+        field = DecimalPintField(default_unit="acre_feet", display_decimal_places=2)
 
-        # Create a quantity that would fail normal validation
-        value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
+        # Create a value that exceeds context precision
+        value = ureg.Quantity(Decimal("1" + "0" * getcontext().prec), "acre_feet")
 
-        class MockFrame:
-            """Mock frame for testing aggregation context."""
+        validate_obj = type("ValidateObj", (), {"_state": type("State", (), {"adding": True})()})
 
-            @property
-            def f_locals(self):
-                """Create a proper mock aggregate class that matches what Django would use."""
-
-                class MockPintSum:
-                    """Mock the aggregate class."""
-
-                    def __init__(self):
-                        self.__class__.__name__ = "PintSum"
-
-                return {"self": MockPintSum()}
-
-            @property
-            def f_back(self):
-                """Mock the frame's back reference."""
-                return None
-
-        # Mock the frame inspection to simulate being inside an aggregation
-        monkeypatch.setattr("inspect.currentframe", lambda: MockFrame())
-
-        # This should not raise ValidationError despite having too many decimal places
-        try:
-            field.validate(value, None)
-        except ValidationError as e:
-            pytest.fail(f"Validation should be skipped but raised: {e}")
-
-    def test_form_input_enforces_validation(self):
-        """Test that direct value assignment enforces decimal validation."""
-        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
-
-        # Create a quantity that exceeds the decimal places limit
-        value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
-
-        # Create a model instance state indicating it's a new instance
-        class ModelState:
-            """Mock model state."""
-
-            adding = True
-
-        class ModelInstance:
-            """Mock model instance."""
-
-            _state = ModelState()
-
-        # This should raise ValidationError because we're simulating form input
         with pytest.raises(ValidationError) as exc_info:
-            field.validate(value, ModelInstance())
-
-        assert "decimal places" in str(exc_info.value)
+            field.validate(value, validate_obj)
+        assert "maximum precision" in str(exc_info.value)
 
     def test_model_load_bypasses_validation(self):
         """Test that loading values from the database bypasses validation."""
-        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
-
-        # Create a quantity that would fail normal validation
+        field = DecimalPintField(default_unit="acre_feet", display_decimal_places=2)
         value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
 
         # Create a model instance state indicating it's from the database
+        validate_obj = type("ValidateObj", (), {"_state": type("State", (), {"adding": False})()})
+
+        # This should not raise ValidationError despite having more decimal places
+        field.validate(value, validate_obj)
+
+    def test_new_instance_validation(self):
+        """Test validation for new model instances."""
+        field = DecimalPintField(default_unit="acre_feet", display_decimal_places=2)
+
+        # Create a value that exceeds context precision
+        value = ureg.Quantity(Decimal("1" + "0" * getcontext().prec), "acre_feet")
+
         class ModelState:
-            """Mock model state."""
-
-            adding = False
-
-        class ModelInstance:
-            """Mock model instance."""
-
-            _state = ModelState()
-
-        # This should not raise ValidationError despite having too many decimal places
-        try:
-            field.validate(value, ModelInstance())
-        except ValidationError as e:
-            pytest.fail(f"Validation should be skipped but raised: {e}")
-
-    def test_new_instance_enforces_validation(self):
-        """Test that creating a new model instance enforces validation."""
-        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
-
-        # Create a quantity that exceeds the decimal places limit
-        value = ureg.Quantity(Decimal("123.45678"), "acre_feet")
-
-        # Create a model instance state indicating it's a new instance
-        class ModelState:
-            """Mock model state."""
-
             adding = True
 
         class ModelInstance:
-            """Mock model instance."""
-
             _state = ModelState()
 
-        # This should raise ValidationError because we're creating a new instance
         with pytest.raises(ValidationError) as exc_info:
             field.validate(value, ModelInstance())
-
-        assert "decimal places" in str(exc_info.value)
+        assert "maximum precision" in str(exc_info.value)
 
     def test_prep_value_bypasses_validation(self):
         """Test that get_prep_value allows full precision for database operations."""
-        field = DecimalPintField(default_unit="acre_feet", max_digits=5, decimal_places=2)
+        field = DecimalPintField(default_unit="acre_feet", display_decimal_places=2)
 
         # Create a quantity with more decimal places than allowed
         value = ureg.Quantity(Decimal("123.45678"), "acre_feet")

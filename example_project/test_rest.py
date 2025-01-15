@@ -5,6 +5,7 @@ from decimal import Decimal
 import pytest
 from rest_framework.exceptions import ValidationError
 
+from django_pint_field.helpers import PintFieldProxy
 from django_pint_field.rest import DecimalPintRestField
 from django_pint_field.rest import IntegerPintRestField
 from django_pint_field.rest import PintRestField
@@ -307,3 +308,143 @@ class TestEdgeCases:
         assert self.dict_serializer.to_representation(quantity)["magnitude"] == large_value
         assert self.int_serializer.to_representation(quantity) == f"{large_value} gram"
         assert self.decimal_serializer.to_representation(quantity) == f"{large_value} gram"
+
+
+@pytest.mark.django_db
+class TestPintRestFieldAdvanced:
+    """Additional test cases for PintRestField focusing on advanced scenarios."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        """Set up test parameters."""
+        self.serializer = PintRestField()
+        self.unit_choices = ["gram", "kilogram", "pound"]
+
+    def test_proxy_handling(self):
+        """Test handling of PintFieldProxy objects."""
+        quantity = Quantity(100, "gram")
+        proxy = PintFieldProxy(quantity, None)  # Mock converter
+        result = self.serializer.to_representation(proxy)
+
+        assert isinstance(result, dict)
+        assert result["magnitude"] == 100
+        assert result["units"] == "gram"
+
+    def test_dimensionality_conversion(self):
+        """Test handling quantities with different but compatible units."""
+        test_cases = [
+            ({"magnitude": 1000, "units": "gram"}, "kilogram", 1),
+            ({"magnitude": 1, "units": "kilogram"}, "gram", 1000),
+            ({"magnitude": 453.59237, "units": "gram"}, "pound", 1),
+        ]
+
+        for input_data, target_unit, expected_magnitude in test_cases:
+            quantity = self.serializer.to_internal_value(input_data)
+            converted = quantity.to(target_unit)
+            assert pytest.approx(converted.magnitude, rel=1e-5) == expected_magnitude
+
+    @pytest.mark.parametrize(
+        "invalid_data",
+        [
+            {"magnitude": "not_a_number", "units": "gram"},
+            {"magnitude": None, "units": "gram"},
+            {"units": "gram"},  # Missing magnitude
+            {"magnitude": 100},  # Missing units
+            {},  # Empty dict
+        ],
+    )
+    def test_invalid_dictionary_formats(self, invalid_data):
+        """Test various invalid dictionary formats."""
+        with pytest.raises(ValidationError):
+            self.serializer.to_internal_value(invalid_data)
+
+
+@pytest.mark.django_db
+class TestDjangoNinjaIntegration:
+    """Test cases for Django Ninja integration."""
+
+    @pytest.fixture
+    def integer_model(self):
+        """Create a test model instance."""
+        return IntegerPintFieldSaveModel.objects.create(name="Test Integer", weight=Quantity(100, "gram"))
+
+    def test_schema_serialization(self, client, integer_model):
+        """Test Django Ninja schema serialization."""
+        # Test list endpoint
+        response = client.get("/api_ninja/integers")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["weight"] == "100 gram"
+
+        # Test detail endpoint
+        response = client.get(f"/api_ninja/integers/{integer_model.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["weight"] == "100 gram"
+
+    def test_schema_not_found(self, client):
+        """Test 404 handling in Django Ninja endpoints."""
+        response = client.get("/api_ninja/integers/999")
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestRestFrameworkViewsets:
+    """Test cases for DRF ViewSets."""
+
+    @pytest.fixture
+    def decimal_model(self):
+        """Create a test model instance."""
+        return DecimalPintFieldSaveModel.objects.create(name="Test Decimal", weight=Quantity(Decimal("100.50"), "gram"))
+
+    @pytest.fixture
+    def bigint_model(self):
+        """Create a test model instance."""
+        return BigIntegerPintFieldSaveModel.objects.create(name="Test BigInt", weight=Quantity(1000, "gram"))
+
+    def test_viewset_list(self, client, decimal_model):
+        """Test DRF ViewSet list endpoints."""
+        # Test decimal viewset
+        response = client.get("/api/decimals/")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["weight"] == "100.50 gram"
+
+    def test_viewset_detail(self, client, bigint_model):
+        """Test DRF ViewSet detail endpoints."""
+        response = client.get(f"/api/big_integers/{bigint_model.id}/")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["weight"] == "1000 gram"
+
+    def test_viewset_pagination(self, client):
+        """Test DRF ViewSet pagination."""
+        # Create multiple test objects
+        for i in range(5):
+            IntegerPintFieldSaveModel.objects.create(name=f"Test {i}", weight=Quantity(100 + i, "gram"))
+
+        # Test paginated response
+        response = client.get("/api/integers/")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) == 5
+        # Verify the data is in order
+        for i, item in enumerate(data):
+            assert item["weight"] == f"{100 + i} gram"
+
+    def test_general_viewset_format(self, client):
+        """Test dictionary format in general integer viewset."""
+        # Create test data
+        model = IntegerPintFieldSaveModel.objects.create(name="Test General", weight=Quantity(100, "gram"))
+
+        # Test that response uses dictionary format
+        response = client.get(f"/api/general_integers/{model.id}/")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data["weight"], dict)
+        assert data["weight"]["magnitude"] == 100
+        assert data["weight"]["units"] == "gram"

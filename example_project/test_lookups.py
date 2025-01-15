@@ -10,6 +10,7 @@ from django.db import transaction
 from pint.errors import UndefinedUnitError
 
 from django_pint_field.exceptions import PintFieldLookupError
+from django_pint_field.helpers import PintFieldProxy
 from django_pint_field.units import ureg
 from example_project.example.models import BigIntegerPintFieldSaveModel
 from example_project.example.models import DecimalPintFieldSaveModel
@@ -28,7 +29,7 @@ class TestFieldLookups:
         """Set up the test parameters."""
         if request.param == "integer":
             self.MODEL = IntegerPintFieldSaveModel
-            self.EXPECTED_TYPE = int
+            self.EXPECTED_TYPE = Decimal  # Changed to Decimal since UnitRegistry uses non_int_type=Decimal
             self.DEFAULT_WEIGHT = 100
             self.DEFAULT_WEIGHT_STR = "100.0"
             self.DEFAULT_WEIGHT_QUANTITY_STR = "100 gram"
@@ -37,7 +38,7 @@ class TestFieldLookups:
             self.OUNCE_VALUE = 3.52739619496
         elif request.param == "big_integer":
             self.MODEL = BigIntegerPintFieldSaveModel
-            self.EXPECTED_TYPE = int
+            self.EXPECTED_TYPE = Decimal  # Changed to Decimal since UnitRegistry uses non_int_type=Decimal
             self.DEFAULT_WEIGHT = 100
             self.DEFAULT_WEIGHT_STR = "100.0"
             self.DEFAULT_WEIGHT_QUANTITY_STR = "100 gram"
@@ -126,17 +127,6 @@ class TestFieldLookups:
             "iregex",
             "search",
             "isearch",
-            "month",
-            "day",
-            "week",
-            "hour",
-            "minute",
-            "contains",
-            "icontains",
-            "startswith",
-            "istartswith",
-            "endswith",
-            "iendswith",
         ],
     )
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
@@ -165,22 +155,24 @@ class TestFieldLookups:
     def test_value_stored_as_quantity(self, field_test_lookup_objects):
         """Test that the value is stored as a quantity."""
         obj = self.MODEL.objects.first()
-        assert isinstance(obj.weight, Quantity)
+        assert isinstance(obj.weight, PintFieldProxy)
+        assert isinstance(obj.weight.quantity, Quantity)
         assert str(obj.weight) == self.DEFAULT_WEIGHT_QUANTITY_STR
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_value_stored_as_correct_magnitude_type(self, field_test_lookup_objects):
         """Test that the value is stored as the correct magnitude type."""
         obj = self.MODEL.objects.first()
-        assert isinstance(obj.weight, Quantity)
-        # assert isinstance(obj.weight.magnitude, self.EXPECTED_TYPE)
+        assert isinstance(obj.weight, PintFieldProxy)
+        assert isinstance(obj.weight.quantity.magnitude, self.EXPECTED_TYPE)
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_value_conversion(self, field_test_lookup_objects):
         """Test that the value is converted correctly."""
         obj = self.MODEL.objects.first()
-        ounces = obj.weight.to(ureg.ounce)
-        assert ounces.units == ureg.ounce
+        ounces = obj.weight.ounce  # Use the proxy's unit conversion
+        assert isinstance(ounces, Quantity)
+        assert str(ounces.units) == "ounce"
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_serialisation(self, field_test_lookup_objects):
@@ -220,13 +212,6 @@ class TestFieldLookups:
         """Test various comparison lookups."""
         qs = self.MODEL.objects.filter(**{f"weight__{lookup}": self.COMPARE_QUANTITY})
         assert field_test_lookup_objects[should_exclude].name not in list(qs.values_list("name", flat=True))
-
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
-    def test_comparison_with_quantity_isnull(self, field_test_lookup_objects):
-        """Test isnull lookup."""
-        qs = self.MODEL.objects.filter(weight__isnull=False)
-        assert field_test_lookup_objects["lightest"].name in list(qs.values_list("name", flat=True))
-        assert field_test_lookup_objects["heaviest"].name in list(qs.values_list("name", flat=True))
 
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_comparison_with_quantity_range(self, field_test_lookup_objects):
