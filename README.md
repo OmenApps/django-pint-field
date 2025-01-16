@@ -34,9 +34,9 @@ Add to your `INSTALLED_APPS`:
 
 ```python
 INSTALLED_APPS = [
-    ...
-    'django_pint_field',
-    ...
+    # ...
+    "django_pint_field",
+    # ...
 ]
 ```
 
@@ -79,14 +79,16 @@ python manage.py pgtrigger install
 1. Define your model:
 
 ```python
+from decimal import Decimal
 from django.db import models
 from django_pint_field.models import DecimalPintField
 
+
 class Product(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=Decimal("100"))
     weight = DecimalPintField(
         default_unit="gram",
-        unit_choices=["gram", "kilogram", "pound", "ounce"]
+        unit_choices=["gram", "kilogram", "pound", "ounce"],
     )
 ```
 
@@ -98,17 +100,21 @@ from django_pint_field.units import ureg
 # Create objects
 product = Product.objects.create(
     name="Coffee Bag",
-    weight=ureg.Quantity(340, "gram")
+    weight=ureg.Quantity(Decimal("340"), "gram"),
 )
 
 # Query using different units
 products = Product.objects.filter(
-    weight__gte=ureg.Quantity(0.5, "kilogram")
+    weight__gte=ureg.Quantity(Decimal("0.5"), "kilogram"),
 )
 
 # Access values
-print(product.weight)  # 340 gram
-print(product.weight.to("kilogram"))  # 0.34 kilogram
+print(product.weight)  # 3460 gram
+print(product.weight.quantity)  # 3460 gram (accessing the Pint Quantity object)
+# Convert to different units
+print(product.weight.quantity.to("kilogram"))  # 0.346 kilogram
+print(product.weight.kilogram)  # 0.346 kilogram
+print(product.weight.kilogram__2)  # 0.35 kilogram  (rounded to 2 decimal places)
 ```
 
 ## Features
@@ -142,12 +148,17 @@ print(product.weight.to("kilogram"))  # 0.34 kilogram
 ```python
 from django_pint_field.rest import DecimalPintRestField
 
+
 class ProductSerializer(serializers.ModelSerializer):
     weight = DecimalPintRestField()
 
     class Meta:
         model = Product
-        fields = ['name', 'weight']
+        fields = ["name", "weight"]
+```
+
+```{note}
+The package is tested to work with both Django REST Framework and Django Ninja.
 ```
 
 ### Supported Lookups
@@ -164,10 +175,20 @@ class ProductSerializer(serializers.ModelSerializer):
 from django_pint_field.aggregates import PintAvg, PintSum
 
 Product.objects.aggregate(
-    avg_weight=PintAvg('weight'),
-    total_weight=PintSum('weight')
+    avg_weight=PintAvg("weight"),
+    total_weight=PintSum("weight"),
 )
 ```
+
+#### Supported Aggregates
+
+- `PintAvg`
+- `PintCount`
+- `PintMax`
+- `PintMin`
+- `PintSum`
+- `PintStdDev`
+- `PintVariance`
 
 ## Advanced Usage
 
@@ -178,7 +199,7 @@ Create your own unit registry:
 ```python
 from pint import UnitRegistry
 
-custom_ureg = UnitRegistry()
+custom_ureg = UnitRegistry(non_int_type=Decimal)
 custom_ureg.define("custom_unit = [custom]")
 
 # In settings.py
@@ -194,13 +215,12 @@ Django Pint Field supports creating indexes on the comparator components of Pint
 ```python
 from django_pint_field.indexes import PintFieldComparatorIndex
 
+
 class Package(models.Model):
     weight = DecimalPintField("gram")
 
     class Meta:
-        indexes = [
-            PintFieldComparatorIndex(fields=['weight'])
-        ]
+        indexes = [PintFieldComparatorIndex(fields=["weight"])]
 ```
 
 #### Multi-Field Index
@@ -208,14 +228,13 @@ class Package(models.Model):
 ```python
 from django_pint_field.indexes import PintFieldComparatorIndex
 
+
 class Package(models.Model):
     weight = DecimalPintField("gram")
     volume = DecimalPintField("liter")
 
     class Meta:
-        indexes = [
-            PintFieldComparatorIndex(fields=['weight', 'volume'])
-        ]
+        indexes = [PintFieldComparatorIndex(fields=["weight", "volume"])]
 ```
 
 You can also use additional index options, as usual. e.g.:
