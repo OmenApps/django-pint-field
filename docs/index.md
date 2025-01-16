@@ -13,6 +13,8 @@ maxdepth: 2
 
 usage
 advanced_usage
+cookbook
+example_project
 terminology
 reference
 contributing
