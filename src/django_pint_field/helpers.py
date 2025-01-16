@@ -102,6 +102,12 @@ class PintFieldProxy:
 
         # Check if we have a decimal places specification
         parts = name.split("__")
+        if len(parts) == 1:
+            if name == "magnitude":
+                return self.quantity.magnitude
+            if name == "units":
+                return self.quantity.units
+
         if len(parts) == 2:
             try:
                 prefix, decimal_places = parts
@@ -123,8 +129,8 @@ class PintFieldProxy:
                 magnitude = Decimal(str(converted.magnitude)).quantize(Decimal(quantizing_string))
                 return type(converted)(magnitude, converted.units)
 
-            except ValueError:
-                raise AttributeError(f"Invalid decimal places specification: {parts[1]}")
+            except ValueError as e:
+                raise AttributeError(f"Invalid decimal places specification: {parts[1]}") from e
 
         # Convert the value to the requested unit
         converted = self.converter.convert_to_unit(self.quantity, name)
