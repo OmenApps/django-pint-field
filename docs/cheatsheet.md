@@ -1,5 +1,5 @@
 
-# Django Pint Field Cheatsheet
+# Cheatsheet
 
 All of the examples below use `device = ExperimentalDevice.objects.first()` from `example_project/laboratory/models.py` as the base object. The `ExperimentalDevice` model has a `portal_diameter` field that is a `DecimalPintField` with a default unit of `meter` and unit choices of `meter`, `centimeter`, and `foot`.
 
