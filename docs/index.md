@@ -12,8 +12,9 @@ maxdepth: 2
 ---
 
 usage
-advanced_usage
+cheatsheet
 cookbook
+advanced_usage
 example_project
 terminology
 reference

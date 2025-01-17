@@ -469,6 +469,15 @@
                                 <i class="fa-solid fa-bolt"></i> Energy Readings
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <p>&nbsp;</p>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'laboratory:cheatsheet' %}active{% endif %}"
+                               href="{% url 'laboratory:cheatsheet' %}">
+                                <i class="fa-solid fa-code"></i> Cheatsheet
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </nav>

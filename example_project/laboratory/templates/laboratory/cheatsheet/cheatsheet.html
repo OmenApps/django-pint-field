@@ -1,0 +1,400 @@
+{% extends "laboratory/base.html" %}
+{% load django_pint_field %}
+
+{% block title %}Device Details - F.L.M.N.{% endblock title %}
+
+{% block page_title %}Django Pint Field Template Examples{% endblock page_title %}
+
+{% block content %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Using <code>device = ExperimentalDevice.objects.first()</code></h5>
+                </div>
+                <div class="card-body">
+                    <section class="mb-5">
+                        <h3 class="h5 mb-3">{{ field_name|title }}</h3>
+
+                        <div class="mb-4">
+                            <h4 class="h6 mb-3">Basic Field Access</h4>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Template Code</th>
+                                            <th>Output</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Direct output</td>
+                                            <td><code>&#123;&#123; device.portal_diameter &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Magnitude only</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.magnitude &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.magnitude }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Units only</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.units &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.units }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Raw Pint Quantity object</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.quantity &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.quantity }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Raw Pint Quantity object (magnitude)</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.quantity.magnitude &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.quantity.magnitude }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Raw Pint Quantity object (units)</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.quantity.units &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.quantity.units }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="h6 mb-3">Decimal Place Formatting</h4>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Template Code</th>
+                                            <th>Output</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>0 decimal places</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.digits__0 &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.digits__0 }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>2 decimal places</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.digits__2 &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.digits__2 }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>5 decimal places</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.digits__5 &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.digits__5 }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>5 decimal places, magnitude only</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.digits__5.magnitude &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.digits__5.magnitude }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="h6 mb-3">Direct Conversions</h4>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Template Code</th>
+                                            <th>Output</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Direct conversion (meter)</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.meter &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.meter }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Direct conversion (centimeter)</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.centimeter &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.centimeter }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Direct conversion (foot)</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.foot &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.foot }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Direct conversion (foot) magnitude only</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.foot.magnitude &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.foot.magnitude }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Direct conversion (foot) units only</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.foot.units &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.foot.units }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Direct conversion (foot) with 0 decimal places</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.foot__0 &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.foot__0 }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Direct conversion (foot) with 2 decimal places</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.foot__2 &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.foot__2 }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Direct conversion (foot) with 5 decimal places</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.foot__5 &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.foot__5 }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="h6 mb-3">Template Filters</h4>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Template Code</th>
+                                            <th>Output</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Magnitude only</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|magnitude_only &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|magnitude_only }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Magnitude only with 2 decimal places</td>
+                                            <td><code>&#123;&#123; device.portal_diameter.digits__2|magnitude_only &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter.digits__2|magnitude_only }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Units only</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|units_only &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|units_only }}</td>
+                                        </tr>
+                                        {% for unit_choice in unit_choices %}
+                                            {% with unit_name=unit_choice.1 %}
+                                                <tr>
+                                                    <td>Convert to {{ unit_name }}</td>
+                                                    <td><code>&#123;&#123; device.portal_diameter|with_units:"{{ unit_name }}" &#125;&#125;</code></td>
+                                                    <td>{{ device.portal_diameter|with_units:unit_name }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Convert to {{ unit_name }} with 2 decimals</td>
+                                                    <td><code>&#123;&#123; device.portal_diameter|with_units:"{{ unit_name }}"|with_digits:2 &#125;&#125;</code></td>
+                                                    <td>{{ device.portal_diameter|with_units:unit_name|with_digits:2 }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Convert to {{ unit_name }}, magnitude only</td>
+                                                    <td><code>&#123;&#123; device.portal_diameter|with_units:"{{ unit_name }}"|magnitude_only &#125;&#125;</code></td>
+                                                    <td>{{ device.portal_diameter|with_units:unit_name|magnitude_only }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Convert to {{ unit_name }}, magnitude only</td>
+                                                    <td><code>&#123;&#123; device.portal_diameter|with_units:"{{ unit_name }}"|magnitude_only|floatformat:'2' &#125;&#125;</code></td>
+                                                    <td>{{ device.portal_diameter|with_units:unit_name|magnitude_only|floatformat:'2' }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Convert to {{ unit_name }}, units only</td>
+                                                    <td><code>&#123;&#123; device.portal_diameter|with_units:"{{ unit_name }}"|units_only &#125;&#125;</code></td>
+                                                    <td>{{ device.portal_diameter|with_units:unit_name|units_only }}</td>
+                                                </tr>
+                                            {% endwith %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="h6 mb-3">Format String Examples</h4>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Template Code</th>
+                                            <th>Output</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Default format</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|pint_str_format:'' &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|pint_str_format:"" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Default format (explicitly stated)</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|pint_str_format:'D' &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|pint_str_format:"D" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Compact format</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|pint_str_format:'~P' &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|pint_str_format:"~P" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Scientific notation</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|pint_str_format:'.2e' &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|pint_str_format:".2e" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Fixed point (2 places)</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|pint_str_format:'.2f' &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|pint_str_format:".2f" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Compact fixed point (2 places)</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|pint_str_format:'.2g~P' &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|pint_str_format:".2g~P" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Fixed point (2 places), units only</td>
+                                            <td><code>&#123;&#123; device.portal_diameter|pint_str_format:"~P"|units_only &#125;&#125;</code></td>
+                                            <td>{{ device.portal_diameter|pint_str_format:"~P"|units_only }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="h6 mb-3">Combined Operations</h4>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Template Code</th>
+                                            <th>Output</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for unit_choice in unit_choices %}
+                                        {% with unit_name=unit_choice.1 %}
+                                        <tr>
+                                            <td>Convert, format & style</td>
+                                            <td>
+                                                <code>&#123;&#123; device.portal_diameter|with_units:"{{ unit_name }}"|with_digits:2|pint_str_format:'~P' &#125;&#125;</code>
+                                            </td>
+                                            <td>
+                                                {{ device.portal_diameter|with_units:unit_name|with_digits:2|pint_str_format:"~P" }}
+                                            </td>
+                                        </tr>
+                                        {% endwith %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="h6 mb-3">Comparisons</h4>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Template Code</th>
+                                            <th>Output</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Equal to other device</td>
+                                            <td>
+                                                <code>&#123;% if device.portal_diameter.quantity == device.portal_diameter.quantity %&#125;Equal&#123;% else %&#125;Not equal&#123;% endif %&#125;</code><br>
+                                                Checks if {{ device.portal_diameter.quantity }} == {{ device.portal_diameter.quantity }}
+                                            </td>
+                                            <td>{% if device.portal_diameter.quantity == device.portal_diameter.quantity %}Equal{% else %}Not equal{% endif %}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Equal to other device</td>
+                                            <td>
+                                                <code>&#123;% if device.portal_diameter.quantity == other_device.portal_diameter.quantity %&#125;Equal&#123;% else %&#125;Not equal&#123;% endif %&#125;</code><br>
+                                                Checks if {{ device.portal_diameter.quantity }} == {{ other_device.portal_diameter.quantity }}
+                                            </td>
+                                            <td>{% if device.portal_diameter.quantity == other_device.portal_diameter.quantity %}Equal{% else %}Not equal{% endif %}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Greater than other device</td>
+                                            <td>
+                                                <code>&#123;% if device.portal_diameter.quantity > other_device.portal_diameter.quantity %&#125;Greater&#123;% else %&#125;Not greater&#123;% endif %&#125;</code><br>
+                                                Checks if {{ device.portal_diameter.quantity }} > {{ other_device.portal_diameter.quantity }}
+                                            </td>
+                                            <td>{% if device.portal_diameter.quantity > other_device.portal_diameter.quantity %}Greater{% else %}Not greater{% endif %}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Less than other device</td>
+                                            <td>
+                                                <code>&#123;% if device.portal_diameter.quantity < other_device.portal_diameter.quantity %&#125;Less&#123;% else %&#125;Not less&#123;% endif %&#125;</code><br>
+                                                Checks if {{ device.portal_diameter.quantity }} < {{ other_device.portal_diameter.quantity }}
+                                            </td>
+                                            <td>{% if device.portal_diameter.quantity < other_device.portal_diameter.quantity %}Less{% else %}Not less{% endif %}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="mb-5">
+                        <h3 class="h5 mb-3">Aggregation Examples</h3>
+                        {% for agg_name, agg_data in aggregations.items %}
+                        <div class="mb-4">
+                            <h4 class="h6 mb-3">{{ agg_name|title }}</h4>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Template Code</th>
+                                            <th>Output</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Base value</td>
+                                            <td><code>&#123;&#123; agg_data.value &#125;&#125;</code></td>
+                                            <td>{{ agg_data.value }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>With 2 decimals</td>
+                                            <td><code>&#123;&#123; agg_data.value.digits__2 &#125;&#125;</code></td>
+                                            <td>{{ agg_data.value.digits__2 }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>In base units</td>
+                                            <td><code>&#123;&#123; agg_data.value.quantity.to_base_units &#125;&#125;</code></td>
+                                            <td>{{ agg_data.value.quantity.to_base_units }}</td>
+                                        </tr>
+                                        {% for unit_choice in unit_choices %}
+                                        <tr>
+                                            <td>In {{ unit_choice.1 }}</td>
+                                            <td><code>&#123;&#123; agg_data.value|with_units:"{{ unit_choice.1 }}" &#125;&#125;</code></td>
+                                            <td>{{ agg_data.value|with_units:unit_choice.1 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
