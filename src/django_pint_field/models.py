@@ -24,6 +24,8 @@ from pint.errors import UndefinedUnitError
 from psycopg.types.composite import CompositeInfo
 from psycopg.types.composite import register_composite
 
+from django_pint_field.helpers import get_quantizing_string
+
 from .adapters import PintDumper
 from .forms import DecimalPintFormField
 from .forms import IntegerPintFormField
@@ -169,8 +171,8 @@ class PintFieldMixin:
         # Don't override a get_FOO_display() method defined explicitly on the class
         if f"get_{self.name}_display" not in cls.__dict__:
 
-            def get_display(obj, format_string=None):  # New implementation
-                return self._get_FIELD_display(obj, format_string)
+            def get_display(obj, digits=None, format_string=None):
+                return self._get_FIELD_display(obj, digits, format_string)
 
             setattr(cls, f"get_{self.name}_display", get_display)
 
@@ -252,16 +254,36 @@ class BasePintField(PintFieldMixin, models.Field):
         super().contribute_to_class(cls, name, private_only=private_only, **kwargs)
         setattr(cls, self.name, self)
 
-    def _get_FIELD_display(self, obj, format_string=None):  # pylint: disable=C0103
+    def _get_FIELD_display(self, obj: Quantity, digits=None, format_string=None):  # pylint: disable=C0103
         """Return the display value for a PintField."""
         value = getattr(obj, self.attname)
         if value is None:
             return ""
 
-        if format_string is None:
-            return str(value)
+        if isinstance(value, PintFieldProxy):
+            value = value.quantity
 
-        return f"{value:{format_string}}"
+        if self.field_type == FieldType.INTEGER_FIELD:
+            return f"{value:.0f}"
+
+        if isinstance(value, BaseQuantity):
+            # Convert to Quantity
+            value = self.fix_unit_registry(value)
+
+        if digits is not None:
+            quantizing_string = get_quantizing_string(decimal_places=digits)
+            quantized_magnitude = Decimal(value.magnitude).quantize(Decimal(quantizing_string))
+        elif hasattr(self, "display_decimal_places") and self.display_decimal_places:
+            quantizing_string = get_quantizing_string(decimal_places=self.display_decimal_places)
+            quantized_magnitude = Decimal(value.magnitude).quantize(Decimal(quantizing_string))
+        else:
+            quantized_magnitude = value.magnitude
+
+
+        if format_string is not None:
+            return f"{Quantity(quantized_magnitude, value.units):{format_string}}"
+
+        return f"{Quantity(quantized_magnitude, value.units)}"
 
     def deconstruct(self):
         """Return enough information to recreate the field as a 4-tuple.
