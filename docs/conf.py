@@ -111,7 +111,6 @@ myst_enable_extensions = [
     "linkify",
     "replacements",
     "smartquotes",
-    "substitution",
     "tasklist",
 ]
 
