@@ -49,6 +49,19 @@ class Command(BaseCommand):
             self.create_demo_row("Quantity value", "device.portal_diameter.quantity", device),
             self.create_demo_row("Quantity magnitude", "device.portal_diameter.quantity.magnitude", device),
             self.create_demo_row("Quantity units", "device.portal_diameter.quantity.units", device),
+            # get_FOO_display() method
+            self.create_demo_row("get_FOO_display() method", "device.get_portal_diameter_display()", device),
+            self.create_demo_row(
+                "get_FOO_display() with digits", "device.get_portal_diameter_display(digits=3)", device
+            ),
+            self.create_demo_row(
+                "get_FOO_display() with format_string", "device.get_portal_diameter_display(format_string='~P')", device
+            ),
+            self.create_demo_row(
+                "get_FOO_display() with digits and format_string",
+                "device.get_portal_diameter_display(digits=3, format_string='~P')",
+                device,
+            ),
         ]
         self.print_section("Basic Field Access", rows)
 
