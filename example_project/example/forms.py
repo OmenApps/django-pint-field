@@ -5,11 +5,10 @@ from django import forms
 from django_pint_field.forms import DecimalPintFormField
 from django_pint_field.forms import IntegerPintFormField
 from django_pint_field.widgets import TabledPintFieldWidget
-
-from .models import BigIntegerPintFieldSaveModel
-from .models import DecimalPintFieldSaveModel
-from .models import DjangoPintFieldWidgetComparisonModel
-from .models import IntegerPintFieldSaveModel
+from example_project.example.models import BigIntegerPintFieldSaveModel
+from example_project.example.models import DecimalPintFieldSaveModel
+from example_project.example.models import DjangoPintFieldWidgetComparisonModel
+from example_project.example.models import IntegerPintFieldSaveModel
 
 
 class DefaultFormInteger(forms.ModelForm):

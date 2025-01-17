@@ -6,13 +6,12 @@ from django.shortcuts import get_object_or_404
 from ninja import NinjaAPI
 from ninja.pagination import PageNumberPagination
 
+from example_project.example.api_ninja.schemas import BigIntegerWeight
+from example_project.example.api_ninja.schemas import DecimalWeight
+from example_project.example.api_ninja.schemas import IntegerWeight
 from example_project.example.models import BigIntegerPintFieldSaveModel
 from example_project.example.models import DecimalPintFieldSaveModel
 from example_project.example.models import IntegerPintFieldSaveModel
-
-from .schemas import BigIntegerWeight
-from .schemas import DecimalWeight
-from .schemas import IntegerWeight
 
 
 api = NinjaAPI(urls_namespace="api_ninja")

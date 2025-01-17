@@ -2,15 +2,15 @@
 
 from django import forms
 
-from .models import AnomalousSubstance
-from .models import DimensionalRift
-from .models import EnergyReading
-from .models import ExperimentalDevice
-from .models import IncidentReport
-from .models import Laboratory
-from .models import SafetyProtocol
-from .models import TestSubject
-from .models import Universe
+from example_project.laboratory.models import AnomalousSubstance
+from example_project.laboratory.models import DimensionalRift
+from example_project.laboratory.models import EnergyReading
+from example_project.laboratory.models import ExperimentalDevice
+from example_project.laboratory.models import IncidentReport
+from example_project.laboratory.models import Laboratory
+from example_project.laboratory.models import SafetyProtocol
+from example_project.laboratory.models import TestSubject
+from example_project.laboratory.models import Universe
 
 
 class UniverseForm(forms.ModelForm):

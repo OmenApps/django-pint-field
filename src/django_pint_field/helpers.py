@@ -96,7 +96,7 @@ class PintFieldProxy:
         if name.startswith("__"):
             raise AttributeError(name)
 
-        # If the attribute starts with get_, remove it
+        # If the attribute starts with 'get_', remove that part
         if name.startswith("get_"):
             name = name[4:]
 
@@ -137,7 +137,7 @@ class PintFieldProxy:
         if converted is not None:
             return converted
 
-        raise AttributeError(f"Invalid unit conversion: {name}")
+        raise AttributeError(f"Invalid unit conversion: {name} for quantity {self.quantity}")
 
     def __getstate__(self):
         """Return a state that can be safely pickled.

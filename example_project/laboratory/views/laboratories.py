@@ -1,7 +1,6 @@
 """Views for managing laboratories."""
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
@@ -9,16 +8,14 @@ from django.utils import timezone
 
 from django_pint_field.aggregates import PintAvg
 from django_pint_field.aggregates import PintSum
+from example_project.laboratory.forms import LaboratoryForm
+from example_project.laboratory.models import AnomalousSubstance
+from example_project.laboratory.models import ExperimentalDevice
+from example_project.laboratory.models import IncidentReport
+from example_project.laboratory.models import Laboratory
+from example_project.laboratory.models import Universe
 
-from ..forms import LaboratoryForm
-from ..models import AnomalousSubstance
-from ..models import ExperimentalDevice
-from ..models import IncidentReport
-from ..models import Laboratory
-from ..models import Universe
 
-
-@login_required
 def laboratory_list(request):
     """Display list of all laboratories across universes."""
     template = "laboratory/laboratories/laboratory_list.html"
@@ -43,7 +40,6 @@ def laboratory_list(request):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def laboratory_detail(request, pk):
     """Display comprehensive overview of a laboratory combining dashboard and details."""
     template = "laboratory/laboratories/laboratory_detail.html"
@@ -123,7 +119,6 @@ def laboratory_detail(request, pk):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def laboratory_create(request):
     """Create a new laboratory."""
     template = "laboratory/laboratories/laboratory_form.html"
@@ -152,7 +147,6 @@ def laboratory_create(request):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def laboratory_update(request, pk):
     """Update an existing laboratory."""
     template = "laboratory/laboratories/laboratory_form.html"

@@ -2,7 +2,7 @@
 
 from django.db.models.base import ModelBase
 
-from .models import *  # noqa: F401, F403
+from example_project.example.models import *  # noqa: F401, F403
 
 
 def get_test_models() -> dict[str, ModelBase]:

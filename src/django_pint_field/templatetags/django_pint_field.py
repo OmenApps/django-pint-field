@@ -19,8 +19,8 @@ register = template.Library()
 
 
 @register.filter
-def decimal_display(obj, decimal_places):
-    """Display a Pint Field value with a specific number of decimal places."""
+def with_digits(obj, decimal_places):
+    """Display a Pint Field value with to specific number of decimal places."""
     if isinstance(obj, PintFieldProxy):
         obj = obj.quantity
     if not isinstance(obj, Quantity):
@@ -43,8 +43,8 @@ def decimal_display(obj, decimal_places):
 
 
 @register.filter
-def units_display(obj, units):
-    """Display a Pint Field converted to a specific unit."""
+def with_units(obj, units):
+    """Convert a Pint Field value to a specific unit."""
     if isinstance(obj, PintFieldProxy):
         obj = obj.quantity
     if not isinstance(obj, Quantity):
@@ -56,6 +56,21 @@ def units_display(obj, units):
         return obj
     except InvalidOperation as e:
         logger.error("Invalid operation: %s to %s, %s", obj, units, e)
+        return obj
+
+
+@register.filter
+def pint_str_format(obj, format_str):
+    """Specify the format string for a Pint Field value."""
+    if isinstance(obj, PintFieldProxy):
+        obj = obj.quantity
+    if not isinstance(obj, Quantity):
+        return obj
+
+    try:
+        return f"{obj:{format_str}}"
+    except ValueError as e:
+        logger.error("Invalid format string: %s, %s", format_str, e)
         return obj
 
 
@@ -77,23 +92,8 @@ def magnitude_only(obj, units=None):
 
 
 @register.filter
-def pint_str_format(obj, format_str):
-    """Display a Pint Field value as a string using a specific format string."""
-    if isinstance(obj, PintFieldProxy):
-        obj = obj.quantity
-    if not isinstance(obj, Quantity):
-        return obj
-
-    try:
-        return f"{obj:{format_str}}"
-    except ValueError as e:
-        logger.error("Invalid format string: %s, %s", format_str, e)
-        return obj
-
-
-@register.filter
 def units_only(obj: Quantity | PintFieldProxy | str) -> str:
-    """Given a Quantity or the string representation of a Quantity, display only the units of a Pint Field value."""
+    """Display only the units of a Pint Field value."""
     if isinstance(obj, str) and len(obj.split(" ")) > 1:
         return obj.split(" ")[1]
     if isinstance(obj, PintFieldProxy):

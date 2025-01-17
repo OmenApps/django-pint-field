@@ -5,7 +5,6 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
-from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Avg
 from django.db.models import Count
@@ -15,15 +14,14 @@ from django.utils import timezone
 
 from django_pint_field.aggregates import PintAvg
 from django_pint_field.aggregates import PintSum
-
-from ..models import AnomalousSubstance
-from ..models import DimensionalRift
-from ..models import EnergyReading
-from ..models import ExperimentalDevice
-from ..models import IncidentReport
-from ..models import Laboratory
-from ..models import SafetyProtocol
-from ..models import Universe
+from example_project.laboratory.models import AnomalousSubstance
+from example_project.laboratory.models import DimensionalRift
+from example_project.laboratory.models import EnergyReading
+from example_project.laboratory.models import ExperimentalDevice
+from example_project.laboratory.models import IncidentReport
+from example_project.laboratory.models import Laboratory
+from example_project.laboratory.models import SafetyProtocol
+from example_project.laboratory.models import Universe
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +36,6 @@ class GeoJSONEncoder(DjangoJSONEncoder):
         return super().default(obj)
 
 
-@login_required
 def main_dashboard(request):
     """Display the main command center dashboard with critical metrics."""
     template = "laboratory/dashboard/main_dashboard.html"
@@ -179,7 +176,6 @@ def main_dashboard(request):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def system_status(request):
     """Display current system status and health metrics."""
     template = "laboratory/dashboard/system_status.html"
@@ -218,7 +214,6 @@ def system_status(request):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def dimensional_stability(request):
     """Monitor dimensional stability across all laboratories."""
     template = "laboratory/dashboard/dimensional_stability.html"
@@ -264,7 +259,6 @@ def dimensional_stability(request):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def global_incident_map(request):
     """Display a global map of laboratory incidents and anomalies."""
     template = "laboratory/dashboard/global_incident_map.html"

@@ -82,7 +82,7 @@
                         <h3 class="mb-0">{{ stats.total_devices }}</h3>
                         {% if stats.avg_power_output %}
                             <small class="text-muted">
-                                Avg Power: {{ stats.avg_power_output|decimal_display:"1" }} <span class="text-secondary">({{ stats.avg_power_output.horsepower|decimal_display:"1" }})</span>
+                                Avg Power: {{ stats.avg_power_output|with_digits:"1" }} <span class="text-secondary">({{ stats.avg_power_output.horsepower|with_digits:"1" }})</span>
                             </small>
                         {% endif %}
                     </div>
@@ -91,7 +91,7 @@
                         <h3 class="mb-0">{{ stats.total_substances }}</h3>
                         {% if substance_stats.total_volume %}
                             <small class="text-muted">
-                                Total Volume: {{ substance_stats.total_volume|decimal_display:"1" }}
+                                Total Volume: {{ substance_stats.total_volume|with_digits:"1" }}
                             </small>
                         {% endif %}
                     </div>

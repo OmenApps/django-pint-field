@@ -304,7 +304,7 @@ class TestAdditionalEdgeCases:
         result = field.get_prep_value(value)
         assert result == value
 
-    def test_decimal_display_formatting(self):
+    def test_with_digits_formatting(self):
         """Test decimal display formatting with different display_decimal_places settings."""
         # Test with 2 decimal places
         field = DecimalPintField(default_unit="gram", display_decimal_places=2)
@@ -322,7 +322,7 @@ class TestAdditionalEdgeCases:
         field_three = DecimalPintField(default_unit="gram", display_decimal_places=3)
         assert str(field_three.format_value(value)) == "123.456 gram"
 
-    def test_decimal_display_without_decimal_places(self):
+    def test_with_digits_without_decimal_places(self):
         """Test decimal display formatting without specifying display_decimal_places."""
         field = DecimalPintField(default_unit="gram")
 

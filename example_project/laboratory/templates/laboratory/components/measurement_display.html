@@ -13,7 +13,7 @@ Usage:
 <div class="measurement-display">
     {% if not compact %}
         <div class="measurement-primary mb-2">
-            <span class="measurement-value">{{ value|magnitude_only }}</span>
+            <span class="measurement-value">{{ value|with_digits:8|magnitude_only }}</span>
             <span class="measurement-unit">{{ value|pint_str_format:".2g~P"|units_only }}</span>
         </div>
     {% else %}
@@ -58,7 +58,7 @@ Usage:
                         {% if units != value.quantity.units %}
                             <tr>
                                 <td>{{ name }}</td>
-                                <td>{{ value.quantity|units_display:units|decimal_display:4|magnitude_only }}</td>
+                                <td>{{ value|with_units:units|with_digits:4|magnitude_only }}</td>
                             </tr>
                         {% endif %}
                     {% endfor %}

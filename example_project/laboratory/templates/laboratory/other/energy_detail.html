@@ -183,7 +183,7 @@
                 </p>
                 <ul class="mb-0">
                     {% if radiation_percentage > 90 %}
-                        <li>Dangerous radiation levels ({{ measurements.background_radiation|decimal_display:0 }})</li>
+                        <li>Dangerous radiation levels ({{ measurements.background_radiation|with_digits:0 }})</li>
                     {% endif %}
                     {% if tachyon_percentage > 90 %}
                         <li>Critical tachyon flux ({{ measurements.tachyon_flux }})</li>

@@ -3,12 +3,12 @@
 from django.apps import apps
 from django.contrib import admin
 
-from .forms import DjangoPintFieldWidgetComparisonAdminForm
-from .models import BigIntegerPintFieldSaveModel
-from .models import DecimalPintFieldSaveModel
-from .models import DjangoPintFieldWidgetComparisonModel
-from .models import IntegerPintFieldSaveModel
-from .models import IntegerPintFieldSaveWithIndexModel
+from example_project.example.forms import DjangoPintFieldWidgetComparisonAdminForm
+from example_project.example.models import BigIntegerPintFieldSaveModel
+from example_project.example.models import DecimalPintFieldSaveModel
+from example_project.example.models import DjangoPintFieldWidgetComparisonModel
+from example_project.example.models import IntegerPintFieldSaveModel
+from example_project.example.models import IntegerPintFieldSaveWithIndexModel
 
 
 class ReadOnlyEditing(admin.ModelAdmin):

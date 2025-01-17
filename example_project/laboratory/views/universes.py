@@ -1,17 +1,15 @@
 """Views for managing fictional universes."""
 
-from django.contrib.auth.decorators import login_required
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 
-from ..forms import UniverseForm
-from ..models import Laboratory
-from ..models import Universe
+from example_project.laboratory.forms import UniverseForm
+from example_project.laboratory.models import Laboratory
+from example_project.laboratory.models import Universe
 
 
-@login_required
 def universe_list(request):
     """Display list of fictional universes."""
     template = "laboratory/universes/universe_list.html"
@@ -26,7 +24,6 @@ def universe_list(request):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def universe_detail(request, pk):
     """Display details of a specific universe."""
     template = "laboratory/universes/universe_detail.html"
@@ -52,7 +49,6 @@ def universe_detail(request, pk):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def universe_create(request):
     """Create a new universe."""
     template = "laboratory/universes/universe_form.html"
@@ -72,7 +68,6 @@ def universe_create(request):
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def universe_update(request, pk):
     """Update an existing universe."""
     template = "laboratory/universes/universe_form.html"

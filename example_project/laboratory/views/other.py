@@ -7,7 +7,6 @@ from typing import Dict
 from typing import Optional
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import Model
 from django.db.models import QuerySet
@@ -17,21 +16,21 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.utils import timezone
 
-from ..forms import AnomalousSubstanceForm
-from ..forms import DimensionalRiftForm
-from ..forms import EnergyReadingForm
-from ..forms import ExperimentalDeviceForm
-from ..forms import IncidentReportForm
-from ..forms import SafetyProtocolForm
-from ..forms import TestSubjectForm
-from ..models import AnomalousSubstance
-from ..models import DimensionalRift
-from ..models import EnergyReading
-from ..models import ExperimentalDevice
-from ..models import IncidentReport
-from ..models import Laboratory
-from ..models import SafetyProtocol
-from ..models import TestSubject
+from example_project.laboratory.forms import AnomalousSubstanceForm
+from example_project.laboratory.forms import DimensionalRiftForm
+from example_project.laboratory.forms import EnergyReadingForm
+from example_project.laboratory.forms import ExperimentalDeviceForm
+from example_project.laboratory.forms import IncidentReportForm
+from example_project.laboratory.forms import SafetyProtocolForm
+from example_project.laboratory.forms import TestSubjectForm
+from example_project.laboratory.models import AnomalousSubstance
+from example_project.laboratory.models import DimensionalRift
+from example_project.laboratory.models import EnergyReading
+from example_project.laboratory.models import ExperimentalDevice
+from example_project.laboratory.models import IncidentReport
+from example_project.laboratory.models import Laboratory
+from example_project.laboratory.models import SafetyProtocol
+from example_project.laboratory.models import TestSubject
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +58,6 @@ def add_model_context(context: Dict[str, Any], model: Model) -> Dict[str, Any]:
     return context
 
 
-@login_required
 def generic_list_view(
     request: WSGIRequest,
     model: Model,
@@ -104,7 +102,6 @@ def generic_list_view(
     return TemplateResponse(request, template_name, context)
 
 
-@login_required
 def generic_create_view(
     request: WSGIRequest,
     model: Model,
@@ -143,7 +140,6 @@ def generic_create_view(
     return TemplateResponse(request, template_name, context)
 
 
-@login_required
 def generic_update_view(
     request: WSGIRequest,
     pk: int,
@@ -187,7 +183,8 @@ def generic_update_view(
 
 
 # ExperimentalDevice Views
-@login_required
+
+
 def device_list(request):
     """List all experimental devices."""
     return generic_list_view(
@@ -199,7 +196,6 @@ def device_list(request):
     )
 
 
-@login_required
 def device_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an experimental device."""
     template = "laboratory/other/device_detail.html"
@@ -312,20 +308,19 @@ def device_detail(request, pk: int) -> TemplateResponse:
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def device_create(request):
     """Create a new experimental device."""
     return generic_create_view(request, ExperimentalDevice, ExperimentalDeviceForm)
 
 
-@login_required
 def device_update(request, pk):
     """Update an existing experimental device."""
     return generic_update_view(request, pk, ExperimentalDevice, ExperimentalDeviceForm)
 
 
 # AnomalousSubstance Views
-@login_required
+
+
 def substance_list(request):
     """List all anomalous substances."""
     return generic_list_view(
@@ -337,7 +332,6 @@ def substance_list(request):
     )
 
 
-@login_required
 def substance_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an anomalous substance."""
     template = "laboratory/other/substance_detail.html"
@@ -443,20 +437,19 @@ def substance_detail(request, pk: int) -> TemplateResponse:
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def substance_create(request):
     """Create a new anomalous substance."""
     return generic_create_view(request, AnomalousSubstance, AnomalousSubstanceForm)
 
 
-@login_required
 def substance_update(request, pk):
     """Update an existing anomalous substance."""
     return generic_update_view(request, pk, AnomalousSubstance, AnomalousSubstanceForm)
 
 
 # IncidentReport Views
-@login_required
+
+
 def incident_list(request):
     """List all incident reports."""
     return generic_list_view(
@@ -468,7 +461,6 @@ def incident_list(request):
     )
 
 
-@login_required
 def incident_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an incident report."""
     template = "laboratory/other/incident_detail.html"
@@ -551,20 +543,19 @@ def incident_detail(request, pk: int) -> TemplateResponse:
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def incident_create(request):
     """Create a new incident report."""
     return generic_create_view(request, IncidentReport, IncidentReportForm)
 
 
-@login_required
 def incident_update(request, pk):
     """Update an existing incident report."""
     return generic_update_view(request, pk, IncidentReport, IncidentReportForm)
 
 
 # SafetyProtocol Views
-@login_required
+
+
 def protocol_list(request):
     """List all safety protocols."""
     return generic_list_view(
@@ -576,7 +567,6 @@ def protocol_list(request):
     )
 
 
-@login_required
 def protocol_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about a safety protocol."""
     template = "laboratory/other/protocol_detail.html"
@@ -670,20 +660,19 @@ def protocol_detail(request, pk: int) -> TemplateResponse:
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def protocol_create(request):
     """Create a new safety protocol."""
     return generic_create_view(request, SafetyProtocol, SafetyProtocolForm)
 
 
-@login_required
 def protocol_update(request, pk):
     """Update an existing safety protocol."""
     return generic_update_view(request, pk, SafetyProtocol, SafetyProtocolForm)
 
 
 # TestSubject Views
-@login_required
+
+
 def subject_list(request):
     """List all test subjects."""
     return generic_list_view(
@@ -695,7 +684,6 @@ def subject_list(request):
     )
 
 
-@login_required
 def subject_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about a test subject."""
     template = "laboratory/other/subject_detail.html"
@@ -783,20 +771,19 @@ def subject_detail(request, pk: int) -> TemplateResponse:
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def subject_create(request):
     """Create a new test subject."""
     return generic_create_view(request, TestSubject, TestSubjectForm)
 
 
-@login_required
 def subject_update(request, pk):
     """Update an existing test subject."""
     return generic_update_view(request, pk, TestSubject, TestSubjectForm)
 
 
 # DimensionalRift Views
-@login_required
+
+
 def rift_list(request):
     """List all dimensional rifts."""
     return generic_list_view(
@@ -808,7 +795,6 @@ def rift_list(request):
     )
 
 
-@login_required
 def rift_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about a dimensional rift."""
     template = "laboratory/other/rift_detail.html"
@@ -913,20 +899,19 @@ def rift_detail(request, pk: int) -> TemplateResponse:
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def rift_create(request):
     """Create a new dimensional rift."""
     return generic_create_view(request, DimensionalRift, DimensionalRiftForm)
 
 
-@login_required
 def rift_update(request, pk):
     """Update an existing dimensional rift."""
     return generic_update_view(request, pk, DimensionalRift, DimensionalRiftForm)
 
 
 # EnergyReading Views
-@login_required
+
+
 def energy_list(request):
     """List all energy readings."""
     return generic_list_view(
@@ -938,7 +923,6 @@ def energy_list(request):
     )
 
 
-@login_required
 def energy_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an energy reading."""
     template = "laboratory/other/energy_detail.html"
@@ -1052,13 +1036,11 @@ def energy_detail(request, pk: int) -> TemplateResponse:
     return TemplateResponse(request, template, context)
 
 
-@login_required
 def energy_create(request):
     """Create a new energy reading."""
     return generic_create_view(request, EnergyReading, EnergyReadingForm)
 
 
-@login_required
 def energy_update(request, pk):
     """Update an existing energy reading."""
     return generic_update_view(request, pk, EnergyReading, EnergyReadingForm)
