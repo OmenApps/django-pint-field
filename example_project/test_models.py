@@ -1,15 +1,14 @@
 """Test cases for model fields."""
 
-from decimal import ROUND_DOWN
 from decimal import ROUND_HALF_UP
 from decimal import Decimal
 from decimal import getcontext
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.forms import DecimalField
 from django.forms import IntegerField
-from pint import UnitRegistry
 
 from django_pint_field.models import BasePintField
 from django_pint_field.models import BigIntegerPintField
@@ -438,3 +437,108 @@ class TestDecimalValidationBehavior:
             assert result.magnitude == value.magnitude
         except ValidationError as e:
             pytest.fail(f"get_prep_value should not validate decimals but raised: {e}")
+
+
+@pytest.mark.django_db
+class TestUnitChoicesValidation:
+    """Test validation and conversion of units."""
+
+    def test_dimensionally_correct_but_not_in_choices(self):
+        """Test that values with units not in choices but dimensionally compatible are converted."""
+        # Create a field with limited unit choices
+        field = DecimalPintField(
+            default_unit="cubic_meter",
+            unit_choices=[
+                ("Cubic Meter", "cubic_meter"),
+                ("Liter", "liter"),
+            ],
+        )
+
+        # Create a volume in cubic_feet (not in choices but dimensionally compatible)
+        # 10 cubic foot is ~0.283168 cubic meters
+        cubic_feet_volume = ureg.Quantity(Decimal("10.0"), "cubic_foot")
+
+        # Call get_prep_value which should convert the unit
+        converted_value = field.get_prep_value(cubic_feet_volume)
+
+        # Verify conversion happened
+        assert converted_value is not None
+        assert str(converted_value.units) == "cubic_meter"
+
+        # Verify the value is approximately correct (allowing for floating point imprecision)
+        approx_expected = Decimal("0.283168")
+        assert abs(converted_value.magnitude - approx_expected) < Decimal("0.01")
+
+    def test_dimensionally_incompatible_raises_error(self):
+        """Test that trying to save with dimensionally incompatible units raises ValidationError."""
+        # Create a field for mass
+        field = DecimalPintField(
+            default_unit="kilogram",
+            unit_choices=[
+                ("Kilogram", "kilogram"),
+                ("Gram", "gram"),
+                ("Pound", "pound"),
+            ],
+        )
+
+        # Create a value with incompatible dimensions (length instead of mass)
+        length_value = ureg.Quantity(Decimal("5.0"), "meter")
+
+        # Calling get_prep_value should raise a ValidationError
+        with pytest.raises(ValidationError) as excinfo:
+            field.get_prep_value(length_value)
+
+        # Check that the error message shows there is an incompatible dimensionality
+        assert "incompatible dimensionality" in str(excinfo.value)
+
+    def test_compound_unit_conversion(self):
+        """Test that compound units are properly converted.
+
+        The actual failing code from our app to calculate volume from flow rate and time was something like this:
+            `self.volume = self.flow_rate * Quantity(decimal.Decimal("23") * ureg.second)`
+        """
+        # Create fields
+        flow_rate = DecimalPintField(
+            default_unit="cubic_feet_per_second",
+            default=Decimal("0.0"),
+            unit_choices=[
+                ("Cubic Feet Per Second", "cubic_feet_per_second"),
+                ("Cubic Yards Per Second", "cubic_yards_per_second"),
+                ("Acre Inches Per Hour", "acre_in_per_hour"),
+            ],
+            display_decimal_places=2,
+        )
+        volume = DecimalPintField(
+            default_unit="acre_feet",
+            null=True,
+            blank=True,
+            unit_choices=[
+                ("Cubic Feet", "cubic_feet"),
+                ("Cubic Meters", "cubic_meter"),
+                ("Acre Feet", "acre_feet"),
+            ],
+            display_decimal_places=2,
+        )
+
+        # Create a flow rate in liters per second
+        flow_rate_value = ureg.Quantity(Decimal("0.5"), "cubic_feet_per_second")
+
+        # Convert flow rate to cubic feet per second
+        converted_flow_rate = flow_rate.get_prep_value(flow_rate_value)
+        assert converted_flow_rate is not None
+        assert str(converted_flow_rate.units) == "cubic_feet_per_second"
+        assert converted_flow_rate.magnitude == Decimal("0.5")
+
+        # Calculate volume as flow_rate * time, creating a compound unit
+        seconds = Decimal("23")  # 1 minute in seconds
+        compound_volume_value = converted_flow_rate * ureg.Quantity(seconds * ureg.second)
+
+        # Convert the compound volume to the desired unit
+        converted_volume = volume.get_prep_value(compound_volume_value)
+        assert converted_volume is not None
+        assert str(converted_volume.units) == "acre_foot"
+
+        # Verify the volume is correct
+        expected_volume = (flow_rate_value * ureg.Quantity(seconds, ureg.second)).to("acre_feet")
+        assert converted_volume.magnitude == expected_volume.magnitude
+        assert converted_volume.units == expected_volume.units

@@ -201,6 +201,7 @@ DJANGO_PINT_FIELD_UNIT_REGISTER.define("square_millimeter = mm**2 = square_mm")
 DJANGO_PINT_FIELD_UNIT_REGISTER.define("cubic_meter = m**3 = cubic_m")
 DJANGO_PINT_FIELD_UNIT_REGISTER.define("cubic_centimeter = cm**3 = cubic_cm")
 DJANGO_PINT_FIELD_UNIT_REGISTER.define("cubic_millimeter = mm**3 = cubic_mm")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("acre_inch = acre_foot / 12 = ac_in = acre_inch = acre_in")
 
 DJANGO_PINT_FIELD_UNIT_REGISTER.define("pascal_second = pascal * second = Pa_s")
 
@@ -241,6 +242,9 @@ DJANGO_PINT_FIELD_UNIT_REGISTER.define(
     "megajoule_per_cubic_meter = megajoule / meter**3 = MJ_per_m3 = megajoule_per_m3"
 )
 
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("cubic_feet_per_second = cubic_foot / second = cfs = cubic_feet_per_sec")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("cubic_yards_per_second = cubic_yard / second = _ = cubic_yards_per_sec")
+DJANGO_PINT_FIELD_UNIT_REGISTER.define("acre_inches_per_hour = acre_inch / hour = _ = acre_in_per_hour")
 
 LOGGING = {
     "version": 1,

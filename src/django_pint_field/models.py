@@ -19,6 +19,7 @@ from django.db import models
 from django.db.backends.base.base import NO_DB_ALIAS
 from django.db.models import Field
 from django.utils.translation import gettext_lazy as _
+from pint import DimensionalityError
 from pint import Quantity as BaseQuantity
 from pint.errors import UndefinedUnitError
 from psycopg.types.composite import CompositeInfo
@@ -279,7 +280,6 @@ class BasePintField(PintFieldMixin, models.Field):
         else:
             quantized_magnitude = value.magnitude
 
-
         if format_string is not None:
             return f"{Quantity(quantized_magnitude, value.units):{format_string}}"
 
@@ -353,6 +353,29 @@ class BasePintField(PintFieldMixin, models.Field):
             value = self.fix_unit_registry(value)
 
         validate_dimensionality(value, self.default_unit)
+
+        # Check if the unit is in unit choices, and if not, try to convert to default unit
+        if hasattr(value, "units") and hasattr(self, "unit_choices") and self.unit_choices:
+            allowed_units = [choice[1] for choice in self.unit_choices]
+            unit_str = str(value.units)
+
+            if unit_str not in allowed_units:
+                try:
+                    # Convert to the default unit
+                    value = value.to(self.default_unit)
+                    logger.info(
+                        f"Automatically converted unit '{unit_str}' to '{self.default_unit}' for field '{self.name}'"
+                    )
+                except DimensionalityError as e:
+                    logger.error(f"Dimensionality error converting {unit_str} to {self.default_unit}: {e}")
+                    raise ValidationError(
+                        f"Unit '{unit_str}' has incompatible dimensionality with allowed units: {allowed_units}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error converting {unit_str} to {self.default_unit}: {e}")
+                    raise ValidationError(
+                        f"Cannot convert unit '{unit_str}' to an allowed unit. Must be compatible with: {allowed_units}"
+                    )
 
         # Note: We intentionally don't validate decimal places here
         # to allow database operations to work with full precision
