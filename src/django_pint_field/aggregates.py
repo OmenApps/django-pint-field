@@ -21,7 +21,7 @@ TEMPLATE = "%(function)s((%(distinct)s%(expressions)s).comparator)"
 
 
 class QuantityOutputFieldMixin:
-    """Mixin to convert aggregate results to Pint Quantity objects."""
+    """Mixin to convert aggregate results to PintFieldProxy objects."""
 
     is_pint_aggregate = True
     original_field = None
