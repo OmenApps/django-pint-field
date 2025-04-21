@@ -15,7 +15,6 @@ from pint.errors import UndefinedUnitError
 
 from .units import ureg
 
-
 logger = logging.getLogger(__name__)
 
 Quantity = ureg.Quantity
@@ -197,6 +196,102 @@ class PintFieldProxy:
         # Assign back to self
         self.quantity = quantity
         self.converter = converter
+
+    def __eq__(self, other):
+        """Check equality with another object."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity == other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity == other
+        return False
+
+    def __ne__(self, other):
+        """Check inequality with another object."""
+        return not self.__eq__(other)
+
+    def __lt__(self, other):
+        """Check less than with another object."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity < other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity < other
+        logger.debug(f"Cannot compare {self.quantity} with {other}")
+        return NotImplemented
+
+    def __le__(self, other):
+        """Check less than or equal to with another object."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity <= other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity <= other
+        logger.debug(f"Cannot compare {self.quantity} with {other}")
+        return NotImplemented
+
+    def __gt__(self, other):
+        """Check greater than with another object."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity > other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity > other
+        logger.debug(f"Cannot compare {self.quantity} with {other}")
+        return NotImplemented
+
+    def __ge__(self, other):
+        """Check greater than or equal to with another object."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity >= other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity >= other
+        logger.debug(f"Cannot compare {self.quantity} with {other}")
+        return NotImplemented
+
+    def __add__(self, other):
+        """Add another object to this one."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity + other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity + other
+        return NotImplemented
+
+    def __sub__(self, other):
+        """Subtract another object from this one."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity - other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity - other
+        return NotImplemented
+
+    def __mul__(self, other):
+        """Multiply this object by another one."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity * other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity * other
+        return NotImplemented
+
+    def __truediv__(self, other):
+        """Divide this object by another one."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity / other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity / other
+        return NotImplemented
+
+    def __floordiv__(self, other):
+        """Floor divide this object by another one."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity // other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity // other
+        return NotImplemented
+
+    def __mod__(self, other):
+        """Modulo this object by another one."""
+        if isinstance(other, PintFieldProxy):
+            return self.quantity % other.quantity
+        elif isinstance(other, Quantity):
+            return self.quantity % other
+        return NotImplemented
 
 
 def get_pint_unit(registry, unit_name: str) -> Optional[object]:

@@ -291,6 +291,265 @@ class TestPintFieldProxy:
         with pytest.raises(AttributeError):
             _ = proxy.gram__invalid
 
+    def test_eq_with_proxy(self, converter):
+        """Test equality with another PintFieldProxy."""
+        proxy1 = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        proxy2 = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        proxy3 = PintFieldProxy(ureg.Quantity(Decimal("20.0"), "gram"), converter)
+
+        assert proxy1 == proxy2
+        assert proxy1 != proxy3
+
+    def test_eq_with_quantity(self, converter):
+        """Test equality with Quantity objects."""
+        proxy = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        quantity1 = ureg.Quantity(Decimal("10.0"), "gram")
+        quantity2 = ureg.Quantity(Decimal("0.01"), "kilogram")
+        quantity3 = ureg.Quantity(Decimal("20.0"), "gram")
+
+        assert proxy == quantity1
+        assert proxy == quantity2
+        assert proxy != quantity3
+
+    def test_eq_with_other_types(self, converter):
+        """Test equality with non-compatible types."""
+        proxy = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+
+        assert proxy != 10
+        assert proxy != "10 gram"
+        assert proxy is not None
+
+    @pytest.mark.parametrize(
+        "val1,val2,expected_lt,expected_gt",
+        [
+            (Decimal("10.0"), Decimal("20.0"), True, False),
+            (Decimal("20.0"), Decimal("10.0"), False, True),
+            (Decimal("10.0"), Decimal("10.0"), False, False),
+        ],
+    )
+    def test_comparison_with_proxy(self, converter, val1, val2, expected_lt, expected_gt):
+        """Test comparison operators with another PintFieldProxy."""
+        proxy1 = PintFieldProxy(ureg.Quantity(val1, "gram"), converter)
+        proxy2 = PintFieldProxy(ureg.Quantity(val2, "gram"), converter)
+
+        assert (proxy1 < proxy2) == expected_lt
+        assert (proxy1 > proxy2) == expected_gt
+        assert (proxy1 <= proxy2) == (expected_lt or val1 == val2)
+        assert (proxy1 >= proxy2) == (expected_gt or val1 == val2)
+
+    def test_comparison_with_quantity(self, converter):
+        """Test comparison with Quantity objects."""
+        proxy = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        smaller = ureg.Quantity(Decimal("5.0"), "gram")
+        equal = ureg.Quantity(Decimal("0.01"), "kilogram")
+        larger = ureg.Quantity(Decimal("20.0"), "gram")
+
+        assert proxy > smaller
+        assert proxy >= smaller
+        assert proxy >= equal
+        assert proxy <= equal
+        assert proxy < larger
+        assert proxy <= larger
+
+    def test_comparison_with_incompatible_types(self, converter):
+        """Test comparison with incompatible types raises TypeError."""
+        proxy = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+
+        with pytest.raises(TypeError):
+            proxy < 10
+        with pytest.raises(TypeError):
+            proxy > "10 gram"
+        with pytest.raises(TypeError):
+            proxy <= None
+        with pytest.raises(TypeError):
+            proxy >= []
+
+    def test_comparison_with_incompatible_units(self, converter):
+        """Test comparison with incompatible units raises DimensionalityError."""
+        proxy = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        incompatible = ureg.Quantity(Decimal("10.0"), "meter")
+
+        with pytest.raises(DimensionalityError):
+            proxy < incompatible
+
+    def test_addition(self, converter):
+        """Test addition operations."""
+        proxy1 = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        proxy2 = PintFieldProxy(ureg.Quantity(Decimal("5.0"), "gram"), converter)
+        quantity = ureg.Quantity(Decimal("3.0"), "gram")
+
+        # Test proxy + proxy
+        result = proxy1 + proxy2
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("15.0")
+        assert str(result.units) == "gram"
+
+        # Test proxy + quantity
+        result = proxy1 + quantity
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("13.0")
+        assert str(result.units) == "gram"
+
+    def test_subtraction(self, converter):
+        """Test subtraction operations."""
+        proxy1 = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        proxy2 = PintFieldProxy(ureg.Quantity(Decimal("3.0"), "gram"), converter)
+        quantity = ureg.Quantity(Decimal("2.0"), "gram")
+
+        # Test proxy - proxy
+        result = proxy1 - proxy2
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("7.0")
+        assert str(result.units) == "gram"
+
+        # Test proxy - quantity
+        result = proxy1 - quantity
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("8.0")
+        assert str(result.units) == "gram"
+
+    def test_multiplication(self, converter):
+        """Test multiplication operations."""
+        proxy1 = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        proxy2 = PintFieldProxy(ureg.Quantity(Decimal("2.0"), "meter"), converter)
+        quantity = ureg.Quantity(Decimal("3.0"), "meter")
+
+        # Test proxy * proxy
+        result = proxy1 * proxy2
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("20.0")
+        assert str(result.units) == "gram * meter"
+
+        # Test proxy * quantity
+        result = proxy1 * quantity
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("30.0")
+        assert str(result.units) == "gram * meter"
+
+    def test_division(self, converter):
+        """Test division operations."""
+        proxy1 = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        proxy2 = PintFieldProxy(ureg.Quantity(Decimal("2.0"), "second"), converter)
+        quantity = ureg.Quantity(Decimal("5.0"), "second")
+
+        # Test proxy / proxy
+        result = proxy1 / proxy2
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("5.0")
+        assert str(result.units) == "gram / second"
+
+        # Test proxy / quantity
+        result = proxy1 / quantity
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("2.0")
+        assert str(result.units) == "gram / second"
+
+    def test_floor_division(self, converter):
+        """Test floor division operations."""
+        proxy1 = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        proxy2 = PintFieldProxy(ureg.Quantity(Decimal("3.0"), "gram"), converter)  # Changed to same units
+        quantity = ureg.Quantity(Decimal("3.0"), "gram")  # Changed to same units
+
+        # Test proxy // proxy
+        result = proxy1 // proxy2
+        assert isinstance(result, ureg.Quantity)
+        assert float(result.magnitude) == pytest.approx(3.0)
+        assert str(result.units) == "dimensionless"  # Result of gram/gram is dimensionless
+
+        # Test proxy // quantity
+        result = proxy1 // quantity
+        assert isinstance(result, ureg.Quantity)
+        assert float(result.magnitude) == pytest.approx(3.0)
+        assert str(result.units) == "dimensionless"  # Result of gram/gram is dimensionless
+
+    def test_modulo(self, converter):
+        """Test modulo operations."""
+        proxy1 = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+        proxy2 = PintFieldProxy(ureg.Quantity(Decimal("3.0"), "gram"), converter)
+        quantity = ureg.Quantity(Decimal("3.0"), "gram")
+
+        # Test proxy % proxy
+        result = proxy1 % proxy2
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("1.0")
+        assert str(result.units) == "gram"
+
+        # Test proxy % quantity
+        result = proxy1 % quantity
+        assert isinstance(result, ureg.Quantity)
+        assert result.magnitude == Decimal("1.0")
+        assert str(result.units) == "gram"
+
+    def test_arithmetic_with_incompatible_types(self, converter):
+        """Test arithmetic operations with incompatible types raise TypeError."""
+        proxy = PintFieldProxy(ureg.Quantity(Decimal("10.0"), "gram"), converter)
+
+        with pytest.raises(TypeError):
+            proxy + 5
+        with pytest.raises(TypeError):
+            proxy - "5 gram"
+        with pytest.raises(TypeError):
+            proxy * None
+        with pytest.raises(TypeError):
+            proxy / []
+        with pytest.raises(TypeError):
+            proxy // {}
+        with pytest.raises(TypeError):
+            proxy % True
+
+    def test_getstate_setstate(self, converter):
+        """Test that PintFieldProxy can be pickled and unpickled correctly."""
+        import pickle
+
+        proxy = PintFieldProxy(ureg.Quantity(Decimal("15.789"), "gram"), converter)
+
+        # Test pickling
+        pickle_data = pickle.dumps(proxy)
+
+        # Test unpickling
+        reconstructed = pickle.loads(pickle_data)
+
+        # Verify the reconstructed object has the same properties
+        assert isinstance(reconstructed, PintFieldProxy)
+        assert str(reconstructed.quantity.magnitude) == "15.789"
+        assert str(reconstructed.quantity.units) == "gram"
+
+        # Verify the converter was properly reconstructed
+        assert hasattr(reconstructed.converter, "field")
+        assert reconstructed.converter.field.default_unit == "gram"
+        assert reconstructed.converter.field.display_decimal_places == 2
+
+        # Test that the proxy operations still work after pickling
+        converted = reconstructed.kilogram
+        assert isinstance(converted, ureg.Quantity)
+        assert float(converted.magnitude) == pytest.approx(0.015789)
+        assert str(converted.units) == "kilogram"
+
+    def test_edge_cases_and_error_handling(self, converter):
+        """Test edge cases and error handling."""
+        # Test with zero values
+        zero_proxy = PintFieldProxy(ureg.Quantity(Decimal("0"), "gram"), converter)
+        positive_proxy = PintFieldProxy(ureg.Quantity(Decimal("10"), "gram"), converter)
+
+        assert zero_proxy < positive_proxy
+        assert zero_proxy <= positive_proxy
+        assert positive_proxy > zero_proxy
+        assert positive_proxy >= zero_proxy
+
+        # Test division by zero
+        with pytest.raises(ZeroDivisionError):
+            positive_proxy / zero_proxy
+
+        # Test unit conversions with extreme values
+        large_proxy = PintFieldProxy(ureg.Quantity(Decimal("1e10"), "gram"), converter)
+        small_proxy = PintFieldProxy(ureg.Quantity(Decimal("1e-10"), "gram"), converter)
+
+        large_kg = large_proxy.kilogram
+        small_kg = small_proxy.kilogram
+
+        assert float(large_kg.magnitude) == pytest.approx(1e7)
+        assert float(small_kg.magnitude) == pytest.approx(1e-13)
+
 
 class TestIsAggregateExpression:
     """Test the is_aggregate_expression function."""
