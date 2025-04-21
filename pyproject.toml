@@ -7,7 +7,7 @@ name = "django-pint-field"
 version = "2025.4.1"
 description = "Unit Conversion fields for Django and Postgres"
 authors = [{ name = "Jack Linke", email = "jacklinke@gmail.com" }]
-license = { text = "MIT" }
+license = "MIT"
 readme = "README.md"
 classifiers = [
     "Environment :: Web Environment",
@@ -18,7 +18,6 @@ classifiers = [
     "Framework :: Django :: 5.2",
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
