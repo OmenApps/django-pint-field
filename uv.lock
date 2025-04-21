@@ -579,7 +579,7 @@ wheels = [
 
 [[package]]
 name = "django-pint-field"
-version = "2025.3.1"
+version = "2025.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "django" },
