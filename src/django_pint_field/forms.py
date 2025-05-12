@@ -304,7 +304,7 @@ class DecimalPintFormField(BasePintFormField):
 
         if hasattr(quantity, "magnitude") and isinstance(quantity.magnitude, Decimal):
             validate_decimal_precision(quantity)
-        else:
+        elif quantity is not None:
             try:
                 quantity = self.ureg.Quantity(quantity)
             except Exception as e:
