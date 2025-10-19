@@ -19,7 +19,7 @@ The package uses a Postgres composite field to store both the magnitude and unit
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.11+
 - Django 4.2+
 - PostgreSQL database
 - Pint 0.23+
