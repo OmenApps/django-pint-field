@@ -15,6 +15,7 @@ from pint.errors import UndefinedUnitError
 
 from .units import ureg
 
+
 logger = logging.getLogger(__name__)
 
 Quantity = ureg.Quantity

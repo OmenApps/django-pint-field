@@ -1,4 +1,5 @@
 """Nox sessions."""
+
 import os
 import shlex
 import shutil
@@ -12,17 +13,18 @@ from nox.sessions import Session
 
 # DJANGO_STABLE_VERSION should be set to the latest Django LTS version
 
-DJANGO_STABLE_VERSION = "5.1"
+DJANGO_STABLE_VERSION = "5.2"
 DJANGO_VERSIONS = [
     "4.2",
     "5.0",
     "5.1",
+    "5.2",
 ]
 
 # PYTHON_STABLE_VERSION should be set to the latest stable Python version
 
-PYTHON_STABLE_VERSION = "3.12"
-PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13"]
+PYTHON_STABLE_VERSION = "3.14"
+PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14"]
 
 
 PACKAGE = "django_pint_field"
@@ -152,7 +154,6 @@ def tests(session: Session, django: str) -> None:
     """Run the test suite."""
     session.run("uv", "sync", "--prerelease=allow", "--extra=dev")
     try:
-
         session.run("coverage", "run", "-m", "pytest", "-vv", *session.posargs)
     finally:
         if session.interactive:
