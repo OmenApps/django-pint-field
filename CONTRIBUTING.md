@@ -37,52 +37,101 @@ Request features on the [Issue Tracker].
 
 ## How to set up your development environment
 
-You need Python 3.9+ and the following tools:
+You need Python 3.11+ and the following tools:
 
-- [Poetry]
-- [Nox]
-- [nox-poetry]
+- [uv] - Fast Python package installer and resolver
+- [Docker] and [Docker Compose] - For running PostgreSQL and the development environment
+- [Nox] - For running test sessions
 
-Install the package with development requirements:
+**Note:** This package requires PostgreSQL due to its use of composite types. We use Docker Compose to provide the complete development environment.
 
+### Initial Setup
+
+1. Clone the repository:
 ```console
-$ poetry install
+$ git clone https://github.com/jacklinke/django-pint-field.git
+$ cd django-pint-field
 ```
 
-You can now run an interactive Python session,
-or the command-line interface:
-
+2. Start the Docker Compose services:
 ```console
-$ poetry run python
-$ poetry run django-pint-field
+$ docker compose up -d
 ```
 
-[poetry]: https://python-poetry.org/
+This will start:
+- Django application (port 8115)
+- PostgreSQL database (port 5437)
+- Redis cache (port 6390)
+
+3. The development environment is now ready. Code changes in `src/` and `example_project/` are immediately reflected.
+
+### Running Commands
+
+Run commands inside the Django container:
+
+```console
+# Python shell
+$ docker compose exec django uv run python manage.py shell_plus
+
+# Django management commands
+$ docker compose exec django uv run python manage.py migrate
+$ docker compose exec django uv run python manage.py createsuperuser
+
+# Run tests
+$ docker compose exec django uv run pytest -v
+
+# Access the application
+# Visit http://localhost:8115 in your browser
+```
+
+For local development without Docker (requires PostgreSQL installed):
+
+```console
+$ uv sync
+$ uv run pytest
+```
+
+[uv]: https://github.com/astral-sh/uv
+[docker]: https://docs.docker.com/get-docker/
+[docker compose]: https://docs.docker.com/compose/
 [nox]: https://nox.thea.codes/
-[nox-poetry]: https://nox-poetry.readthedocs.io/
 
 ## How to test the project
+
+**Important:** Tests must be run inside the Docker container where PostgreSQL is available.
 
 Run the full test suite:
 
 ```console
-$ nox
+$ docker compose exec django uv run pytest -vv
+```
+
+Run tests with coverage:
+
+```console
+$ docker compose exec django uv run coverage run -m pytest -vv
+$ docker compose exec django uv run coverage report
+```
+
+Run nox test sessions (tests multiple Python/Django versions):
+
+```console
+$ docker compose exec django nox --session=tests
 ```
 
 List the available Nox sessions:
 
 ```console
-$ nox --list-sessions
+$ docker compose exec django nox --list-sessions
 ```
 
-You can also run a specific Nox session.
-For example, invoke the unit test suite like this:
+You can also run a specific Nox session:
 
 ```console
-$ nox --session=tests
+$ docker compose exec django nox --session=tests-3.13 -- -p django-5.2
 ```
 
-Unit tests are located in the _tests_ directory,
+Unit tests are located in the `example_project/` directory,
 and are written using the [pytest] testing framework.
 
 [pytest]: https://pytest.readthedocs.io/
@@ -93,9 +142,10 @@ Open a [pull request] to submit changes to this project.
 
 Your pull request needs to meet the following guidelines for acceptance:
 
-- The Nox test suite must pass without errors and warnings.
-- Include unit tests. This project maintains 100% code coverage.
+- All tests must pass without errors and warnings.
+- Include unit tests. This project maintains 80%+ code coverage.
 - If your changes add functionality, update the documentation accordingly.
+- Run the pre-commit hooks (linting, formatting) before submitting.
 
 Feel free to submit early, though—we can always iterate on this.
 
