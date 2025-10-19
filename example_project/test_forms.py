@@ -270,3 +270,91 @@ class TestDecimalPintFormField:
         # But the full precision should be preserved in the Python object
         python_value = field.to_python(value)
         assert str(python_value.magnitude) == "123.456"
+
+
+@pytest.mark.django_db
+class TestFormFieldEdgeCases:
+    """Test edge cases and error handling in form fields."""
+
+    def test_default_unit_none_raises_error(self):
+        """Test that missing default_unit raises ValidationError."""
+        with pytest.raises(ValidationError, match="requires a default_unit"):
+            IntegerPintFormField(default_unit=None)
+
+    def test_default_unit_invalid_format_raises_error(self):
+        """Test that invalid default_unit format raises ValidationError."""
+        with pytest.raises(ValidationError, match="must be either a string or a 2-tuple"):
+            IntegerPintFormField(default_unit=["gram", "kilogram", "extra"])
+
+    def test_prepare_value_with_three_element_tuple(self):
+        """Test prepare_value with 3-element tuple (comparator, magnitude, units)."""
+        field = IntegerPintFormField(default_unit="gram")
+        # Simulate database composite type format
+        value = (Decimal("100"), 100, "gram")
+        result = field.prepare_value(value)
+        assert result == [100, "gram"]
+
+    def test_prepare_value_with_invalid_three_element_tuple(self):
+        """Test prepare_value with invalid 3-element tuple falls back gracefully."""
+        field = IntegerPintFormField(default_unit="gram")
+        # Invalid tuple that can't be unpacked properly
+        value = (None, None, None)
+        result = field.prepare_value(value)
+        # When all values are None, returns [None, None]
+        assert result == [None, None]
+
+    def test_prepare_value_with_string_composite_format(self):
+        """Test prepare_value with string in PostgreSQL composite format."""
+        field = DecimalPintFormField(default_unit="gram")
+        # Simulate string from database: "(comparator,magnitude,units)"
+        value = "(100.0, 100, gram)"
+        result = field.prepare_value(value)
+        assert result[0] == Decimal("100")
+        assert result[1] == "gram"
+
+    def test_prepare_value_with_invalid_string_format(self):
+        """Test prepare_value with invalid string format falls back to default."""
+        field = IntegerPintFormField(default_unit="gram")
+        value = "invalid_format_string"
+        result = field.prepare_value(value)
+        assert result[1] == "gram"  # Should use default unit
+
+    def test_decimal_field_with_deprecated_max_digits_param(self):
+        """Test DecimalPintFormField with deprecated max_digits parameter."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            field = DecimalPintFormField(default_unit="gram", max_digits=10)
+            # Should still work but may warn
+            assert field is not None
+
+    def test_decimal_field_with_deprecated_decimal_places_param(self):
+        """Test DecimalPintFormField with deprecated decimal_places parameter."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            field = DecimalPintFormField(default_unit="gram", decimal_places=2)
+            # Should still work but may warn
+            assert field is not None
+
+    def test_to_python_with_none(self):
+        """Test to_python with None value."""
+        field = IntegerPintFormField(default_unit="gram")
+        result = field.to_python(None)
+        assert result is None
+
+    def test_to_python_with_empty_string(self):
+        """Test to_python with empty string."""
+        field = IntegerPintFormField(default_unit="gram", required=False)
+        result = field.to_python("")
+        assert result is None
+
+    def test_to_python_with_quantity_raises_error(self):
+        """Test to_python with Quantity object raises ValidationError."""
+        field = IntegerPintFormField(default_unit="gram")
+        quantity = ureg.Quantity(100, "gram")
+        # Form fields don't accept Quantity objects directly
+        with pytest.raises(ValidationError, match="Value type.*is invalid"):
+            field.to_python(quantity)
