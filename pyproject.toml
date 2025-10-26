@@ -38,8 +38,8 @@ Repository = "https://github.com/OmenApps/django-pint-field"
 Documentation = "https://django-pint-field.readthedocs.io/en/latest/"
 Changelog = "https://github.com/OmenApps/django-pint-field/releases"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "bandit==1.8.6",
     "black==25.9.0",
     "blacken-docs==1.20.0",
