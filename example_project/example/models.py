@@ -4,6 +4,8 @@ from decimal import Decimal
 
 from django.db import models
 from django.db.models import DecimalField
+from django.db.models import F
+from django.db.models import Q
 
 from django_pint_field.indexes import PintFieldComparatorIndex
 from django_pint_field.models import BigIntegerPintField
@@ -242,3 +244,29 @@ class DjangoPintFieldUnitChoicesComparrisonModel(models.Model):
     weight_decimal_tuple = DecimalPintField(default_unit="gram", unit_choices=unit_choices_tuple)
     weight_decimal_nested_list = DecimalPintField(default_unit="gram", unit_choices=unit_choices_nested_list)
     weight_decimal_nested_tuple = DecimalPintField(default_unit="gram", unit_choices=unit_choices_nested_tuple)
+
+
+class PintFieldWithCheckConstraint(models.Model):
+    """Model for testing CheckConstraint with PintField and F expressions."""
+
+    name = models.CharField(max_length=50)
+    min_weight = DecimalPintField(
+        default_unit="gram",
+        default=Decimal("0.0"),
+        display_decimal_places=2,
+    )
+    max_weight = DecimalPintField(
+        default_unit="gram",
+        default=Decimal("1000.0"),
+        display_decimal_places=2,
+    )
+
+    class Meta:
+        """Meta class with check constraint."""
+
+        constraints = [
+            models.CheckConstraint(
+                check=Q(min_weight__lte=F("max_weight")),
+                name="min_weight_lte_max_weight",
+            ),
+        ]

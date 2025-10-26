@@ -66,6 +66,14 @@ def get_pint_field_lookups():  # pylint: disable=too-many-locals
             lhs, lhs_params = self.process_lhs(compiler, connection)
             rhs, rhs_params = self.process_rhs(compiler, connection)
             params = lhs_params + rhs_params
+
+            # If rhs is a field reference (not a placeholder), wrap it to access comparator
+            if rhs != "%s":
+                # RHS is a field reference (e.g., from F() expression)
+                # Access its comparator component directly
+                return f"({lhs}).comparator {self.operator} ({rhs}).comparator", lhs_params
+
+            # RHS is a value placeholder
             return f"({lhs}).comparator {self.operator} %s", params
 
     class PintGreaterThan(BasePintLookup):  # pylint: disable=W0223
