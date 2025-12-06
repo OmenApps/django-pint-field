@@ -28,7 +28,6 @@ from .helpers import PintFieldProxy
 from .helpers import is_decimal_or_int
 from .units import ureg
 
-
 Quantity = ureg.Quantity
 
 
@@ -69,8 +68,8 @@ class PintRestField(serializers.Field):
             raise ValidationError(self.error_messages["invalid_magnitude"]) from e
 
         try:
-            unit_obj = getattr(ureg, str(units))
-        except (AttributeError, UndefinedUnitError) as e:
+            unit_obj = ureg.Unit(str(units))
+        except UndefinedUnitError as e:
             raise ValidationError(self.error_messages["invalid_units"]) from e
 
         try:
@@ -138,9 +137,13 @@ class BasePintRestField(serializers.Field):
             if not is_decimal_or_int(magnitude):
                 raise ValidationError(self.error_messages["invalid_magnitude"])
 
+            # Validate that units is not empty (ureg.Unit('') returns dimensionless)
+            if not units or not units.strip():
+                raise ValidationError(self.error_messages["invalid_units"])
+
             try:
-                unit_obj = getattr(ureg, units)
-            except (AttributeError, UndefinedUnitError) as e:
+                unit_obj = ureg.Unit(units)
+            except UndefinedUnitError as e:
                 raise ValidationError(self.error_messages["invalid_units"]) from e
 
             return self._create_quantity(magnitude, unit_obj)

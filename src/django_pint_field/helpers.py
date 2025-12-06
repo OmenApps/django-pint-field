@@ -15,7 +15,6 @@ from pint.errors import UndefinedUnitError
 
 from .units import ureg
 
-
 logger = logging.getLogger(__name__)
 
 Quantity = ureg.Quantity
@@ -300,14 +299,8 @@ def get_pint_unit(registry, unit_name: str) -> Optional[object]:
     if unit_name is None:
         return None
 
-    # Store the unit
-    unit = getattr(registry, str(unit_name))
-
-    # Configure the formatter for this unit if needed
-    if hasattr(registry, "formatter") and not registry.formatter.default_format:
-        registry.formatter.default_format = "D"  # Use default format
-
-    return unit
+    # Use registry.Unit() to get a Unit object
+    return registry.Unit(str(unit_name))
 
 
 def get_unit_string(unit_value):
@@ -341,14 +334,11 @@ def check_matching_unit_dimension(
     if not units_to_check:
         return
 
-    if hasattr(registry, "formatter"):
-        registry.formatter.default_format = "D"
-
     try:
         # Get the actual unit string for the default unit
         default_unit_str = get_unit_string(default_unit)
-        default_unit_obj = getattr(registry, default_unit_str)
-    except AttributeError as e:
+        default_unit_obj = registry.Unit(default_unit_str)
+    except UndefinedUnitError as e:
         if raise_exception:
             raise ValidationError(f"Invalid default unit: {default_unit_str}") from e
         return
@@ -356,13 +346,13 @@ def check_matching_unit_dimension(
     for unit in units_to_check:
         try:
             unit_str = get_unit_string(unit)
-            unit_obj = getattr(registry, unit_str)
+            unit_obj = registry.Unit(unit_str)
             if unit_obj.dimensionality != default_unit_obj.dimensionality:
                 if raise_exception:
                     raise ValidationError(
                         f"Unit {unit_str} has incompatible dimensionality with default unit {default_unit_str}."
                     )
-        except AttributeError as e:
+        except UndefinedUnitError as e:
             if raise_exception:
                 raise ValidationError(f"Invalid unit: {unit_str}") from e
 
