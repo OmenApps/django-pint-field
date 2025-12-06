@@ -14,7 +14,7 @@ from example_project.laboratory.models import ExperimentalDevice
 from example_project.laboratory.models import IncidentReport
 from example_project.laboratory.models import Laboratory
 from example_project.laboratory.models import SafetyProtocol
-from example_project.laboratory.models import TestSubject
+from example_project.laboratory.models import ExperimentSubject
 from example_project.laboratory.models import Universe
 
 
@@ -28,7 +28,7 @@ class Command(BaseCommand):
         # Clear existing data
         ExperimentalDevice.objects.all().delete()
         AnomalousSubstance.objects.all().delete()
-        TestSubject.objects.all().delete()
+        ExperimentSubject.objects.all().delete()
         IncidentReport.objects.all().delete()
         DimensionalRift.objects.all().delete()
         SafetyProtocol.objects.all().delete()
@@ -889,9 +889,9 @@ class Command(BaseCommand):
                 )
 
     def create_test_subjects(self, lab):
-        """Create fictional test subjects for the laboratory."""
+        """Create fictional experiment subjects for the laboratory."""
         for i in range(random.randint(3, 7)):
-            TestSubject.objects.create(
+            ExperimentSubject.objects.create(
                 identifier=f"TS-{lab.pk}-{i:03d}",
                 laboratory=lab,
                 creation_date=timezone.now() - timedelta(days=random.randint(1, 365)),

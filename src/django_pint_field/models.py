@@ -265,7 +265,7 @@ class BasePintField(PintFieldMixin, models.Field):
             value = value.quantity
 
         if self.field_type == FieldType.INTEGER_FIELD:
-            return f"{value:.0f}"
+            return f"{value:.0fP}"
 
         if isinstance(value, BaseQuantity):
             # Convert to Quantity

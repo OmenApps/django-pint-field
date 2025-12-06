@@ -11,7 +11,6 @@ from django_pint_field.helpers import PintFieldProxy
 from django_pint_field.models import DecimalPintField
 from django_pint_field.units import ureg
 
-
 Quantity = ureg.Quantity
 
 
@@ -157,7 +156,7 @@ class TestPintStrFormatFilter:
 
     def test_pint_str_format_quantity(self):
         """Test pint_str_format filter with valid format string."""
-        template = Template("{% load django_pint_field %}{{ value|pint_str_format:'.2f' }}")
+        template = Template("{% load django_pint_field %}{{ value|pint_str_format:'.2fP' }}")
         quantity = Quantity(Decimal("123.456"), "gram")
         context = Context({"value": quantity})
         result = template.render(context)
@@ -180,7 +179,7 @@ class TestPintStrFormatFilter:
 
     def test_pint_str_format_non_quantity(self):
         """Test pint_str_format filter with non-Quantity returns value unchanged."""
-        template = Template("{% load django_pint_field %}{{ value|pint_str_format:'.2f' }}")
+        template = Template("{% load django_pint_field %}{{ value|pint_str_format:'.2fP' }}")
         context = Context({"value": "not a quantity"})
         result = template.render(context)
 
@@ -353,7 +352,7 @@ class TestTemplateTagsIntegration:
 
     def test_chained_filters(self):
         """Test multiple filters chained together."""
-        template = Template("{% load django_pint_field %}" "{{ value|with_units:'kilogram'|with_digits:2 }}")
+        template = Template("{% load django_pint_field %}{{ value|with_units:'kilogram'|with_digits:2 }}")
         quantity = Quantity(Decimal("1500"), "gram")
         context = Context({"value": quantity})
         result = template.render(context)
@@ -364,7 +363,7 @@ class TestTemplateTagsIntegration:
 
     def test_format_then_magnitude(self):
         """Test formatting followed by magnitude extraction."""
-        template = Template("{% load django_pint_field %}" "{{ value|with_units:'kilogram'|magnitude_only }}")
+        template = Template("{% load django_pint_field %}{{ value|with_units:'kilogram'|magnitude_only }}")
         quantity = Quantity(Decimal("2000"), "gram")
         context = Context({"value": quantity})
         result = template.render(context)
@@ -376,7 +375,7 @@ class TestTemplateTagsIntegration:
 
     def test_proxy_through_multiple_filters(self):
         """Test PintFieldProxy through multiple filters."""
-        template = Template("{% load django_pint_field %}" "{{ value|with_digits:1|pint_str_format:'~' }}")
+        template = Template("{% load django_pint_field %}{{ value|with_digits:1|pint_str_format:'~' }}")
         quantity = Quantity(Decimal("123.456"), "gram")
         field = DecimalPintField(default_unit="gram")
         converter = PintFieldConverter(field)

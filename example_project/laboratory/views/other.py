@@ -22,7 +22,7 @@ from example_project.laboratory.forms import EnergyReadingForm
 from example_project.laboratory.forms import ExperimentalDeviceForm
 from example_project.laboratory.forms import IncidentReportForm
 from example_project.laboratory.forms import SafetyProtocolForm
-from example_project.laboratory.forms import TestSubjectForm
+from example_project.laboratory.forms import ExperimentSubjectForm
 from example_project.laboratory.models import AnomalousSubstance
 from example_project.laboratory.models import DimensionalRift
 from example_project.laboratory.models import EnergyReading
@@ -30,7 +30,7 @@ from example_project.laboratory.models import ExperimentalDevice
 from example_project.laboratory.models import IncidentReport
 from example_project.laboratory.models import Laboratory
 from example_project.laboratory.models import SafetyProtocol
-from example_project.laboratory.models import TestSubject
+from example_project.laboratory.models import ExperimentSubject
 
 
 logger = logging.getLogger(__name__)
@@ -670,27 +670,27 @@ def protocol_update(request, pk):
     return generic_update_view(request, pk, SafetyProtocol, SafetyProtocolForm)
 
 
-# TestSubject Views
+# ExperimentSubject Views
 
 
 def subject_list(request):
-    """List all test subjects."""
+    """List all experiment subjects."""
     return generic_list_view(
         request,
-        TestSubject,
-        queryset=TestSubject.objects.select_related("laboratory"),
+        ExperimentSubject,
+        queryset=ExperimentSubject.objects.select_related("laboratory"),
         create_url_name="laboratory:subject_create",
         update_url_name="laboratory:subject_update",
     )
 
 
 def subject_detail(request, pk: int) -> TemplateResponse:
-    """Display detailed information about a test subject."""
+    """Display detailed information about an experiment subject."""
     template = "laboratory/other/subject_detail.html"
     context: Dict[str, Any] = {}
 
     # Get the subject with related laboratory info
-    subject = get_object_or_404(TestSubject.objects.select_related("laboratory", "laboratory__universe"), pk=pk)
+    subject = get_object_or_404(ExperimentSubject.objects.select_related("laboratory", "laboratory__universe"), pk=pk)
 
     # Calculate status based on IQ and processing power
     subject_status = "stable"
@@ -772,13 +772,13 @@ def subject_detail(request, pk: int) -> TemplateResponse:
 
 
 def subject_create(request):
-    """Create a new test subject."""
-    return generic_create_view(request, TestSubject, TestSubjectForm)
+    """Create a new experiment subject."""
+    return generic_create_view(request, ExperimentSubject, ExperimentSubjectForm)
 
 
 def subject_update(request, pk):
-    """Update an existing test subject."""
-    return generic_update_view(request, pk, TestSubject, TestSubjectForm)
+    """Update an existing experiment subject."""
+    return generic_update_view(request, pk, ExperimentSubject, ExperimentSubjectForm)
 
 
 # DimensionalRift Views

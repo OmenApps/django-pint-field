@@ -9,7 +9,7 @@ from example_project.laboratory.models import ExperimentalDevice
 from example_project.laboratory.models import IncidentReport
 from example_project.laboratory.models import Laboratory
 from example_project.laboratory.models import SafetyProtocol
-from example_project.laboratory.models import TestSubject
+from example_project.laboratory.models import ExperimentSubject
 from example_project.laboratory.models import Universe
 
 
@@ -230,13 +230,13 @@ class AnomalousSubstanceForm(forms.ModelForm):
         return cleaned_data
 
 
-class TestSubjectForm(forms.ModelForm):
-    """Form for creating and updating test subjects."""
+class ExperimentSubjectForm(forms.ModelForm):
+    """Form for creating and updating experiment subjects."""
 
     class Meta:
-        """Meta options for TestSubjectForm."""
+        """Meta options for ExperimentSubjectForm."""
 
-        model = TestSubject
+        model = ExperimentSubject
         fields = [
             "identifier",
             "laboratory",

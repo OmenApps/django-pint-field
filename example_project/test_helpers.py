@@ -258,7 +258,7 @@ class TestPintFieldProxy:
 
     def test_format(self, proxy):
         """Test format method."""
-        assert format(proxy, ".1f") == "10.3 gram"
+        assert format(proxy, ".1fP") == "10.3 gram"
 
     def test_getattr_unit_conversion(self, proxy):
         """Test unit conversion via attribute access."""

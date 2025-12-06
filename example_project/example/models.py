@@ -266,7 +266,7 @@ class PintFieldWithCheckConstraint(models.Model):
 
         constraints = [
             models.CheckConstraint(
-                check=Q(min_weight__lte=F("max_weight")),
+                condition=Q(min_weight__lte=F("max_weight")),
                 name="min_weight_lte_max_weight",
             ),
         ]

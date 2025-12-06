@@ -236,8 +236,8 @@ class AnomalousSubstance(models.Model):
         return reverse("laboratory:substance_detail", kwargs={"pk": self.pk})
 
 
-class TestSubject(models.Model):
-    """Track information about test subjects (clones, robots, etc.)."""
+class ExperimentSubject(models.Model):
+    """Track information about experiment subjects (clones, robots, etc.)."""
 
     identifier = models.CharField(max_length=50)
     laboratory = models.ForeignKey(Laboratory, on_delete=models.CASCADE)
