@@ -356,7 +356,6 @@ class TestTabledPintFieldWidget:
     @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
     def test_normalize_value_with_none_magnitude(self):
         """Test _normalize_value with None magnitude in tuple."""
-        from django.core.exceptions import ImproperlyConfigured
 
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
         magnitude, unit = widget._normalize_value((None, "gram"))

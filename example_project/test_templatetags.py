@@ -1,7 +1,6 @@
 """Test cases for template tags."""
 
 from decimal import Decimal
-from decimal import InvalidOperation
 
 import pytest
 from django.template import Context

@@ -7,7 +7,6 @@ from django.core.management.base import BaseCommand
 from tabulate import tabulate
 
 from django_pint_field.aggregates import PintAvg
-from django_pint_field.aggregates import PintCount
 from django_pint_field.aggregates import PintMax
 from django_pint_field.aggregates import PintStdDev
 from example_project.laboratory.models import ExperimentalDevice

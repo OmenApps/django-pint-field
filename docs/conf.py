@@ -1,8 +1,5 @@
 """Sphinx configuration for django-pint-field."""
 
-import inspect
-import os
-import sys
 from datetime import datetime
 
 
