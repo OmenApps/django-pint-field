@@ -259,6 +259,7 @@ LOGGING = {
         "django_pint_field": {
             "level": "DEBUG",
             "handlers": ["console"],
+            "propagate": False,
         },
         "example_project": {
             "level": "DEBUG",

@@ -1,11 +1,32 @@
 """Pytest configuration for example project."""
 
-from decimal import Decimal
+import warnings
 
-import pytest
+# Filter out pydantic deprecation warnings from django-ninja before any imports
+# This must be done early because the warnings are raised at import time
+warnings.filterwarnings(
+    "ignore",
+    message="Support for class-based",
+    category=DeprecationWarning,
+)
 
-from django_pint_field.models import IntegerPintField
-from django_pint_field.units import ureg
+from decimal import Decimal  # noqa: E402
+
+import pytest  # noqa: E402
+
+from django_pint_field.models import IntegerPintField  # noqa: E402
+from django_pint_field.units import ureg  # noqa: E402
+
+
+def pytest_configure(config):
+    """Configure pytest before test collection."""
+    # Also set the warning filter in pytest's warning plugin
+    # This catches warnings during collection
+    warnings.filterwarnings(
+        "ignore",
+        message="Support for class-based",
+        category=DeprecationWarning,
+    )
 
 
 @pytest.fixture
