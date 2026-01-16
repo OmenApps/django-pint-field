@@ -14,7 +14,6 @@ from typing import Optional
 import psycopg
 from django.core import validators
 from django.core.exceptions import ValidationError
-from django.db import connection
 from django.db import models
 from django.db.backends.base.base import NO_DB_ALIAS
 from django.db.models import Field
@@ -53,12 +52,25 @@ def create_quantity_from_composite(comparator, magnitude, units):  # pylint: dis
     return quantity_obj
 
 
-def register_pint_composite_types(sender, **kwargs):  # pylint: disable=W0621 disable=W0613
-    """Register the composite types and adapters for the PintField."""
-    if connection.vendor != "postgresql" or connection.alias == NO_DB_ALIAS:
+def register_pint_composite_types(sender, connection=None, **kwargs):  # pylint: disable=W0621 disable=W0613
+    """Register the composite types and adapters for the PintField.
+
+    Args:
+        sender: The sender of the signal (can be None)
+        connection: Optional database connection. If not provided, uses the default connection.
+        **kwargs: Additional keyword arguments from signal handlers
+    """
+    from django.db import connection as default_connection  # pylint: disable=C0415
+
+    # Use provided connection or fall back to default
+    db_connection = connection if connection is not None else default_connection
+
+    if db_connection.vendor != "postgresql" or db_connection.alias == NO_DB_ALIAS:
         return
 
-    conn = connection.connection  # This is the psycopg3 connection
+    # Ensure we have an active connection before accessing .connection
+    db_connection.ensure_connection()
+    conn = db_connection.connection  # This is the psycopg3 connection
 
     try:
         # Fetch and register the single composite type
