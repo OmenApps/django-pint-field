@@ -28,7 +28,7 @@ def cheatsheet(request) -> TemplateResponse:
 
     for agg_name, value in aggs.items():
         if value is not None:
-            aggregations[f'{"portal_diameter"}_{agg_name}'] = {"value": value}
+            aggregations[f"{'portal_diameter'}_{agg_name}"] = {"value": value}
 
     context = {
         "device": device,

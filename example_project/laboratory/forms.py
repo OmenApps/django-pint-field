@@ -176,7 +176,7 @@ class ExperimentalDeviceForm(forms.ModelForm):
             # Safety check - high power with large portals is dangerous
             if power_gw > 1000 and diameter_m > 10:
                 raise forms.ValidationError(
-                    "Power output over 1000 GW with portals larger than 10m " "creates dangerous spacetime instability."
+                    "Power output over 1000 GW with portals larger than 10m creates dangerous spacetime instability."
                 )
 
         return cleaned_data

@@ -19,7 +19,6 @@ Quantity = ureg.Quantity
 
 @pytest.mark.django_db
 class TestUnitChoicesValidation:
-
     @pytest.mark.parametrize(
         "unit_choices, default_unit, expected",
         [

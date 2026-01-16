@@ -41,7 +41,6 @@ Changelog = "https://github.com/OmenApps/django-pint-field/releases"
 [dependency-groups]
 dev = [
     "bandit==1.8.6",
-    "black==25.9.0",
     "blacken-docs==1.20.0",
     "coverage[toml]==7.11.0",
     "crispy-bootstrap5==2025.6",
@@ -61,7 +60,6 @@ dev = [
     "flake8==7.3.0",
     "furo==2025.9.25",
     "hiredis==3.3.0",
-    "isort==7.0.0",
     "linkify-it-py==2.0.3",
     "markdown==3.9",
     "myst-parser==4.0.1",
@@ -93,15 +91,6 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.black]
-line-length = 120
-target-version = ["py311", "py312", "py313", "py314"]
-force-exclude = '''
-(
-  .nox
-)
-'''
-
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
 tests = ["example_project", "*/example_project"]
@@ -120,12 +109,41 @@ DJANGO_SETTINGS_MODULE = "example_project.settings"
 python_files = ["*test_*.py", "*_test.py", "example_project/*.py"]
 log_cli = true
 log_cli_level = "INFO"
-
-[tool.isort]
-profile = "black"
-force_single_line = true
-lines_after_imports = 2
-extend_skip = [".nox"]
+filterwarnings = [
+    # Ignore deprecation warnings from third-party packages we don't control.
+    # django-ninja uses class-based Pydantic config which is deprecated in Pydantic v2.
+    # Note: Some ninja warnings may still appear during Django settings import (before
+    # pytest's warning filters are applied). These are harmless and will be fixed when
+    # django-ninja updates to Pydantic v2 style.
+    "ignore:Support for class-based:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 120
+target-version = "py311"
+exclude = [".nox", "migrations"]
+
+[tool.ruff.format]
+# Use double quotes for strings (like black)
+quote-style = "double"
+# Indent with spaces (like black)
+indent-style = "space"
+# Respect magic trailing commas (like black)
+skip-magic-trailing-comma = false
+# Format docstrings
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # Pyflakes
+    "I",      # isort
+    "W",      # pycodestyle warnings
+]
+# Only lint the main library code, not the example project
+exclude = ["example_project"]
+
+[tool.ruff.lint.isort]
+# Match previous isort configuration
+force-single-line = true
+lines-after-imports = 2
