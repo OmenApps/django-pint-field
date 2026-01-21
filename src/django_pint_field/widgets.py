@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError
 from django.forms.widgets import MultiWidget
 from django.forms.widgets import NumberInput
 from django.forms.widgets import Select
+from django.utils.translation import gettext_lazy as _
 
 from .helpers import get_pint_unit
 from .helpers import is_decimal_or_int
@@ -39,7 +40,7 @@ class PintFieldWidget(MultiWidget):
 
         if default_unit is None:
             raise ValidationError(
-                "PintFieldWidgets require a default_unit kwarg of a single Pint unit type (eg: 'grams')"
+                _("PintFieldWidgets require a default_unit kwarg of a single Pint unit type (eg: 'grams')")
             )
 
         # Normalize default_unit
@@ -50,7 +51,7 @@ class PintFieldWidget(MultiWidget):
             self._default_unit_display, self._default_unit_value = default_unit
         else:
             raise ValidationError(
-                "default_unit must be either a string or a 2-tuple/2-list of (display_name, unit_value)"
+                _("default_unit must be either a string or a 2-tuple/2-list of (display_name, unit_value)")
             )
 
         self.default_unit = self._default_unit_value
@@ -69,7 +70,12 @@ class PintFieldWidget(MultiWidget):
         attrs = attrs or {}
         if "step" not in attrs:
             attrs.setdefault("step", "any")
-        widgets = (NumberInput(attrs=attrs), Select(attrs=attrs, choices=self.choices))
+
+        # Create separate attrs for each widget with aria-labels
+        magnitude_attrs = {**attrs, "aria-label": _("Quantity magnitude")}
+        unit_attrs = {**attrs, "aria-label": _("Quantity unit")}
+
+        widgets = (NumberInput(attrs=magnitude_attrs), Select(attrs=unit_attrs, choices=self.choices))
         super().__init__(widgets, attrs)
 
     def decompress(self, value: Quantity):
@@ -116,8 +122,8 @@ class TabledPintFieldWidget(PintFieldWidget):
         }
 
         self.content_options = {
-            "unit_header": kwargs.pop("unit_header", "Unit"),
-            "value_header": kwargs.pop("value_header", "Value"),
+            "unit_header": kwargs.pop("unit_header", None),  # Will use template default with i18n
+            "value_header": kwargs.pop("value_header", None),  # Will use template default with i18n
             "show_units_in_values": kwargs.pop("show_units_in_values", False),
             "floatformat": kwargs.pop("floatformat", -1),  # -1 means only show necessary decimal places
         }

@@ -20,6 +20,7 @@ from decimal import InvalidOperation
 from typing import Any
 from typing import Optional
 
+from django.utils.translation import gettext_lazy as _
 from pint import UndefinedUnitError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -39,10 +40,10 @@ class PintRestField(serializers.Field):
     """
 
     default_error_messages = {
-        "invalid_magnitude": "Invalid magnitude value.",
-        "invalid_units": "Invalid or undefined unit.",
-        "missing_field": "Both magnitude and units are required.",
-        "incompatible_units": "Incompatible unit dimensions.",
+        "invalid_magnitude": _("Invalid magnitude value."),
+        "invalid_units": _("Invalid or undefined unit."),
+        "missing_field": _("Both magnitude and units are required."),
+        "incompatible_units": _("Incompatible unit dimensions."),
     }
 
     def to_representation(self, value: Optional[PintFieldProxy | Quantity]) -> Optional[dict[str, Any]]:
@@ -98,9 +99,9 @@ class BasePintRestField(serializers.Field):
     """
 
     default_error_messages = {
-        "invalid_format": 'Invalid format. Expected "number unit" or Quantity object.',
-        "invalid_magnitude": "Invalid magnitude value.",
-        "invalid_units": "Invalid or undefined unit.",
+        "invalid_format": _('Invalid format. Expected "number unit" or Quantity object.'),
+        "invalid_magnitude": _("Invalid magnitude value."),
+        "invalid_units": _("Invalid or undefined unit."),
     }
 
     def __init__(self, *args, **kwargs):

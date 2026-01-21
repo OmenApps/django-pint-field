@@ -73,7 +73,7 @@ class BasePintFormField(forms.Field):
         """Initialize the Pint form field."""
 
         if default_unit is None:
-            raise ValidationError("PintFormField requires a default_unit kwarg of a single unit type (eg: 'grams')")
+            raise ValidationError(_("PintFormField requires a default_unit kwarg of a single unit type (eg: 'grams')"))
         # Normalize default_unit to tuple format
         if isinstance(default_unit, str):
             self._default_unit_display = default_unit
@@ -82,7 +82,7 @@ class BasePintFormField(forms.Field):
             self._default_unit_display, self._default_unit_value = default_unit
         else:
             raise ValidationError(
-                "default_unit must be either a string or a 2-tuple/2-list of (display_name, unit_value)"
+                _("default_unit must be either a string or a 2-tuple/2-list of (display_name, unit_value)")
             )
         self.default_unit = self._default_unit_value
         self.ureg = ureg
