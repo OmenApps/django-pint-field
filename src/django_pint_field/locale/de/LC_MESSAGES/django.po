@@ -1,0 +1,73 @@
+# German translations for django-pint-field.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the django-pint-field package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: django-pint-field\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-21 12:00+0000\n"
+"PO-Revision-Date: 2026-01-21 12:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: widgets.py
+msgid "PintFieldWidgets require a default_unit kwarg of a single Pint unit type (eg: 'grams')"
+msgstr "PintFieldWidgets erfordert ein default_unit-Argument mit einem einzelnen Pint-Einheitentyp (z.B. 'grams')"
+
+#: widgets.py forms.py
+msgid "default_unit must be either a string or a 2-tuple/2-list of (display_name, unit_value)"
+msgstr "default_unit muss entweder eine Zeichenkette oder ein 2-Tupel/2-Liste von (Anzeigename, Einheitswert) sein"
+
+#: widgets.py
+msgid "Quantity magnitude"
+msgstr "Mengengröße"
+
+#: widgets.py
+msgid "Quantity unit"
+msgstr "Mengeneinheit"
+
+#: forms.py
+msgid "PintFormField requires a default_unit kwarg of a single unit type (eg: 'grams')"
+msgstr "PintFormField erfordert ein default_unit-Argument mit einem einzelnen Einheitentyp (z.B. 'grams')"
+
+#: rest.py
+msgid "Invalid magnitude value."
+msgstr "Ungültiger Größenwert."
+
+#: rest.py
+msgid "Invalid or undefined unit."
+msgstr "Ungültige oder undefinierte Einheit."
+
+#: rest.py
+msgid "Both magnitude and units are required."
+msgstr "Sowohl Größe als auch Einheiten sind erforderlich."
+
+#: rest.py
+msgid "Incompatible unit dimensions."
+msgstr "Inkompatible Einheitendimensionen."
+
+#: rest.py
+msgid "Invalid format. Expected \"number unit\" or Quantity object."
+msgstr "Ungültiges Format. Erwartet wurde \"Zahl Einheit\" oder Quantity-Objekt."
+
+#: templates/django_pint_field/tabled_django_pint_field_widget.html
+msgid "Unit conversion reference"
+msgstr "Einheitenumrechnungsreferenz"
+
+#: templates/django_pint_field/tabled_django_pint_field_widget.html
+msgid "Converted values in different units"
+msgstr "Umgerechnete Werte in verschiedenen Einheiten"
+
+#: templates/django_pint_field/tabled_django_pint_field_widget.html
+msgid "Unit"
+msgstr "Einheit"
+
+#: templates/django_pint_field/tabled_django_pint_field_widget.html
+msgid "Value"
+msgstr "Wert"
