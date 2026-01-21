@@ -1,3 +1,4 @@
+{% load i18n %}
 {% spaceless %}
     {# Input widgets section #}
     <div class="pint-field-inputs {% if input_wrapper_class %}{{ input_wrapper_class }}{% endif %}">
@@ -9,14 +10,16 @@
     {# Conversion table section #}
     {% if values_list %}
         <div class="pint-field-table {% if table_wrapper_class %}{{ table_wrapper_class }}{% endif %}">
-            <table class="pint-field-conversion-table {% if table_class %}{{ table_class }}{% endif %}">
+            <table class="pint-field-conversion-table {% if table_class %}{{ table_class }}{% endif %}"
+                   aria-label="{% translate 'Unit conversion reference' %}">
+                <caption class="visually-hidden sr-only">{% translate "Converted values in different units" %}</caption>
                 <thead class="{% if thead_class %}{{ thead_class }}{% endif %}">
                     <tr class="{% if tr_header_class %}{{ tr_header_class }}{% endif %}">
-                        <th class="pint-field-unit-header {% if th_class %}{{ th_class }}{% endif %}">
-                            {% if unit_header %}{{ unit_header }}{% else %}Unit{% endif %}
+                        <th scope="col" class="pint-field-unit-header {% if th_class %}{{ th_class }}{% endif %}">
+                            {% if unit_header %}{{ unit_header }}{% else %}{% translate "Unit" %}{% endif %}
                         </th>
-                        <th class="pint-field-value-header {% if th_class %}{{ th_class }}{% endif %}">
-                            {% if value_header %}{{ value_header }}{% else %}Value{% endif %}
+                        <th scope="col" class="pint-field-value-header {% if th_class %}{{ th_class }}{% endif %}">
+                            {% if value_header %}{{ value_header }}{% else %}{% translate "Value" %}{% endif %}
                         </th>
                     </tr>
                 </thead>
