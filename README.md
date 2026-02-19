@@ -2,6 +2,10 @@
 
 [![Published on Django Packages](https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26)](https://djangopackages.org/packages/p/django-pint-field/)
 [![PyPI](https://img.shields.io/pypi/v/django-pint-field)](https://pypi.org/project/django-pint-field/)
+[![Python versions](https://img.shields.io/pypi/pyversions/django-pint-field)](https://pypi.org/project/django-pint-field/)
+[![Django versions](https://img.shields.io/pypi/djversions/django-pint-field)](https://pypi.org/project/django-pint-field/)
+[![Documentation](https://readthedocs.org/projects/django-pint-field/badge/?version=latest)](https://django-pint-field.readthedocs.io/en/latest/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Store, validate, and convert physical quantities in Django using [Pint](https://pint.readthedocs.io/en/stable/).
 
