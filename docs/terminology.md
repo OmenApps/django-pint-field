@@ -46,15 +46,11 @@ An optional list of allowed units for a field. All units in this list must be co
 
 ### DecimalPintField
 
-A PintField that stores the magnitude as a decimal number with specified precision (max_digits and decimal_places).
+A PintField that stores the magnitude as a decimal number. Supports `display_decimal_places` for controlling display precision and `rounding_method` for controlling how values are rounded.
 
 ### IntegerPintField
 
 A PintField that stores the magnitude as an integer.
-
-### BigIntegerPintField
-
-A PintField that stores the magnitude as a big integer (for very large numbers).
 
 ## Indexes
 

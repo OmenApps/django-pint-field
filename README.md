@@ -19,14 +19,14 @@ Django Pint Field enables you to:
 - Display quantities in user-preferred units while maintaining accurate comparisons
 - Perform aggregations and lookups across different units of measurement
 
-The package uses a Postgres composite field to store both the magnitude and units, along with a base unit value for accurate comparisons. This approach ensures that users can work with their preferred units while maintaining data integrity and comparability. For this reason, the project only works with Postgresql databases.
+The package uses a PostgreSQL composite field to store both the magnitude and units, along with a base-unit comparator value for accurate comparisons. This approach ensures that users can work with their preferred units while maintaining data integrity and comparability. For this reason, the project only works with PostgreSQL databases.
 
 ## Requirements
 
 - Python 3.11+
 - Django 4.2+
 - PostgreSQL database
-- Pint 0.23+
+- Pint 0.24+
 
 ## Installation
 
@@ -89,7 +89,7 @@ from django_pint_field.models import DecimalPintField
 
 
 class Product(models.Model):
-    name = models.CharField(max_length=Decimal("100"))
+    name = models.CharField(max_length=100)
     weight = DecimalPintField(
         default_unit="gram",
         unit_choices=["gram", "kilogram", "pound", "ounce"],
@@ -113,12 +113,12 @@ products = Product.objects.filter(
 )
 
 # Access values
-print(product.weight)  # 3460 gram
-print(product.weight.quantity)  # 3460 gram (accessing the Pint Quantity object)
+print(product.weight)  # 340 gram
+print(product.weight.quantity)  # 340 gram (accessing the Pint Quantity object)
 # Convert to different units
-print(product.weight.quantity.to("kilogram"))  # 0.346 kilogram
-print(product.weight.kilogram)  # 0.346 kilogram
-print(product.weight.kilogram__2)  # 0.35 kilogram  (rounded to 2 decimal places)
+print(product.weight.quantity.to("kilogram"))  # 0.340 kilogram
+print(product.weight.kilogram)  # 0.340 kilogram
+print(product.weight.kilogram__2)  # 0.34 kilogram  (rounded to 2 decimal places)
 ```
 
 ## Features
@@ -127,7 +127,6 @@ print(product.weight.kilogram__2)  # 0.35 kilogram  (rounded to 2 decimal places
 
 - **IntegerPintField**: For whole number quantities
 - **DecimalPintField**: For precise decimal quantities
-- **BigIntegerPintField**: For large whole number quantities (deprecated, use IntegerPintField instead)
 
 ### Form Fields and Widgets
 
@@ -137,7 +136,7 @@ print(product.weight.kilogram__2)  # 0.35 kilogram  (rounded to 2 decimal places
 
 #### Form Fields
 
-- **IntegerPintFormField**: Used in forms with IntegerPintField and BigIntegerPintField.
+- **IntegerPintFormField**: Used in forms with IntegerPintField.
 - **DecimalPintFormField**: Used in forms with DecimalPintField.
 
 #### Widgets

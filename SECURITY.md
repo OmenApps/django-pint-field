@@ -27,6 +27,7 @@ Once your vulnerability report is submitted, we will:
 ### Vulnerability Acceptance
 
 - If the vulnerability is **accepted**, we will:
+
   - Coordinate privately to develop and test a fix.
   - Aim to resolve critical vulnerabilities within **14 days** and lower severity issues within **30 days**.
   - Publicly disclose the vulnerability after a fix is available, providing credit to the reporter (unless anonymity is requested).

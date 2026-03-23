@@ -5,6 +5,8 @@ sphinx-click==6.0.0
 myst-parser==4.0
 furo==2024.8.6
 linkify-it-py==2.0.3
+sphinx-copybutton>=0.5.2
+sphinx-togglebutton>=0.3.2
 
 # Development dependencies
 # django-extensions==3.2.3

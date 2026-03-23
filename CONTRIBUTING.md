@@ -48,17 +48,20 @@ You need Python 3.11+ and the following tools:
 ### Initial Setup
 
 1. Clone the repository:
+
 ```console
 $ git clone https://github.com/jacklinke/django-pint-field.git
 $ cd django-pint-field
 ```
 
 2. Start the Docker Compose services:
+
 ```console
 $ docker compose up -d
 ```
 
 This will start:
+
 - Django application (port 8115)
 - PostgreSQL database (port 5437)
 - Redis cache (port 6390)
