@@ -139,65 +139,118 @@ def validate_value_range(
         return
 
     if isinstance(value, Quantity):
-        # Validate that min/max values are also Quantities if provided
-        if min_value is not None and not isinstance(min_value, Quantity):
-            raise ValidationError(_("Min value must be a Quantity when comparing with Quantity values."))
-        if max_value is not None and not isinstance(max_value, Quantity):
-            raise ValidationError(_("Max value must be a Quantity when comparing with Quantity values."))
+        _validate_quantity_value_range(value, min_value, max_value)
+        return
 
-        # Convert all values to base units for comparison
-        value_base = value.to_base_units()
+    _validate_numeric_value_range(value, min_value, max_value)
 
-        if min_value is not None:
-            try:
-                min_value_base = min_value.to_base_units()
-                if value_base.magnitude < min_value_base.magnitude:
-                    raise ValidationError(
-                        _("Ensure this value is greater than or equal to %(min_value)s."),
-                        code="min_value",
-                        params={"min_value": min_value},
-                    )
-            except DimensionalityError as e:
-                raise ValidationError(_("Min value must have compatible units with the value being validated.")) from e
 
-        if max_value is not None:
-            try:
-                max_value_base = max_value.to_base_units()
-                if value_base.magnitude > max_value_base.magnitude:
-                    raise ValidationError(
-                        _("Ensure this value is less than or equal to %(max_value)s."),
-                        code="max_value",
-                        params={"max_value": max_value},
-                    )
-            except DimensionalityError as e:
-                raise ValidationError(_("Max value must have compatible units with the value being validated.")) from e
+def _raise_min_value_error(min_value: Quantity | int | float | Decimal) -> None:
+    """Raise the standard minimum value validation error."""
+    raise ValidationError(
+        _("Ensure this value is greater than or equal to %(min_value)s."),
+        code="min_value",
+        params={"min_value": min_value},
+    )
 
-    # Handle non-Quantity numeric values
-    else:
-        try:
-            float_val = float(value)
-        except (TypeError, ValueError) as e:
-            raise ValidationError(_("Value must be a number."), code="invalid") from e
 
-        if min_value is not None:
-            if isinstance(min_value, Quantity):
-                raise ValidationError(_("Cannot compare numeric value with Quantity min_value."))
-            if float_val < float(min_value):
-                raise ValidationError(
-                    _("Ensure this value is greater than or equal to %(min_value)s."),
-                    code="min_value",
-                    params={"min_value": min_value},
-                )
+def _raise_max_value_error(max_value: Quantity | int | float | Decimal) -> None:
+    """Raise the standard maximum value validation error."""
+    raise ValidationError(
+        _("Ensure this value is less than or equal to %(max_value)s."),
+        code="max_value",
+        params={"max_value": max_value},
+    )
 
-        if max_value is not None:
-            if isinstance(max_value, Quantity):
-                raise ValidationError(_("Cannot compare numeric value with Quantity max_value."))
-            if float_val > float(max_value):
-                raise ValidationError(
-                    _("Ensure this value is less than or equal to %(max_value)s."),
-                    code="max_value",
-                    params={"max_value": max_value},
-                )
+
+def _validate_quantity_bound_type(
+    bound_name: str,
+    bound_value: Optional[Quantity | int | float | Decimal],
+) -> None:
+    """Ensure quantity comparisons only use quantity bounds."""
+    if bound_value is not None and not isinstance(bound_value, Quantity):
+        raise ValidationError(_(f"{bound_name} value must be a Quantity when comparing with Quantity values."))
+
+
+def _validate_quantity_min(value_base: Quantity, min_value: Optional[Quantity]) -> None:
+    """Validate a quantity against the minimum bound."""
+    if min_value is None:
+        return
+
+    try:
+        min_value_base = min_value.to_base_units()
+    except DimensionalityError as e:
+        raise ValidationError(_("Min value must have compatible units with the value being validated.")) from e
+
+    if value_base.magnitude < min_value_base.magnitude:
+        _raise_min_value_error(min_value)
+
+
+def _validate_quantity_max(value_base: Quantity, max_value: Optional[Quantity]) -> None:
+    """Validate a quantity against the maximum bound."""
+    if max_value is None:
+        return
+
+    try:
+        max_value_base = max_value.to_base_units()
+    except DimensionalityError as e:
+        raise ValidationError(_("Max value must have compatible units with the value being validated.")) from e
+
+    if value_base.magnitude > max_value_base.magnitude:
+        _raise_max_value_error(max_value)
+
+
+def _validate_quantity_value_range(
+    value: Quantity,
+    min_value: Optional[Quantity | int | float | Decimal],
+    max_value: Optional[Quantity | int | float | Decimal],
+) -> None:
+    """Validate a quantity using quantity-aware bounds."""
+    _validate_quantity_bound_type("Min", min_value)
+    _validate_quantity_bound_type("Max", max_value)
+
+    value_base = value.to_base_units()
+    _validate_quantity_min(value_base, min_value)
+    _validate_quantity_max(value_base, max_value)
+
+
+def _coerce_numeric_value(value: int | float | Decimal) -> float:
+    """Convert a numeric value to float for range comparisons."""
+    try:
+        return float(value)
+    except (TypeError, ValueError) as e:
+        raise ValidationError(_("Value must be a number."), code="invalid") from e
+
+
+def _validate_numeric_min(float_value: float, min_value: Optional[Quantity | int | float | Decimal]) -> None:
+    """Validate a numeric value against the minimum bound."""
+    if min_value is None:
+        return
+    if isinstance(min_value, Quantity):
+        raise ValidationError(_("Cannot compare numeric value with Quantity min_value."))
+    if float_value < float(min_value):
+        _raise_min_value_error(min_value)
+
+
+def _validate_numeric_max(float_value: float, max_value: Optional[Quantity | int | float | Decimal]) -> None:
+    """Validate a numeric value against the maximum bound."""
+    if max_value is None:
+        return
+    if isinstance(max_value, Quantity):
+        raise ValidationError(_("Cannot compare numeric value with Quantity max_value."))
+    if float_value > float(max_value):
+        _raise_max_value_error(max_value)
+
+
+def _validate_numeric_value_range(
+    value: int | float | Decimal,
+    min_value: Optional[Quantity | int | float | Decimal],
+    max_value: Optional[Quantity | int | float | Decimal],
+) -> None:
+    """Validate a plain numeric value using numeric bounds."""
+    float_value = _coerce_numeric_value(value)
+    _validate_numeric_min(float_value, min_value)
+    _validate_numeric_max(float_value, max_value)
 
 
 class QuantityConverter:

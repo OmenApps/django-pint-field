@@ -174,42 +174,57 @@ class TabledPintFieldWidget(PintFieldWidget):
 
         return self.ureg.Quantity(magnitude) * unit
 
+    def _unwrap_table_value(self, value):
+        """Extract the underlying quantity from proxy-like objects."""
+        quantity = getattr(value, "quantity", None)
+        if hasattr(quantity, "magnitude"):
+            return quantity
+        return value
+
+    def _coerce_table_quantity(self, value) -> Quantity:
+        """Normalize supported inputs into a Pint quantity."""
+        value = self._unwrap_table_value(value)
+        if isinstance(value, (list, tuple)) and len(value) == 2:
+            return self._create_quantity(*value)
+        if not isinstance(value, Quantity):
+            raise ValueError(f"Expected Pint Quantity, got {type(value)}")
+        return value
+
+    def _ensure_numeric_magnitude(self, value: Quantity) -> Quantity:
+        """Return a quantity whose magnitude can be safely rendered."""
+        if isinstance(value.magnitude, (int, float, Decimal)):
+            return value
+
+        try:
+            float(value.magnitude)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid magnitude type: {type(value.magnitude)}") from e
+        return Quantity(Decimal(str(value.magnitude)), value.units)
+
+    def _convert_table_value(self, value: Quantity, target_unit: str) -> Quantity | None:
+        """Convert a quantity for the display table."""
+        if str(target_unit) == str(value.units):
+            return None
+
+        try:
+            return value.to(target_unit)
+        except (AttributeError, ValueError) as e:
+            logger.error("Error converting value to %s: %s", target_unit, e)
+            return None
+
     def create_table(self, value):
         """Create a list of converted quantities for the table display."""
         if value is None:
             return []
 
-        # If value is a proxy, get the actual value
-        if hasattr(value, "value"):
-            value = value.quantity
+        value = self._coerce_table_quantity(value)
+        value = self._ensure_numeric_magnitude(value)
 
-        # Handle tuple/list input
-        if isinstance(value, (list, tuple)) and len(value) == 2:
-            value = self._create_quantity(*value)
-
-        # Ensure we have a proper Quantity object
-        if not isinstance(value, Quantity):
-            raise ValueError(f"Expected Pint Quantity, got {type(value)}")
-
-        # Ensure magnitude is numeric
-        if not isinstance(value.magnitude, (int, float, Decimal)):
-            try:
-                float(value.magnitude)
-                value = Quantity(Decimal(str(value.magnitude)), value.units)
-            except (TypeError, ValueError) as e:
-                raise ValueError(f"Invalid magnitude type: {type(value.magnitude)}") from e
-
-        # Convert value to each available unit
         converted_values = []
-        for _, target_unit in self.original_choices:
-            try:
-                # Convert the value to the target unit, skipping the current unit
-                if str(target_unit) != str(value.units):
-                    converted = value.to(target_unit)
-                    converted_values.append(converted)
-            except (AttributeError, ValueError) as e:
-                logger.error("Error converting value to %s: %s", target_unit, e)
-                continue
+        for _label, target_unit in self.original_choices:
+            converted = self._convert_table_value(value, target_unit)
+            if converted is not None:
+                converted_values.append(converted)
 
         return converted_values
 

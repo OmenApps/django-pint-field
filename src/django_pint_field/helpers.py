@@ -84,6 +84,52 @@ class PintFieldProxy:
         # Delegate formatting to the underlying Quantity object
         return format(self.quantity, format_spec)
 
+    def _strip_get_prefix(self, name: str) -> str:
+        """Remove the legacy ``get_`` prefix from attribute names."""
+        if name.startswith("get_"):
+            return name[4:]
+        return name
+
+    def _quantize_quantity(self, quantity: Quantity, decimal_places: int) -> Quantity:
+        """Return a quantity rounded to the requested number of decimal places."""
+        quantizing_string = "0." + "0" * decimal_places
+        magnitude = Decimal(str(quantity.magnitude)).quantize(Decimal(quantizing_string))
+        return type(quantity)(magnitude, quantity.units)
+
+    def _get_basic_attribute(self, name: str) -> Quantity | str:
+        """Return a simple attribute or direct unit conversion."""
+        if name == "magnitude":
+            return self.quantity.magnitude
+        if name == "units":
+            return self.quantity.units
+
+        converted = self.converter.convert_to_unit(self.quantity, name)
+        if converted is None:
+            raise AttributeError(f"Invalid unit conversion: {name} for quantity {self.quantity}")
+        return converted
+
+    def _parse_decimal_places(self, name: str) -> tuple[str, int] | None:
+        """Return the unit prefix and decimal places from names like MW__4."""
+        parts = name.split("__")
+        if len(parts) != 2:
+            return None
+
+        prefix, raw_decimal_places = parts
+        try:
+            return prefix, int(raw_decimal_places)
+        except ValueError as e:
+            raise AttributeError(f"Invalid decimal places specification: {raw_decimal_places}") from e
+
+    def _get_formatted_attribute(self, prefix: str, decimal_places: int) -> Quantity:
+        """Return a rounded quantity, optionally converting units first."""
+        if prefix == "digits":
+            return self._quantize_quantity(self.quantity, decimal_places)
+
+        converted = self.converter.convert_to_unit(self.quantity, prefix)
+        if converted is None:
+            raise AttributeError(f"Invalid unit conversion: {prefix}")
+        return self._quantize_quantity(converted, decimal_places)
+
     def __getattr__(self, name: str) -> Quantity | str:
         """Handle attribute access for unit conversions.
 
@@ -95,48 +141,12 @@ class PintFieldProxy:
         if name.startswith("__"):
             raise AttributeError(name)
 
-        # If the attribute starts with 'get_', remove that part
-        if name.startswith("get_"):
-            name = name[4:]
-
-        # Check if we have a decimal places specification
-        parts = name.split("__")
-        if len(parts) == 1:
-            if name == "magnitude":
-                return self.quantity.magnitude
-            if name == "units":
-                return self.quantity.units
-
-        if len(parts) == 2:
-            try:
-                prefix, decimal_places = parts
-                decimal_places = int(decimal_places)
-
-                # If prefix is digits, just format decimal places without unit conversion
-                if prefix == "digits":
-                    quantizing_string = "0." + "0" * decimal_places
-                    magnitude = Decimal(str(self.quantity.magnitude)).quantize(Decimal(quantizing_string))
-                    return type(self.quantity)(magnitude, self.quantity.units)
-
-                # Otherwise treat prefix as unit name and do unit conversion
-                converted = self.converter.convert_to_unit(self.quantity, prefix)
-                if converted is None:
-                    raise AttributeError(f"Invalid unit conversion: {prefix}")
-
-                # Then format to the specified decimal places
-                quantizing_string = "0." + "0" * decimal_places
-                magnitude = Decimal(str(converted.magnitude)).quantize(Decimal(quantizing_string))
-                return type(converted)(magnitude, converted.units)
-
-            except ValueError as e:
-                raise AttributeError(f"Invalid decimal places specification: {parts[1]}") from e
-
-        # Convert the value to the requested unit
-        converted = self.converter.convert_to_unit(self.quantity, name)
-        if converted is not None:
-            return converted
-
-        raise AttributeError(f"Invalid unit conversion: {name} for quantity {self.quantity}")
+        name = self._strip_get_prefix(name)
+        decimal_places_spec = self._parse_decimal_places(name)
+        if decimal_places_spec is not None:
+            prefix, decimal_places = decimal_places_spec
+            return self._get_formatted_attribute(prefix, decimal_places)
+        return self._get_basic_attribute(name)
 
     def __getstate__(self):
         """Return state that can be safely pickled.
@@ -336,27 +346,51 @@ def check_matching_unit_dimension(
     if not units_to_check:
         return
 
-    try:
-        # Get the actual unit string for the default unit
-        default_unit_str = get_unit_string(default_unit)
-        default_unit_obj = registry.Unit(default_unit_str)
-    except UndefinedUnitError as e:
-        if raise_exception:
-            raise ValidationError(f"Invalid default unit: {default_unit_str}") from e
+    default_unit_data = _resolve_registry_unit(
+        registry,
+        default_unit,
+        error_message="Invalid default unit: {unit}",
+        raise_exception=raise_exception,
+    )
+    if default_unit_data is None:
         return
 
+    default_unit_str, default_unit_obj = default_unit_data
     for unit in units_to_check:
-        try:
-            unit_str = get_unit_string(unit)
-            unit_obj = registry.Unit(unit_str)
-            if unit_obj.dimensionality != default_unit_obj.dimensionality:
-                if raise_exception:
-                    raise ValidationError(
-                        f"Unit {unit_str} has incompatible dimensionality with default unit {default_unit_str}."
-                    )
-        except UndefinedUnitError as e:
-            if raise_exception:
-                raise ValidationError(f"Invalid unit: {unit_str}") from e
+        unit_data = _resolve_registry_unit(
+            registry,
+            unit,
+            error_message="Invalid unit: {unit}",
+            raise_exception=raise_exception,
+        )
+        if unit_data is None:
+            continue
+
+        unit_str, unit_obj = unit_data
+        if unit_obj.dimensionality == default_unit_obj.dimensionality:
+            continue
+
+        if raise_exception:
+            raise ValidationError(
+                f"Unit {unit_str} has incompatible dimensionality with default unit {default_unit_str}."
+            )
+
+
+def _resolve_registry_unit(
+    registry: Any,
+    unit_value: str | Unit | tuple | list,
+    *,
+    error_message: str,
+    raise_exception: bool,
+) -> tuple[str, Unit] | None:
+    """Return a registry unit and its normalized string representation."""
+    unit_str = get_unit_string(unit_value)
+    try:
+        return unit_str, registry.Unit(unit_str)
+    except UndefinedUnitError as e:
+        if raise_exception:
+            raise ValidationError(error_message.format(unit=unit_str)) from e
+        return None
 
 
 def is_decimal_or_int(value):
