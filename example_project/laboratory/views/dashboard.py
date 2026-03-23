@@ -31,6 +31,7 @@ class GeoJSONEncoder(DjangoJSONEncoder):
     """Custom JSON encoder for GeoJSON data."""
 
     def default(self, obj):
+        """Convert decimals to floats so GeoJSON stays serializable."""
         if isinstance(obj, (Decimal, float)):
             return float(obj)
         return super().default(obj)

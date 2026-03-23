@@ -20,7 +20,6 @@ from .helpers import PintFieldProxy
 
 # Indexes
 from .indexes import PintFieldComparatorIndex
-from .models import BigIntegerPintField
 from .models import DecimalPintField
 from .models import IntegerPintField
 
@@ -37,7 +36,6 @@ __all__ = [
     # Model fields
     "IntegerPintField",
     "DecimalPintField",
-    "BigIntegerPintField",
     # Form fields
     "IntegerPintFormField",
     "DecimalPintFormField",

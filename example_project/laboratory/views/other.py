@@ -3,7 +3,6 @@
 import logging
 from decimal import Decimal
 from typing import Any
-from typing import Dict
 from typing import Optional
 
 from django.contrib import messages
@@ -44,14 +43,14 @@ def get_laboratory_from_request(request: WSGIRequest) -> Optional[Laboratory]:
     return None
 
 
-def add_laboratory_context(context: Dict[str, Any], laboratory: Optional[Laboratory]) -> Dict[str, Any]:
+def add_laboratory_context(context: dict[str, Any], laboratory: Optional[Laboratory]) -> dict[str, Any]:
     """Add laboratory to context if available."""
     if laboratory:
         context["laboratory"] = laboratory
     return context
 
 
-def add_model_context(context: Dict[str, Any], model: Model) -> Dict[str, Any]:
+def add_model_context(context: dict[str, Any], model: Model) -> dict[str, Any]:
     """Add model information to context."""
     context["model_name"] = model._meta.verbose_name
     context["model_name_plural"] = model._meta.verbose_name_plural
@@ -63,7 +62,7 @@ def generic_list_view(
     model: Model,
     template_name: str = "laboratory/other/list.html",
     queryset: Optional[QuerySet] = None,
-    extra_context: Optional[Dict[str, Any]] = None,
+    extra_context: Optional[dict[str, Any]] = None,
     create_url_name: Optional[str] = None,
     update_url_name: Optional[str] = None,
     display_field: Optional[str] = None,
@@ -107,7 +106,7 @@ def generic_create_view(
     model: Model,
     form_class: Any,
     template_name: str = "laboratory/other/form.html",
-    extra_context: Optional[Dict[str, Any]] = None,
+    extra_context: Optional[dict[str, Any]] = None,
     success_url: Optional[str] = None,
 ) -> HttpResponse:
     """Generic create view for laboratory items."""
@@ -147,7 +146,7 @@ def generic_update_view(
     form_class: Any,
     template_name: str = "laboratory/other/form.html",
     queryset: Optional[QuerySet] = None,
-    extra_context: Optional[Dict[str, Any]] = None,
+    extra_context: Optional[dict[str, Any]] = None,
     success_url: Optional[str] = None,
 ) -> HttpResponse:
     """Generic update view for laboratory items."""
@@ -199,7 +198,7 @@ def device_list(request):
 def device_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an experimental device."""
     template = "laboratory/other/device_detail.html"
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
     # Get the device with related laboratory info
     device = get_object_or_404(ExperimentalDevice.objects.select_related("laboratory", "laboratory__universe"), pk=pk)
@@ -335,7 +334,7 @@ def substance_list(request):
 def substance_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an anomalous substance."""
     template = "laboratory/other/substance_detail.html"
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
     # Get the substance with related laboratory info
     substance = get_object_or_404(
@@ -464,7 +463,7 @@ def incident_list(request):
 def incident_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an incident report."""
     template = "laboratory/other/incident_detail.html"
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
     # Get the incident with related laboratory info
     incident = get_object_or_404(IncidentReport.objects.select_related("laboratory", "laboratory__universe"), pk=pk)
@@ -570,7 +569,7 @@ def protocol_list(request):
 def protocol_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about a safety protocol."""
     template = "laboratory/other/protocol_detail.html"
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
     # Get the protocol with related laboratory info
     protocol = get_object_or_404(SafetyProtocol.objects.select_related("laboratory", "laboratory__universe"), pk=pk)
@@ -687,7 +686,7 @@ def subject_list(request):
 def subject_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an experiment subject."""
     template = "laboratory/other/subject_detail.html"
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
     # Get the subject with related laboratory info
     subject = get_object_or_404(ExperimentSubject.objects.select_related("laboratory", "laboratory__universe"), pk=pk)
@@ -798,7 +797,7 @@ def rift_list(request):
 def rift_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about a dimensional rift."""
     template = "laboratory/other/rift_detail.html"
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
     # Get the rift with related laboratory info
     rift = get_object_or_404(DimensionalRift.objects.select_related("laboratory", "laboratory__universe"), pk=pk)
@@ -926,7 +925,7 @@ def energy_list(request):
 def energy_detail(request, pk: int) -> TemplateResponse:
     """Display detailed information about an energy reading."""
     template = "laboratory/other/energy_detail.html"
-    context: Dict[str, Any] = {}
+    context: dict[str, Any] = {}
 
     # Get the reading with related laboratory info
     reading = get_object_or_404(EnergyReading.objects.select_related("laboratory", "laboratory__universe"), pk=pk)

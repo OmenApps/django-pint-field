@@ -10,7 +10,6 @@ from django_pint_field.rest import DecimalPintRestField
 from django_pint_field.rest import IntegerPintRestField
 from django_pint_field.rest import PintRestField
 from django_pint_field.units import ureg
-from example_project.example.models import BigIntegerPintFieldSaveModel
 from example_project.example.models import DecimalPintFieldSaveModel
 from example_project.example.models import IntegerPintFieldSaveModel
 
@@ -28,9 +27,6 @@ class TestPintRestField:
         if request.param == "integer":
             self.MODEL = IntegerPintFieldSaveModel
             self.DEFAULT_WEIGHT = 100
-        elif request.param == "big_integer":
-            self.MODEL = BigIntegerPintFieldSaveModel
-            self.DEFAULT_WEIGHT = 100
         else:  # decimal
             self.MODEL = DecimalPintFieldSaveModel
             self.DEFAULT_WEIGHT = Decimal("100")
@@ -38,7 +34,7 @@ class TestPintRestField:
         self.DEFAULT_UNIT = "gram"
         self.UNIT_CHOICES = ["gram", "kilogram", "ounce", "pound"]
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_serializer_to_representation(self):
         """Test dictionary representation of Quantity objects."""
         quantity = Quantity(self.DEFAULT_WEIGHT, self.DEFAULT_UNIT)
@@ -49,7 +45,7 @@ class TestPintRestField:
         assert result["magnitude"] == self.DEFAULT_WEIGHT
         assert result["units"] == self.DEFAULT_UNIT
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_serializer_to_internal_value_valid(self):
         """Test conversion from valid dictionary to Quantity."""
         input_data = {"magnitude": self.DEFAULT_WEIGHT, "units": self.DEFAULT_UNIT}
@@ -60,7 +56,7 @@ class TestPintRestField:
         assert result.magnitude == self.DEFAULT_WEIGHT
         assert str(result.units) == self.DEFAULT_UNIT
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_serializer_none_value(self):
         """Test handling of None values."""
         serializer = PintRestField()
@@ -399,9 +395,9 @@ class TestRestFrameworkViewsets:
         return DecimalPintFieldSaveModel.objects.create(name="Test Decimal", weight=Quantity(Decimal("100.50"), "gram"))
 
     @pytest.fixture
-    def bigint_model(self):
+    def integer_model(self):
         """Create a test model instance."""
-        return BigIntegerPintFieldSaveModel.objects.create(name="Test BigInt", weight=Quantity(1000, "gram"))
+        return IntegerPintFieldSaveModel.objects.create(name="Test Int", weight=Quantity(1000, "gram"))
 
     def test_viewset_list(self, client, decimal_model):
         """Test DRF ViewSet list endpoints."""
@@ -413,9 +409,9 @@ class TestRestFrameworkViewsets:
         assert len(data) == 1
         assert data[0]["weight"] == "100.50 gram"
 
-    def test_viewset_detail(self, client, bigint_model):
+    def test_viewset_detail(self, client, integer_model):
         """Test DRF ViewSet detail endpoints."""
-        response = client.get(f"/api/big_integers/{bigint_model.id}/")
+        response = client.get(f"/api/integers/{integer_model.id}/")
         assert response.status_code == 200
         data = response.json()
         assert data["weight"] == "1000 gram"

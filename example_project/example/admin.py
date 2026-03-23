@@ -4,7 +4,6 @@ from django.apps import apps
 from django.contrib import admin
 
 from example_project.example.forms import DjangoPintFieldWidgetComparisonAdminForm
-from example_project.example.models import BigIntegerPintFieldSaveModel
 from example_project.example.models import DecimalPintFieldSaveModel
 from example_project.example.models import DjangoPintFieldWidgetComparisonModel
 from example_project.example.models import IntegerPintFieldSaveModel
@@ -35,13 +34,6 @@ class IntegerPintFieldSaveWithIndexModelAdmin(admin.ModelAdmin):
     list_display = ("id", "weight", "weight__kilogram", "weight_two", "weight_two__gram")
 
 
-@admin.register(BigIntegerPintFieldSaveModel)
-class BigIntegerPintFieldSaveModelAdmin(admin.ModelAdmin):
-    """Admin for BigIntegerPintFieldSaveModel."""
-
-    list_display = ("id", "weight", "weight__kilogram", "weight__pound")
-
-
 @admin.register(DecimalPintFieldSaveModel)
 class DecimalPintFieldSaveModelAdmin(admin.ModelAdmin):
     """Admin for DecimalPintFieldSaveModel."""
@@ -56,10 +48,11 @@ class DjangoPintFieldWidgetComparisonAdmin(admin.ModelAdmin):
     form = DjangoPintFieldWidgetComparisonAdminForm
 
 
-class ListAdminMixin(object):
+class ListAdminMixin:
     """Mixin to automatically set list_display to all fields on a model."""
 
     def __init__(self, model, admin_site):  # pylint: disable=W0621
+        """Populate `list_display` from the model fields before setup."""
         self.list_display = [field.name for field in model._meta.fields]
         super().__init__(model, admin_site)
 

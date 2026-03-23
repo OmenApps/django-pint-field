@@ -11,7 +11,6 @@ from pint.errors import UndefinedUnitError
 from django_pint_field.units import ureg
 from django_pint_field.widgets import PintFieldWidget
 from django_pint_field.widgets import TabledPintFieldWidget
-from example_project.example.models import BigIntegerPintFieldSaveModel
 from example_project.example.models import DecimalPintFieldSaveModel
 from example_project.example.models import IntegerPintFieldSaveModel
 
@@ -29,9 +28,6 @@ class TestPintFieldWidget:
         if request.param == "integer":
             self.MODEL = IntegerPintFieldSaveModel
             self.DEFAULT_WEIGHT = 100
-        elif request.param == "big_integer":
-            self.MODEL = BigIntegerPintFieldSaveModel
-            self.DEFAULT_WEIGHT = 100
         else:  # decimal
             self.MODEL = DecimalPintFieldSaveModel
             self.DEFAULT_WEIGHT = Decimal("100")
@@ -43,7 +39,7 @@ class TestPintFieldWidget:
         ureg.define("custom_unit = []")
         ureg.define("nested_unit = []")
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_attrs(self):
         """Test that widget attributes are set correctly."""
         attrs = {"class": "custom-class", "step": "0.1"}
@@ -53,7 +49,7 @@ class TestPintFieldWidget:
             assert sub_widget.attrs.get("class") == "custom-class"
             assert sub_widget.attrs.get("step") == "0.1"
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_unit_choices_contains_default(self):
         """Test that unit choices always contains the default unit."""
         unit_choices = [("Kilogram", "kilogram"), ("Pound", "pound")]  # Deliberately exclude default unit
@@ -67,7 +63,7 @@ class TestPintFieldWidget:
                 break
         assert default_unit_present
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     @pytest.mark.parametrize(
         "test_input,expected_result",
         [
@@ -101,13 +97,13 @@ class TestPintFieldWidget:
         result = widget.decompress(value)
         assert result == expected
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_without_default_unit(self):
         """Test widget creation without default_unit raises ValidationError."""
         with pytest.raises(ValidationError, match="PintFieldWidgets require a default_unit"):
             PintFieldWidget(default_unit=None)
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_with_empty_attrs(self):
         """Test widget creation with empty attrs dictionary."""
         widget = PintFieldWidget(default_unit=self.DEFAULT_UNIT)
@@ -115,7 +111,7 @@ class TestPintFieldWidget:
         assert isinstance(widget.widgets[1], Select)
         assert widget.widgets[0].attrs.get("step") == "any"
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_with_custom_unit_choices(self):
         """Test widget with custom unit choices."""
         custom_choices = [("Custom Unit", "custom_unit")]
@@ -124,21 +120,21 @@ class TestPintFieldWidget:
         assert len(widget.choices) == 2  # Default unit + custom choice
         assert ("custom_unit", "Custom Unit") in widget.choices
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_with_invalid_unit_choices(self):
         """Test widget with invalid unit choices raises ValidationError."""
         invalid_choices = [("Invalid Unit", "invalid_unit")]
         with pytest.raises(UndefinedUnitError):
             PintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=invalid_choices)
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_with_empty_unit_choices(self):
         """Test widget with empty unit choices."""
         widget = PintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=[])
         assert len(widget.choices) == 1  # Only default unit
         assert widget.choices[0][1] == self.DEFAULT_UNIT
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_with_nested_unit_choices(self):
         """Test widget with nested unit choices."""
         nested_choices = [("Nested Unit", "nested_unit")]
@@ -146,7 +142,7 @@ class TestPintFieldWidget:
         assert len(widget.choices) == 2  # Default unit + nested choice
         assert ("nested_unit", "Nested Unit") in widget.choices
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_with_custom_attrs(self):
         """Test widget with custom attributes."""
         custom_attrs = {"class": "custom-class", "data-custom": "custom-data"}
@@ -155,7 +151,7 @@ class TestPintFieldWidget:
             assert sub_widget.attrs.get("class") == "custom-class"
             assert sub_widget.attrs.get("data-custom") == "custom-data"
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     @pytest.mark.parametrize(
         "default_unit,expected_unit,expected_display",
         [
@@ -171,7 +167,7 @@ class TestPintFieldWidget:
         assert widget._default_unit_display == expected_display
         assert widget._default_unit_value == expected_unit
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_widget_with_invalid_default_unit_format(self):
         """Test widget with invalid default_unit format raises ValidationError."""
         with pytest.raises(ValidationError):
@@ -188,9 +184,6 @@ class TestTabledPintFieldWidget:
         if request.param == "integer":
             self.MODEL = IntegerPintFieldSaveModel
             self.DEFAULT_WEIGHT = 100
-        elif request.param == "big_integer":
-            self.MODEL = BigIntegerPintFieldSaveModel
-            self.DEFAULT_WEIGHT = 100
         else:  # decimal
             self.MODEL = DecimalPintFieldSaveModel
             self.DEFAULT_WEIGHT = Decimal("100")
@@ -201,7 +194,7 @@ class TestTabledPintFieldWidget:
         # Define custom units in the registry
         ureg.define("custom_unit = []")
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     @pytest.mark.parametrize(
         "input_value",
         [
@@ -220,7 +213,7 @@ class TestTabledPintFieldWidget:
         assert len(values_list) == len(self.UNIT_CHOICES) - 1
         assert all(isinstance(value, Quantity) for value in values_list)
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_default_context_values(self):
         """Test default values in context."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
@@ -230,14 +223,14 @@ class TestTabledPintFieldWidget:
         assert "input_wrapper_class" in context
         assert "table_wrapper_class" in context
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_create_table_with_invalid_value(self):
         """Test create_table method with invalid value type."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
         with pytest.raises(ValueError):
             widget.create_table([None, None, None])  # Invalid format
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_custom_formatting_options(self):
         """Test widget with custom formatting options."""
         custom_options = {
@@ -254,7 +247,7 @@ class TestTabledPintFieldWidget:
         assert context["table_class"] == "custom-table"
         assert context["td_class"] == "custom-cell"
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     @pytest.mark.parametrize(
         "magnitude,expected_check",
         [
@@ -279,7 +272,7 @@ class TestTabledPintFieldWidget:
         assert len(values_list) == len(self.UNIT_CHOICES) - 1
         assert expected_check(values_list)
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_create_table_with_custom_unit(self):
         """Test create_table method with custom unit."""
         custom_unit = "custom_unit"
@@ -289,14 +282,14 @@ class TestTabledPintFieldWidget:
 
         assert len(values_list) == 0  # No other units to convert to
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_create_table_with_invalid_unit(self):
         """Test create_table method with invalid unit."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
         with pytest.raises(UndefinedUnitError):
             Quantity(100, "invalid_unit")
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_normalize_value_with_proxy(self):
         """Test _normalize_value with PintFieldProxy."""
         from django_pint_field.helpers import PintFieldConverter
@@ -313,7 +306,7 @@ class TestTabledPintFieldWidget:
         assert magnitude == Decimal("100")
         assert str(unit) == "gram"
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_normalize_value_with_none(self):
         """Test _normalize_value with None value."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
@@ -321,7 +314,7 @@ class TestTabledPintFieldWidget:
         assert magnitude is None
         assert unit == self.DEFAULT_UNIT
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_normalize_value_with_quantity(self):
         """Test _normalize_value with Quantity."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
@@ -330,7 +323,7 @@ class TestTabledPintFieldWidget:
         assert magnitude == Decimal("500")
         assert str(unit) == "gram"
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     @pytest.mark.parametrize(
         "input_value,expected_magnitude,expected_unit",
         [
@@ -346,14 +339,14 @@ class TestTabledPintFieldWidget:
         assert magnitude == expected_magnitude
         assert str(unit) == expected_unit
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_normalize_value_with_string_magnitude(self):
         """Test _normalize_value with string magnitude in tuple."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
         magnitude, unit = widget._normalize_value(("123.45", "gram"))
         assert magnitude == Decimal("123.45")
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_normalize_value_with_none_magnitude(self):
         """Test _normalize_value with None magnitude in tuple."""
 
@@ -362,7 +355,7 @@ class TestTabledPintFieldWidget:
         assert magnitude is None
         assert str(unit) == "gram"
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_normalize_value_with_invalid_magnitude_type(self):
         """Test _normalize_value with invalid magnitude type raises ImproperlyConfigured."""
         from django.core.exceptions import ImproperlyConfigured
@@ -371,7 +364,7 @@ class TestTabledPintFieldWidget:
         with pytest.raises(ImproperlyConfigured, match="Magnitude must be numeric"):
             widget._normalize_value(("not_a_number", "gram"))
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_normalize_value_with_invalid_unit_type(self):
         """Test _normalize_value with invalid unit type raises ImproperlyConfigured."""
         from django.core.exceptions import ImproperlyConfigured
@@ -380,7 +373,7 @@ class TestTabledPintFieldWidget:
         with pytest.raises(ImproperlyConfigured, match="Unit must be string or ureg.Unit"):
             widget._normalize_value((100, 123))  # Invalid unit type
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_normalize_value_with_invalid_value_format(self):
         """Test _normalize_value with invalid value format raises ImproperlyConfigured."""
         from django.core.exceptions import ImproperlyConfigured
@@ -389,7 +382,7 @@ class TestTabledPintFieldWidget:
         with pytest.raises(ImproperlyConfigured, match="Expected list/tuple of length 2"):
             widget._normalize_value([100, "gram", "extra"])  # Too many elements
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_create_quantity_with_none_magnitude(self):
         """Test _create_quantity with None magnitude defaults to 0."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
@@ -397,7 +390,7 @@ class TestTabledPintFieldWidget:
         assert quantity.magnitude == 0
         assert str(quantity.units) == "gram"
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     @pytest.mark.parametrize(
         "magnitude,expected_value,expected_unit",
         [
@@ -413,7 +406,7 @@ class TestTabledPintFieldWidget:
         quantity = widget._create_quantity(magnitude, expected_unit)
         assert quantity.magnitude == expected_value
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_create_table_with_proxy_value(self):
         """Test create_table with proxy value extracts quantity correctly."""
         from django_pint_field.helpers import PintFieldConverter
@@ -431,7 +424,7 @@ class TestTabledPintFieldWidget:
         values_list = widget.create_table(proxy.quantity)
         assert len(values_list) == len(self.UNIT_CHOICES) - 1
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_create_table_with_string_magnitude(self):
         """Test create_table with Quantity having string magnitude is handled."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)
@@ -445,7 +438,7 @@ class TestTabledPintFieldWidget:
         # If it works, we get conversions; if it fails, error is raised
         assert isinstance(values_list, list)
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_create_table_with_incompatible_units_skipped(self):
         """Test create_table skips incompatible unit conversions gracefully."""
         # This test verifies the error handling in create_table
@@ -459,7 +452,7 @@ class TestTabledPintFieldWidget:
         # Should have conversions for compatible units
         assert len(values_list) > 0
 
-    @pytest.mark.parametrize("setup_class", ["integer", "big_integer", "decimal"], indirect=True)
+    @pytest.mark.parametrize("setup_class", ["integer", "decimal"], indirect=True)
     def test_create_table_none_value(self):
         """Test create_table with None value returns empty list."""
         widget = TabledPintFieldWidget(default_unit=self.DEFAULT_UNIT, unit_choices=self.UNIT_CHOICES)

@@ -4,10 +4,11 @@ from django.apps import apps
 from django.contrib import admin
 
 
-class ListAdminMixin(object):
+class ListAdminMixin:
     """Mixin to automatically set list_display to all fields on a model."""
 
     def __init__(self, model, admin_site):  # pylint: disable=W0621
+        """Populate `list_display` from the model fields before setup."""
         self.list_display = [field.name for field in model._meta.fields]
         super().__init__(model, admin_site)
 

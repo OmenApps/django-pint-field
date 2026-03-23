@@ -178,14 +178,10 @@ class TestWidgetComparison:
             "tabled_weight_int_0": "4000",
             "tabled_weight_int_1": "gram",
             # Other fields with defaults
-            "weight_bigint_0": None,
-            "weight_bigint_1": "gram",
             "weight_decimal_0": None,
             "weight_decimal_1": "gram",
             "tabled_weight_decimal_0": None,
             "tabled_weight_decimal_1": "gram",
-            "tabled_weight_bigint_0": None,
-            "tabled_weight_bigint_1": "gram",
         }
 
         # Filter out None values
@@ -210,12 +206,8 @@ class TestWidgetComparison:
             # Other fields with defaults
             "weight_int_0": None,
             "weight_int_1": "gram",
-            "weight_bigint_0": None,
-            "weight_bigint_1": "gram",
             "tabled_weight_int_0": None,
             "tabled_weight_int_1": "gram",
-            "tabled_weight_bigint_0": None,
-            "tabled_weight_bigint_1": "gram",
         }
 
         # Filter out None values

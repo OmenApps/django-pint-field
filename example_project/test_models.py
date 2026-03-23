@@ -10,7 +10,6 @@ from django.forms import DecimalField
 from django.forms import IntegerField
 
 from django_pint_field.models import BasePintField
-from django_pint_field.models import BigIntegerPintField
 from django_pint_field.models import DecimalPintField
 from django_pint_field.models import IntegerPintField
 from django_pint_field.models import create_quantity_from_composite
@@ -73,7 +72,6 @@ class TestValueConversion:
         "field_class,input_value,expected_type",
         [
             (IntegerPintField, 100, int),
-            (BigIntegerPintField, 100, int),
             (DecimalPintField, Decimal("100.00"), Decimal),
         ],
     )
@@ -102,7 +100,6 @@ class TestEdgeCases:
         "field_class,invalid_value",
         [
             (IntegerPintField, "not a number"),
-            (BigIntegerPintField, "not a number"),
             (DecimalPintField, "not a number"),
         ],
     )
@@ -116,7 +113,7 @@ class TestEdgeCases:
         with pytest.raises(ValidationError):
             field.clean(invalid_value, None)
 
-    @pytest.mark.parametrize("field_class", [IntegerPintField, BigIntegerPintField, DecimalPintField])
+    @pytest.mark.parametrize("field_class", [IntegerPintField, DecimalPintField])
     def test_none_value_handling(self, field_class):
         """Test handling of None values."""
         if field_class == DecimalPintField:
@@ -126,7 +123,7 @@ class TestEdgeCases:
 
         assert field.clean(None, None) is None
 
-    @pytest.mark.parametrize("field_class", [IntegerPintField, BigIntegerPintField, DecimalPintField])
+    @pytest.mark.parametrize("field_class", [IntegerPintField, DecimalPintField])
     def test_none_value_handling_fails(self, field_class):
         """Test handling of None values."""
         if field_class == DecimalPintField:
@@ -137,7 +134,7 @@ class TestEdgeCases:
         with pytest.raises(ValidationError):
             field.clean(None, None)
 
-    @pytest.mark.parametrize("field_class", [IntegerPintField, BigIntegerPintField, DecimalPintField])
+    @pytest.mark.parametrize("field_class", [IntegerPintField, DecimalPintField])
     def test_empty_string_handling(self, field_class):
         """Test handling of empty strings."""
         if field_class == DecimalPintField:
@@ -172,7 +169,7 @@ class TestDecimalPintFieldSpecifics:
 class TestUnitRegistryHandling:
     """Test handling of different unit registries."""
 
-    @pytest.mark.parametrize("field_class", [IntegerPintField, BigIntegerPintField, DecimalPintField])
+    @pytest.mark.parametrize("field_class", [IntegerPintField, DecimalPintField])
     def test_quantity_conversion_maintains_value(self, field_class):
         """Test that quantity conversion maintains the value correctly."""
         field = field_class(default_unit="gram")
@@ -208,7 +205,6 @@ class TestFormFieldGeneration:
         "field_class,expected_form_field",
         [
             (IntegerPintField, IntegerField),
-            (BigIntegerPintField, IntegerField),
             (DecimalPintField, DecimalField),
         ],
     )
@@ -240,7 +236,6 @@ class TestFieldDeconstructionAndCloning:
         "field_class,extra_kwargs",
         [
             (IntegerPintField, {}),
-            (BigIntegerPintField, {}),
             (DecimalPintField, {"display_decimal_places": 2}),
         ],
     )
@@ -288,7 +283,6 @@ class TestAdditionalEdgeCases:
         "field_class,value",
         [
             (IntegerPintField, []),
-            (BigIntegerPintField, ()),
             (DecimalPintField, {}),
         ],
     )
@@ -342,7 +336,6 @@ class TestDatabaseOperations:
         "field_class,test_values",
         [
             (IntegerPintField, [100, 200, 300]),
-            (BigIntegerPintField, [1000000, 2000000, 3000000]),
             (DecimalPintField, [Decimal("100.00"), Decimal("200.00"), Decimal("300.00")]),
         ],
     )

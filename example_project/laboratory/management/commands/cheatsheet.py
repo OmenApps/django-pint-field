@@ -140,7 +140,7 @@ class Command(BaseCommand):
                 ),
             ]
         )
-        for i, (key, value) in enumerate(aggs.items()):
+        for i, (key, _value) in enumerate(aggs.items()):
             rows.extend(
                 [
                     self.create_demo_row(
@@ -240,7 +240,6 @@ class Command(BaseCommand):
 
     def demo_field_metadata(self):
         """Demonstrate access to field metadata."""
-        field = ExperimentalDevice._meta.get_field("portal_diameter")
         rows = [
             self.create_demo_row(
                 "Default unit",

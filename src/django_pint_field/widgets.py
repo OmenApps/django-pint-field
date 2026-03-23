@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable  # pylint: disable=E0611
 from decimal import Decimal
-from typing import Optional
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.exceptions import ValidationError
@@ -31,9 +30,9 @@ class PintFieldWidget(MultiWidget):
     def __init__(
         self,
         *,
-        attrs: Optional[dict] = None,
+        attrs: dict | None = None,
         default_unit: str | tuple[str, str] | list[str, str],
-        unit_choices: Optional[Iterable[str] | Iterable[Iterable[str]]] = None,
+        unit_choices: Iterable[str] | Iterable[Iterable[str]] | None = None,
     ):
         """Initializes the PintFieldWidget."""
         self.ureg = ureg
@@ -97,7 +96,7 @@ class TabledPintFieldWidget(PintFieldWidget):
     def __init__(
         self,
         *,
-        attrs: Optional[dict] = None,
+        attrs: dict | None = None,
         default_unit: str = None,
         unit_choices: list[str] = None,
         **kwargs,
@@ -130,7 +129,7 @@ class TabledPintFieldWidget(PintFieldWidget):
 
         super().__init__(attrs=attrs, default_unit=default_unit, unit_choices=unit_choices)
 
-    def _normalize_value(self, value: list | tuple | Quantity) -> tuple[Optional[int | float | Decimal], str | Unit]:
+    def _normalize_value(self, value: list | tuple | Quantity) -> tuple[int | float | Decimal | None, str | Unit]:
         """Normalizes the input value into a consistent format."""
         if value is None:
             return None, self.default_unit
@@ -159,7 +158,7 @@ class TabledPintFieldWidget(PintFieldWidget):
 
         return magnitude, unit
 
-    def _create_quantity(self, magnitude: Optional[int | float | Decimal], unit: str | Unit) -> Quantity:
+    def _create_quantity(self, magnitude: int | float | Decimal | None, unit: str | Unit) -> Quantity:
         """Creates a Quantity object from magnitude and unit."""
         if magnitude is None:
             magnitude = 0

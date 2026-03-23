@@ -82,7 +82,7 @@ class QuantityOutputFieldMixin:
         quantity_value = None
         if internal_type == "DecimalPintField":
             quantity_value = self.convert_to_quantity(Decimal(str(value)), self.original_field)
-        elif internal_type in ("IntegerPintField", "BigIntegerPintField"):
+        elif internal_type == "IntegerPintField":
             quantity_value = self.convert_to_quantity(value, self.original_field)
 
         if quantity_value is None:

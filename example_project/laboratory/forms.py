@@ -100,6 +100,7 @@ class LaboratoryForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        """Add Bootstrap classes to fields after the form is built."""
         super().__init__(*args, **kwargs)
         # Add Bootstrap classes to form fields
         for field in self.fields:

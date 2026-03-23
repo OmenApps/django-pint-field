@@ -10,7 +10,6 @@ from django.db.models import Lookup
 
 from .exceptions import PintFieldLookupError
 from .helpers import get_base_unit_magnitude
-from .models import BigIntegerPintField
 from .models import DecimalPintField
 from .models import IntegerPintField
 from .units import ureg
@@ -245,7 +244,7 @@ def get_pint_field_lookups():  # pylint: disable=too-many-locals
         lookup_name = "isearch"
 
     # Register lookups for all field types
-    for field_class in [IntegerPintField, BigIntegerPintField, DecimalPintField]:
+    for field_class in [IntegerPintField, DecimalPintField]:
         for lookup_class in [
             PintGreaterThan,
             PintGreaterThanOrEqual,

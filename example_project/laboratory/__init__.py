@@ -1,0 +1,1 @@
+"""Laboratory example app."""

@@ -29,6 +29,7 @@ from .helpers import PintFieldProxy
 from .helpers import is_decimal_or_int
 from .units import ureg
 
+
 Quantity = ureg.Quantity
 
 

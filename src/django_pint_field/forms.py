@@ -71,7 +71,6 @@ class BasePintFormField(forms.Field):
         label_suffix: str = None,
     ):
         """Initialize the Pint form field."""
-
         if default_unit is None:
             raise ValidationError(_("PintFormField requires a default_unit kwarg of a single unit type (eg: 'grams')"))
         # Normalize default_unit to tuple format
@@ -234,7 +233,7 @@ class BasePintFormField(forms.Field):
 class IntegerPintFormField(BasePintFormField):
     """A form field to choose which unit to use to enter a value which is saved to the composite field.
 
-    Used for Integer and BigInteger magnitudes.
+    Used for Integer magnitudes.
     """
 
     def __init__(self, *args, **kwargs):
@@ -258,7 +257,6 @@ class DecimalPintFormField(BasePintFormField):
         **kwargs,
     ):
         """Initialize the decimal Pint form field."""
-
         # Deprecated options
         if decimal_places is not None or max_digits is not None:
             warnings.warn(

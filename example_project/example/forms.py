@@ -5,7 +5,6 @@ from django import forms
 from django_pint_field.forms import DecimalPintFormField
 from django_pint_field.forms import IntegerPintFormField
 from django_pint_field.widgets import TabledPintFieldWidget
-from example_project.example.models import BigIntegerPintFieldSaveModel
 from example_project.example.models import DecimalPintFieldSaveModel
 from example_project.example.models import DjangoPintFieldWidgetComparisonModel
 from example_project.example.models import IntegerPintFieldSaveModel
@@ -20,18 +19,6 @@ class DefaultFormInteger(forms.ModelForm):
         """Meta class for DefaultFormInteger."""
 
         model = IntegerPintFieldSaveModel
-        fields = "__all__"
-
-
-class DefaultFormBigInteger(forms.ModelForm):
-    """Form for BigIntegerPintFieldSaveModel."""
-
-    weight = IntegerPintFormField(default_unit="gram", unit_choices=["ounce", "gram"])
-
-    class Meta:
-        """Meta class for DefaultFormBigInteger."""
-
-        model = BigIntegerPintFieldSaveModel
         fields = "__all__"
 
 
@@ -70,11 +57,6 @@ class DjangoPintFieldWidgetComparisonAdminForm(forms.ModelForm):
             default_unit=default_unit,
             unit_choices=unit_choices,
             floatformat=3,
-        )
-        self.fields["tabled_weight_bigint"].widget = TabledPintFieldWidget(
-            default_unit=default_unit,
-            unit_choices=unit_choices,
-            floatformat=2,
         )
         self.fields["tabled_weight_decimal"].widget = TabledPintFieldWidget(
             default_unit=default_unit,

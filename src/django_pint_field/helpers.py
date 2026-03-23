@@ -6,7 +6,6 @@ import logging
 import math
 from decimal import Decimal
 from typing import Any
-from typing import Optional
 
 from django.core.exceptions import ValidationError
 from django.db.models import Field
@@ -14,6 +13,7 @@ from pint import Unit
 from pint.errors import UndefinedUnitError
 
 from .units import ureg
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class PintFieldConverter:
         # Add display_decimal_places from the field instance
         self.display_decimal_places = getattr(field_instance, "display_decimal_places", None)
 
-    def convert_to_unit(self, value: Quantity, target_unit: str) -> Optional[Quantity]:
+    def convert_to_unit(self, value: Quantity, target_unit: str) -> Quantity | None:
         """Convert a quantity to the target unit."""
         if value is None:
             return None
@@ -139,16 +139,15 @@ class PintFieldProxy:
         raise AttributeError(f"Invalid unit conversion: {name} for quantity {self.quantity}")
 
     def __getstate__(self):
-        """Return a state that can be safely pickled.
-        We'll store:
-          - The numeric magnitude as a string
-          - The string representation of units
-          - Enough info to reconstruct self.converter
+        """Return state that can be safely pickled.
+
+        Store the numeric magnitude as a string, the unit string,
+        and the field details needed to rebuild ``self.converter``.
         """
         magnitude_str = str(self.quantity.magnitude)
         units_str = str(self.quantity.units)
 
-        # Gather the minimal info needed to rebuild the converter’s field
+        # Gather the minimal info needed to rebuild the converter's field.
         field_info = {
             "default_unit": self.converter.field.default_unit,
             "unit_choices": getattr(self.converter.field, "unit_choices", None),
@@ -294,7 +293,7 @@ class PintFieldProxy:
         return NotImplemented
 
 
-def get_pint_unit(registry, unit_name: str) -> Optional[object]:
+def get_pint_unit(registry, unit_name: str) -> object | None:
     """Get unit from registry using newer formatter API."""
     if unit_name is None:
         return None
@@ -315,6 +314,9 @@ def get_unit_string(unit_value):
 
     Returns:
         str: The Pint unit string
+
+    Raises:
+        ValidationError: If a list or tuple input does not contain exactly two elements.
     """
     if isinstance(unit_value, (list, tuple)):
         if len(unit_value) != 2:
@@ -396,7 +398,7 @@ def get_base_unit_magnitude(value: Quantity) -> Decimal:
     return Decimal(str(comparator_value.magnitude))
 
 
-def get_quantizing_string(*, max_digits: Optional[int] = None, decimal_places: int = 0) -> str:
+def get_quantizing_string(*, max_digits: int | None = None, decimal_places: int = 0) -> str:
     """Quantizing string generation with leading digits and decimal places.
 
     If max_digits is provided, the leading digits will be set to max_digits - decimal_places.

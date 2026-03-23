@@ -9,7 +9,6 @@ from collections.abc import Iterable  # pylint: disable=E0611
 from decimal import Decimal
 from enum import Enum
 from typing import Any
-from typing import Optional
 
 import psycopg
 from django.core import validators
@@ -92,7 +91,6 @@ class FieldType(Enum):
 
     NONE_FIELD = 0
     INTEGER_FIELD = 1
-    BIG_INTEGER_FIELD = 2
     DECIMAL_FIELD = 3
 
 
@@ -202,9 +200,9 @@ class BasePintField(PintFieldMixin, models.Field):
         self,
         *args,
         default_unit: str | tuple[str, str] | list[str, str],
-        unit_choices: Optional[Iterable[str] | Iterable[Iterable[str]]] = None,
-        verbose_name: Optional[str] = None,
-        name: Optional[str] = None,
+        unit_choices: Iterable[str] | Iterable[Iterable[str]] | None = None,
+        verbose_name: str | None = None,
+        name: str | None = None,
         **kwargs,
     ):
         """Initialize a Pint field."""
@@ -267,7 +265,7 @@ class BasePintField(PintFieldMixin, models.Field):
         super().contribute_to_class(cls, name, private_only=private_only, **kwargs)
         setattr(cls, self.name, self)
 
-    def _get_FIELD_display(self, obj: Quantity, digits=None, format_string=None):  # pylint: disable=C0103
+    def _get_FIELD_display(self, obj: Quantity, digits=None, format_string=None):  # noqa: N802  # pylint: disable=C0103
         """Return the display value for a PintField."""
         value = getattr(obj, self.attname)
         if value is None:
@@ -382,12 +380,12 @@ class BasePintField(PintFieldMixin, models.Field):
                     logger.error(f"Dimensionality error converting {unit_str} to {self.default_unit}: {e}")
                     raise ValidationError(
                         f"Unit '{unit_str}' has incompatible dimensionality with allowed units: {allowed_units}"
-                    )
+                    ) from e
                 except Exception as e:
                     logger.error(f"Error converting {unit_str} to {self.default_unit}: {e}")
                     raise ValidationError(
                         f"Cannot convert unit '{unit_str}' to an allowed unit. Must be compatible with: {allowed_units}"
-                    )
+                    ) from e
 
         # Note: We intentionally don't validate decimal places here
         # to allow database operations to work with full precision
@@ -490,18 +488,6 @@ class IntegerPintField(BasePintField):
     FIELD_NAME = "IntegerField"
 
 
-class BigIntegerPintField(IntegerPintField):
-    """A Django Model Field that resolves to a pint object with integer values.
-
-    This field is deprecated and will be removed in a future release. Instead, use IntegerPintField, which now
-    provides the same functionality.
-    """
-
-    description = _("This field is deprecated and will be removed in a future release. Instead, use IntegerPintField.")
-    field_type = FieldType.BIG_INTEGER_FIELD
-    FIELD_NAME = "BigIntegerField"
-
-
 class DecimalPintField(BasePintField):
     """A Django Model Field that resolves to a pint object with decimal values."""
 
@@ -512,14 +498,13 @@ class DecimalPintField(BasePintField):
     def __init__(
         self,
         *args,
-        max_digits: Optional[int] = None,
-        decimal_places: Optional[int] = None,
-        display_decimal_places: Optional[int] = None,
-        rounding_method: Optional[str] = None,
+        max_digits: int | None = None,
+        decimal_places: int | None = None,
+        display_decimal_places: int | None = None,
+        rounding_method: str | None = None,
         **kwargs,
     ):
         """Initialize a Decimal Pint field."""
-
         # Deprecated options
         if decimal_places is not None or max_digits is not None:
             warnings.warn(
@@ -537,7 +522,6 @@ class DecimalPintField(BasePintField):
 
     def _check_arguments(self):
         """Check if the arguments are valid."""
-
         # Check if display_decimal_places is greater than the current decimal precision
         if self.display_decimal_places is not None and self.display_decimal_places > decimal.getcontext().prec:
             raise ValidationError(
@@ -601,7 +585,7 @@ class DecimalPintField(BasePintField):
         if not self._should_skip_validation(value, model_instance):
             validate_decimal_precision(value, allow_rounding=self.rounding_method is not None)
 
-    def clean(self, value: Any, model_instance: Optional[models.Model]) -> BaseQuantity:
+    def clean(self, value: Any, model_instance: models.Model | None) -> BaseQuantity:
         """Convert the value's type and run validation."""
         if value is None:
             if self.null:

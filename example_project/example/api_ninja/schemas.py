@@ -26,15 +26,6 @@ class IntegerWeight(WeightBase):
         model = "example.IntegerPintFieldSaveModel"
 
 
-class BigIntegerWeight(WeightBase):
-    """Schema for BigIntegerPintFieldSaveModel."""
-
-    class Config:
-        """Configuration for BigIntegerWeight."""
-
-        model = "example.BigIntegerPintFieldSaveModel"
-
-
 class DecimalWeight(WeightBase):
     """Schema for DecimalPintFieldSaveModel."""
 

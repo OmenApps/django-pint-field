@@ -124,7 +124,6 @@ CACHES = {
 CACHALOT_ONLY_CACHABLE_TABLES = frozenset(
     (
         "example_integerpintfieldcachalotmodel",
-        "example_bigintegerpintfieldcachalotmodel",
         "example_decimalpintfieldcachalotmodel",
     )
 )
@@ -134,7 +133,6 @@ CACHEOPS_REDIS = "redis://redis:6379/1"
 
 CACHEOPS = {
     "example.integer_pint_field_cachops_model": {"ops": "all", "timeout": 60 * 15},
-    "example.big_integer_pint_field_cacheops_model": {"ops": "all", "timeout": 60 * 15},
     "example.decimal_pint_field_cacheops_model": {"ops": "all", "timeout": 60 * 15},
     "*.*": {"timeout": 60 * 15},
 }

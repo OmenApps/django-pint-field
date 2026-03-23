@@ -2,7 +2,6 @@
 
 import functools
 import logging
-import typing
 
 from django.contrib.postgres.signals import get_type_oids
 from django.db import connection
@@ -23,8 +22,13 @@ def clear_oids(apps, schema_editor):
     get_pint_field_oids.cache_clear()
 
 
-def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, list, str, str]:
+def get_partition_info(cursor, schema: str, table: str) -> tuple[bool, list, str, str]:
     """Get partition information for a table.
+
+    Args:
+        cursor: Database cursor used for catalog queries.
+        schema: Schema name containing the table.
+        table: Table name to inspect.
 
     Returns:
         Tuple of (is_partitioned, partitions, parent_schema, parent_table)
@@ -80,8 +84,15 @@ def get_partition_info(cursor, schema: str, table: str) -> typing.Tuple[bool, li
     return True, partitions, None, None
 
 
-def add_new_column(cursor, schema: str, table: str, column: str, not_null: bool) -> typing.Tuple[str, str, bool]:
+def add_new_column(cursor, schema: str, table: str, column: str, not_null: bool) -> tuple[str, str, bool]:
     """Add new pint_field column.
+
+    Args:
+        cursor: Database cursor used for schema changes and metadata lookups.
+        schema: Schema name containing the table.
+        table: Table name receiving the new column.
+        column: Existing column name being migrated.
+        not_null: Whether the original field was declared as not nullable.
 
     Returns:
         Tuple of (original_column_name, temp_column_name, is_nullable) or (None, None, None) if column not found
@@ -363,9 +374,18 @@ class Migration(migrations.Migration):
                 $$ LANGUAGE SQL IMMUTABLE STRICT;
                 """,
                 # Create the casts
-                "CREATE CAST (decimal_pint_field AS pint_field) WITH FUNCTION cast_decimal_pint_to_pint(decimal_pint_field) AS IMPLICIT;",
-                "CREATE CAST (integer_pint_field AS pint_field) WITH FUNCTION cast_integer_pint_to_pint(integer_pint_field) AS IMPLICIT;",
-                "CREATE CAST (big_integer_pint_field AS pint_field) WITH FUNCTION cast_bigint_pint_to_pint(big_integer_pint_field) AS IMPLICIT;",
+                (
+                    "CREATE CAST (decimal_pint_field AS pint_field) "
+                    "WITH FUNCTION cast_decimal_pint_to_pint(decimal_pint_field) AS IMPLICIT;"
+                ),
+                (
+                    "CREATE CAST (integer_pint_field AS pint_field) "
+                    "WITH FUNCTION cast_integer_pint_to_pint(integer_pint_field) AS IMPLICIT;"
+                ),
+                (
+                    "CREATE CAST (big_integer_pint_field AS pint_field) "
+                    "WITH FUNCTION cast_bigint_pint_to_pint(big_integer_pint_field) AS IMPLICIT;"
+                ),
             ],
             reverse_sql=[
                 "DROP CAST IF EXISTS (decimal_pint_field AS pint_field);",

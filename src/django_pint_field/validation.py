@@ -35,6 +35,7 @@ def validate_unit_choices(
         unit_choices: An iterable that can be either:
             - An iterable of strings representing unit names
             - An iterable of 2-tuples/2-lists containing (display_name, unit_name)
+        default_unit: The canonical unit used to validate dimensional compatibility.
 
     Returns:
         List of tuples (display_name, unit_name)
@@ -133,14 +134,10 @@ def validate_value_range(
         value: The value to validate. Can be a Quantity object or a numeric type.
         min_value: Optional minimum value. Must be a Quantity if value is a Quantity.
         max_value: Optional maximum value. Must be a Quantity if value is a Quantity.
-
-    Raises:
-        ValidationError: If value falls outside the specified range or if units are incompatible.
     """
     if value is None:
         return
 
-    # Handle Quantity objects
     if isinstance(value, Quantity):
         # Validate that min/max values are also Quantities if provided
         if min_value is not None and not isinstance(min_value, Quantity):

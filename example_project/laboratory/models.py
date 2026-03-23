@@ -21,6 +21,7 @@ class Universe(models.Model):
     year_introduced = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
+        """Return the universe name."""
         return self.name
 
 
@@ -75,6 +76,7 @@ class Laboratory(models.Model):
         verbose_name_plural = "Laboratories"
 
     def __str__(self):
+        """Return the lab name with its universe."""
         return f"{self.name} ({self.universe.name})"
 
     @property
@@ -157,6 +159,7 @@ class ExperimentalDevice(models.Model):
     )
 
     def __str__(self):
+        """Return the device name."""
         return self.name
 
     def get_absolute_url(self):
@@ -229,6 +232,7 @@ class AnomalousSubstance(models.Model):
     )
 
     def __str__(self):
+        """Return the substance name."""
         return self.name
 
     def get_absolute_url(self):
@@ -264,6 +268,7 @@ class ExperimentSubject(models.Model):
     )
 
     def __str__(self):
+        """Return the subject identifier."""
         return self.identifier
 
     def get_absolute_url(self):
@@ -311,6 +316,7 @@ class IncidentReport(models.Model):
     )
 
     def __str__(self):
+        """Return a short label for the incident."""
         return f"{self.timestamp} - {self.description}"
 
     def get_absolute_url(self):
@@ -352,6 +358,7 @@ class DimensionalRift(models.Model):
     )
 
     def __str__(self):
+        """Return the detection timestamp."""
         return f"{self.detected_at}"
 
     def get_absolute_url(self):
@@ -388,6 +395,7 @@ class SafetyProtocol(models.Model):
     )
 
     def __str__(self):
+        """Return the protocol name."""
         return self.name
 
     def get_absolute_url(self):
@@ -429,6 +437,7 @@ class EnergyReading(models.Model):
     )
 
     def __str__(self):
+        """Return the reading timestamp."""
         return f"{self.timestamp}"
 
     def get_absolute_url(self):

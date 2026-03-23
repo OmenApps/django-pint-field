@@ -24,6 +24,7 @@ class Command(BaseCommand):
     help = "Populates the database with fictional laboratories and related data"
 
     def handle(self, *args, **options):
+        """Replace existing records with a fresh set of sample data."""
         self.stdout.write("Removing any existing content...")
         # Clear existing data
         ExperimentalDevice.objects.all().delete()
