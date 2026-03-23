@@ -1,6 +1,7 @@
 """Custom template tags for the Django Pint Field app."""
 
 import logging
+import warnings
 from decimal import Decimal
 from decimal import InvalidOperation
 
@@ -16,6 +17,22 @@ logger = logging.getLogger(__name__)
 Quantity = ureg.Quantity
 
 register = template.Library()
+
+_MISSING_UNIT_FORMATTER_WARNING = r"The given format spec does not contain a unit formatter\..*"
+
+
+def _format_quantity_with_explicit_unit_formatter(obj, format_str):
+    """Format a quantity while avoiding Pint's deprecated implicit unit fallback."""
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "error",
+                message=_MISSING_UNIT_FORMATTER_WARNING,
+                category=DeprecationWarning,
+            )
+            return f"{obj:{format_str}}"
+    except DeprecationWarning:
+        return f"{obj:{format_str}D}"
 
 
 @register.filter
@@ -68,7 +85,7 @@ def pint_str_format(obj, format_str):
         return obj
 
     try:
-        return f"{obj:{format_str}}"
+        return _format_quantity_with_explicit_unit_formatter(obj, format_str)
     except ValueError as e:
         logger.error("Invalid format string: %s, %s", format_str, e)
         return obj

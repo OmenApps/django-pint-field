@@ -1,5 +1,6 @@
 """Test cases for template tags."""
 
+import warnings
 from decimal import Decimal
 
 import pytest
@@ -190,10 +191,16 @@ class TestPintStrFormatFilter:
         template = Template("{% load django_pint_field %}{{ value|pint_str_format:'invalid{' }}")
         quantity = Quantity(Decimal("123.456"), "gram")
         context = Context({"value": quantity})
-        result = template.render(context)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = template.render(context)
 
         # Should return original value on error
         assert "123.456" in result
+        assert not any(
+            warning.category is DeprecationWarning and "does not contain a unit formatter" in str(warning.message)
+            for warning in caught
+        )
 
     def test_pint_str_format_compact(self):
         """Test pint_str_format filter with compact notation."""
