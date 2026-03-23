@@ -9,6 +9,7 @@ services:
     image: django_pint_field
     container_name: django_test
     volumes:
+      - ./docs:/app/docs
       - ./example_project:/app/example_project
       - ./src:/app/src
     env_file:
@@ -34,4 +35,3 @@ services:
     container_name: django_test_redis
     ports:
       - "6390:6379"
-

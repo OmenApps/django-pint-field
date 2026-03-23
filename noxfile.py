@@ -32,12 +32,17 @@ PACKAGE = "django_pint_field"
 nox.needs_version = ">= 2024.4.15"
 nox.options.sessions = (
     "pre-commit",
-    "safety",
+    "pip-audit",
     "tests",
     "xdoctest",
     "docs-build",
 )
 nox.options.default_venv_backend = "uv"
+
+
+def uv_sync_active(session: Session, *args: str) -> None:
+    """Sync the active nox virtualenv from the project's lockfile."""
+    session.run("uv", "sync", "--active", "--prerelease=allow", *args, external=True)
 
 
 def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
@@ -124,6 +129,7 @@ def precommit(session: Session, django: str) -> None:
         "bandit",
         "black",
         "darglint",
+        "djlint",
         "flake8",
         "flake8-bugbear",
         "flake8-docstrings",
@@ -139,20 +145,19 @@ def precommit(session: Session, django: str) -> None:
         activate_virtualenv_in_precommit_hooks(session)
 
 
-@session(python=PYTHON_STABLE_VERSION)
+@session(name="pip-audit", python=PYTHON_STABLE_VERSION)
 @nox.parametrize("django", DJANGO_STABLE_VERSION)
-def safety(session: Session, django: str) -> None:
-    """Scan dependencies for insecure packages."""
-    requirements = session.posargs or ["requirements.txt"]
-    session.install("safety")
-    session.run("safety", "check", "--full-report", f"--file={requirements}")
+def pip_audit(session: Session, django: str) -> None:
+    """Scan dependencies for known vulnerabilities."""
+    uv_sync_active(session, "--dev")
+    session.run("pip-audit", *session.posargs)
 
 
 @session(python=PYTHON_VERSIONS)
 @nox.parametrize("django", DJANGO_VERSIONS)
 def tests(session: Session, django: str) -> None:
     """Run the test suite."""
-    session.run("uv", "sync", "--prerelease=allow", "--extra=dev")
+    uv_sync_active(session, "--dev")
     try:
         session.run("coverage", "run", "-m", "pytest", "-vv", *session.posargs)
     finally:

@@ -8,3 +8,5 @@ rst-roles = class,const,func,meth,mod,ref
 rst-directives = deprecated
 count = true
 exclude = .git,.nox,__pycache__,dist,migrations,test_*,docs,build,.venv
+per-file-ignores =
+    example_project/laboratory/views/other.py:C901

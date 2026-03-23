@@ -54,6 +54,12 @@ repos:
         language: system
         types: [python]
         files: ^src/
+      - id: djlint
+        name: djlint
+        entry: djlint
+        language: system
+        types: [html]
+        args: ["--configuration", "pyproject.toml"]
       - id: pyupgrade
         name: pyupgrade
         description: Automatically upgrade syntax for newer versions.
@@ -71,3 +77,4 @@ repos:
     rev: v2.6.0
     hooks:
       - id: prettier
+        exclude: \.html$
