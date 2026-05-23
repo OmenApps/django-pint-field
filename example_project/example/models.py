@@ -224,3 +224,12 @@ class PintFieldWithCheckConstraint(models.Model):
                 name="min_weight_lte_max_weight",
             ),
         ]
+
+
+class TemperatureReadingModel(FieldSaveModel):
+    """A model with a temperature field for offset-unit conversion tests."""
+
+    temperature = DecimalPintField(
+        default_unit="kelvin",
+        unit_choices=[["K", "kelvin"], ["°C", "degC"], ["°F", "degF"]],
+    )

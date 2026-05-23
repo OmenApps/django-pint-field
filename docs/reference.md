@@ -255,6 +255,26 @@ Product.objects.aggregate(
 )
 ```
 
+## Expressions
+
+`django_pint_field.expressions`
+
+SQL-native query expressions that read and transform the `pint_field` composite directly in PostgreSQL.
+
+| Expression                     | Returns        | Description                                                                          |
+| ------------------------------ | -------------- | ------------------------------------------------------------------------------------ |
+| `PintComparator(field)`        | `DecimalField` | The base-unit `comparator` component.                                                |
+| `PintMagnitude(field)`         | `DecimalField` | The originally stored `magnitude` component.                                         |
+| `PintConvert(field, to_unit)`  | `DecimalField` | The magnitude converted to `to_unit`, computed in SQL (handles offset units).        |
+
+```python
+from django_pint_field import PintConvert
+
+Product.objects.annotate(kg=PintConvert("weight", "kilogram")).filter(kg__gte=2)
+```
+
+`PintConvert` raises `ValueError` for an empty `to_unit` and `pint.UndefinedUnitError` for an unknown one, both at expression construction. It does not validate dimensional compatibility - see [Querying](howto-queries) for the indexing and precision caveats.
+
 ## Lookups
 
 PintFields support the following lookups. All comparisons operate on the `comparator` component (the base-unit magnitude), so they work correctly across different units.

@@ -429,6 +429,56 @@ class Product(models.Model):
 conversion. However, passing a length Quantity to a weight field will raise an error.
 Validate dimensionality before querying if the unit comes from user input.
 
+## Converting and comparing in the database
+
+`PintConvert` performs unit conversion inside PostgreSQL using the stored
+base-unit comparator, so filtering and ordering never load rows into Python:
+
+```python
+from django_pint_field import PintConvert
+
+(
+    Package.objects
+    .annotate(kg=PintConvert("weight", "kilogram"))
+    .filter(kg__gte=2)
+    .order_by("-kg")
+)
+```
+
+The annotation is a `DecimalField` holding the magnitude in the requested
+unit. It works for offset units (temperature) as well as multiplicative ones.
+Compare it against plain numbers (`filter(kg__gte=2)`), not `Quantity` objects -
+the annotation is a number in `to_unit`, not a Pint field.
+
+`PintComparator("weight")` and `PintMagnitude("weight")` expose the raw
+composite components when you need them.
+
+**Use native lookups for index-backed filtering.** A `PintFieldComparatorIndex`
+indexes the bare comparator. Converting to a *non-base* unit wraps the comparator
+in arithmetic the planner cannot match against that index, so a large
+`filter(kg__gte=…)` on a `PintConvert` annotation may fall back to a sequential
+scan. For the indexed hot path, filter the field directly with a `Quantity`,
+which compares cross-unit via the comparator and uses the index:
+
+```python
+Package.objects.filter(weight__gte=Quantity(2, "kilogram"))
+```
+
+Reserve `PintConvert` for projecting a converted magnitude into results and for
+convenience filtering/ordering where an index is not critical. (Converting to the
+field's base unit collapses to the bare comparator and remains index-usable.)
+
+**Precision:** the conversion uses PostgreSQL `numeric` division, whose scale can
+differ slightly from Python/Pint. Use range or `gte`/`lte` comparisons rather than
+`__exact` on a converted annotation.
+
+**Warning:** `PintConvert` does not validate that the target unit is dimensionally
+compatible with the field. Converting a mass field to a length unit (e.g.
+`PintConvert("weight", "meter")`) will not raise - it returns a numerically
+meaningless result. Pass a unit in the same dimension as the field's
+`default_unit`. An undefined or empty `to_unit` *does* raise at expression
+construction time.
+
 ---
 
 - See [API Reference](reference) for the complete lookup and aggregate API.

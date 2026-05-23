@@ -10,6 +10,11 @@ from .aggregates import PintStdDev
 from .aggregates import PintSum
 from .aggregates import PintVariance
 
+# Expressions
+from .expressions import PintComparator
+from .expressions import PintConvert
+from .expressions import PintMagnitude
+
 # Form fields
 from .forms import DecimalPintFormField
 from .forms import IntegerPintFormField
@@ -56,6 +61,10 @@ __all__ = [
     "PintStdDev",
     "PintVariance",
     "PintCount",
+    # Expressions
+    "PintComparator",
+    "PintConvert",
+    "PintMagnitude",
     # Indexes
     "PintFieldComparatorIndex",
 ]
