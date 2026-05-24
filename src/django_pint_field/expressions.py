@@ -14,6 +14,7 @@ from django.db.models import DecimalField
 from django.db.models import Func
 from django.db.models import Value
 
+from .helpers import units_are_dimensionally_compatible
 from .units import ureg
 
 
@@ -119,13 +120,10 @@ class PintConvert(Func):
         resolved = super().resolve_expression(*args, **kwargs)
         field = getattr(resolved.source_expressions[0], "field", None)
         default_unit = getattr(field, "default_unit", None)
-        if default_unit is not None:
-            expected = ureg.Unit(default_unit).dimensionality
-            if ureg.Unit(self.to_unit).dimensionality != expected:
-                raise ValidationError(
-                    f"Cannot convert a field measured in '{default_unit}' to '{self.to_unit}': "
-                    "incompatible dimensionality."
-                )
+        if default_unit is not None and not units_are_dimensionally_compatible(ureg, self.to_unit, default_unit):
+            raise ValidationError(
+                f"Cannot convert a field measured in '{default_unit}' to '{self.to_unit}': incompatible dimensionality."
+            )
         return resolved
 
     def as_sql(self, compiler, connection, **extra):

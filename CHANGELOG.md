@@ -26,5 +26,5 @@ Major release with new features and improvements.
 
 - TBD
 
-[unreleased]: https://github.com/jacklinke/django_pint_field/compare/HEAD...HEAD
-[2024.11.1]: https://github.com/jacklinke/django_pint_field/releases/tag/2024.11.1
+[unreleased]: https://github.com/OmenApps/django-pint-field/compare/2024.11.1...HEAD
+[2024.11.1]: https://github.com/OmenApps/django-pint-field/releases/tag/2024.11.1

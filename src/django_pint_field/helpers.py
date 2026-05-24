@@ -393,6 +393,20 @@ def _resolve_registry_unit(
         return None
 
 
+def units_are_dimensionally_compatible(registry: Any, unit_a, unit_b) -> bool:
+    """Return True if ``unit_a`` and ``unit_b`` measure the same physical quantity.
+
+    Args:
+        registry: The Pint unit registry.
+        unit_a: A unit string or Unit object.
+        unit_b: A unit string or Unit object.
+
+    Returns:
+        True if both units share the same dimensionality.
+    """
+    return registry.Unit(str(unit_a)).dimensionality == registry.Unit(str(unit_b)).dimensionality
+
+
 def is_decimal_or_int(value):
     """Tries to convert value to a float, which would work for an int, float, or Decimal value."""
     if isinstance(value, bool):

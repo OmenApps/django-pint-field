@@ -14,7 +14,6 @@ from django.db.models import IntegerField
 from django.db.models.expressions import Star
 from django.db.models.functions import Cast
 
-from .helpers import PintFieldConverter
 from .helpers import PintFieldProxy
 from .units import ureg
 
@@ -67,23 +66,21 @@ class QuantityOutputFieldMixin:
         return super().as_sql(compiler, connection, **extra)
 
     def resolve_expression(self, *args, **kwargs):
-        """Resolved the expression, setting the original_field value."""
-        resolved = super().resolve_expression(*args, **kwargs)
+        """Resolve the expression, storing the original field on the resolved copy.
 
-        # Store the original field for unit conversion
-        self.original_field = resolved.source_expressions[0].field
+        ``resolve_expression`` returns a copy, and ``convert_value`` runs on that
+        copy, so ``original_field`` must be set on ``resolved`` (not ``self``).
+        """
+        resolved = super().resolve_expression(*args, **kwargs)
+        resolved.original_field = resolved.source_expressions[0].field
         return resolved
 
     def convert_value(self, value, expression, connection):
-        """Convert the value to a Quantity object."""
-        field = self.output_field
-        internal_type = field.get_internal_type()
-
-        self.resolve_expression()
-
+        """Convert the database value to a Quantity proxy."""
         if value is None:
             return None
 
+        internal_type = self.output_field.get_internal_type()
         quantity_value = None
         if internal_type in ("DecimalPintField", "IntegerPintField"):
             # Normalize to Decimal regardless of the SQL result type. Most
@@ -95,16 +92,7 @@ class QuantityOutputFieldMixin:
         if quantity_value is None:
             return None
 
-        # Always wrap in a proxy, reusing the field's cached converter when available
-        if self.original_field is not None:
-            if hasattr(self.original_field, "get_cached_converter"):
-                converter = self.original_field.get_cached_converter()
-            else:
-                converter = PintFieldConverter(self.original_field)
-            return PintFieldProxy(quantity_value, converter)
-
-        # Fallback if something is off
-        return quantity_value
+        return PintFieldProxy(quantity_value, self.original_field.get_cached_converter())
 
     def __rand__(self, other: Any):
         """Return None for bitwise operations."""

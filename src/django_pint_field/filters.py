@@ -12,9 +12,11 @@ from decimal import InvalidOperation
 
 import django_filters
 from django import forms
+from django.core.exceptions import FieldDoesNotExist
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.fields import RangeField
 
+from .helpers import units_are_dimensionally_compatible
 from .units import ureg
 
 
@@ -53,8 +55,8 @@ def parse_quantity_string(value: str | None) -> Quantity | None:
         raise ValueError(f"Magnitude must be a finite number: {raw_magnitude!r}")
 
     # ureg.Unit can raise a variety of errors for malformed input
-    # (UndefinedUnitError, DefinitionSyntaxError, tokenize.TokenError, ...);
-    # normalize them all to ValueError so callers see a clean validation error.
+    # (UndefinedUnitError, AssertionError, tokenize.TokenError, ...); normalize
+    # them all to ValueError so callers see a clean validation error.
     try:
         unit = ureg.Unit(raw_unit)
     except Exception as exc:
@@ -84,16 +86,15 @@ class QuantityFormField(forms.CharField):
         except ValueError as exc:
             raise DjangoValidationError(str(exc)) from exc
 
-        if quantity is not None and self.field_unit is not None:
-            try:
-                expected_dimensionality = ureg.Unit(self.field_unit).dimensionality
-            except Exception:  # pragma: no cover - field_unit comes from a validated field
-                expected_dimensionality = None
-            if expected_dimensionality is not None and quantity.dimensionality != expected_dimensionality:
-                raise DjangoValidationError(
-                    f"Unit '{quantity.units}' is not compatible with this field "
-                    f"(expected a unit measuring the same quantity as '{self.field_unit}')."
-                )
+        if (
+            quantity is not None
+            and self.field_unit is not None
+            and not units_are_dimensionally_compatible(ureg, quantity.units, self.field_unit)
+        ):
+            raise DjangoValidationError(
+                f"Unit '{quantity.units}' is not compatible with this field "
+                f"(expected a unit measuring the same quantity as '{self.field_unit}')."
+            )
         return quantity
 
 
@@ -113,16 +114,20 @@ class _PintFilterUnitMixin:
             return None
         try:
             model_field = model._meta.get_field(self.field_name)  # pylint: disable=W0212
-        except Exception:  # pragma: no cover - defensive
+        except FieldDoesNotExist:
             return None
         return getattr(model_field, "default_unit", None)
 
     @property
     def field(self):
-        """Build the form field, passing the resolved unit for validation."""
+        """Build the form field, passing the resolved unit for validation.
+
+        ``field_unit`` is injected into ``self.extra`` (the kwargs django-filter
+        forwards to ``field_class``); ``super().field`` then builds and caches it.
+        """
         if not hasattr(self, "_field"):
             self.extra.setdefault("field_unit", self._resolve_field_unit())
-        return django_filters.Filter.field.fget(self)
+        return super().field
 
 
 class PintFieldFilter(_PintFilterUnitMixin, django_filters.Filter):

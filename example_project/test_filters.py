@@ -67,6 +67,7 @@ class TestPintFieldFilter:
     def test_gte_filter_across_units(self, three_weights):
         """Filtering weight >= '1 kilogram' returns the 1000 g and 2500 g rows."""
         fs = WeightFilterSet({"weight": "1 kilogram"}, queryset=DecimalPintFieldSaveModel.objects.all())
+        assert fs.is_valid(), fs.form.errors  # a compatible cross-unit input must validate
         names = set(fs.qs.values_list("name", flat=True))
         assert names == {"mid", "heavy"}
 
@@ -135,6 +136,7 @@ class TestPintFieldRangeFilter:
             queryset=DecimalPintFieldSaveModel.objects.all(),
         )
         assert not fs.is_valid()
+        assert "weight" in fs.form.errors
 
 
 class WeightBucketFilter(PintComparatorRangeListFilter):

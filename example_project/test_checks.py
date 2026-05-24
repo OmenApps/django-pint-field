@@ -29,6 +29,21 @@ class TestDatabaseBackendCheck:
         assert len(errors) == 1
         assert errors[0].id == "django_pint_field.E001"
 
+    def test_no_error_when_postgresql_among_multiple_dbs(self):
+        """At least one PostgreSQL backend among several is sufficient."""
+        conns = {"default": mock.Mock(vendor="sqlite"), "analytics": mock.Mock(vendor="postgresql")}
+        with mock.patch("django_pint_field.checks.connections", conns):
+            errors = check_database_backend(app_configs=None)
+        assert errors == []
+
+    def test_error_when_all_dbs_non_postgresql(self):
+        """E001 fires only when no configured database is PostgreSQL."""
+        conns = {"default": mock.Mock(vendor="sqlite"), "cache": mock.Mock(vendor="mysql")}
+        with mock.patch("django_pint_field.checks.connections", conns):
+            errors = check_database_backend(app_configs=None)
+        assert len(errors) == 1
+        assert errors[0].id == "django_pint_field.E001"
+
 
 @pytest.mark.django_db
 class TestCompositeTypeCheck:

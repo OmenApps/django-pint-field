@@ -170,6 +170,14 @@ def test_convert_dimensionally_incompatible_unit_raises():
         list(DecimalPintFieldSaveModel.objects.annotate(bad=PintConvert("weight", "meter")))
 
 
+@pytest.mark.django_db
+def test_convert_temperature_field_to_mass_unit_raises():
+    """Dimensional validation also fires for offset-unit (temperature) fields."""
+    TemperatureReadingModel.objects.create(temperature=Quantity(Decimal("300"), ureg.kelvin), name="warm")
+    with pytest.raises(ValidationError):
+        list(TemperatureReadingModel.objects.annotate(bad=PintConvert("temperature", "kilogram")))
+
+
 def test_affine_constants_multiplicative_unit():
     """A multiplicative unit yields b == 0 and m == the base-unit factor."""
     b, m = _affine_constants("gram")
