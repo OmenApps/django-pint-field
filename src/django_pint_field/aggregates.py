@@ -31,6 +31,7 @@ class QuantityOutputFieldMixin:
     # Set on the resolved copy by resolve_expression(); convert_value runs on that
     # copy. None only for an unusual non-field source, which convert_value handles.
     original_field = None
+    base_unit = None
     template = TEMPLATE
 
     def __init__(self, expression, output_unit=None, **extra):
@@ -38,41 +39,30 @@ class QuantityOutputFieldMixin:
         self.output_unit = output_unit
         super().__init__(expression, **extra)
 
-    def _get_base_unit(self, field):
-        """Return the field's base unit, computed once per resolved aggregate.
+    def convert_to_quantity(self, value):
+        """Convert the aggregate result to a Quantity object.
 
-        The base unit depends only on ``field.default_unit`` (fixed for a query),
-        so it is cached on the resolved instance to avoid recomputing it for every
-        result row in ``convert_value``.
+        Uses ``self.base_unit`` (set once at query-resolution time), so the base
+        unit is not recomputed for every result row.
 
         Args:
-            field: The source PintField.
+            value: The numeric magnitude in base units.
 
         Returns:
-            The Pint Unit object for the field's base units.
+            A Quantity in the base unit, converted to ``output_unit`` if set.
+
+        Raises:
+            ValidationError: If the value cannot be converted to ``output_unit``.
         """
-        base_unit = getattr(self, "_cached_base_unit", None)
-        if base_unit is None:
-            base_unit = Quantity(f"1 * {field.default_unit}").to_base_units().units
-            self._cached_base_unit = base_unit
-        return base_unit
-
-    def convert_to_quantity(self, value, field):
-        """Convert the aggregate result to a Quantity object."""
-        if value is None:
-            return None
-
-        base_unit = self._get_base_unit(field)
-
-        # Create quantity with base unit
-        quantity = Quantity(value, base_unit)
+        # Create quantity with the resolved base unit
+        quantity = Quantity(value, self.base_unit)
 
         # Convert to output unit if specified
         if self.output_unit:
             try:
                 quantity = quantity.to(self.output_unit)
             except Exception as e:
-                raise ValidationError(f"Cannot convert from {base_unit} to {self.output_unit}: {str(e)}") from e
+                raise ValidationError(f"Cannot convert from {self.base_unit} to {self.output_unit}: {str(e)}") from e
 
         return quantity
 
@@ -84,13 +74,17 @@ class QuantityOutputFieldMixin:
         return super().as_sql(compiler, connection, **extra)
 
     def resolve_expression(self, *args, **kwargs):
-        """Resolve the expression, storing the original field on the resolved copy.
+        """Resolve the expression, caching field metadata on the resolved copy.
 
         ``resolve_expression`` returns a copy, and ``convert_value`` runs on that
-        copy, so ``original_field`` must be set on ``resolved`` (not ``self``).
+        copy, so ``original_field`` (and the derived ``base_unit``, which depends
+        only on the field's fixed ``default_unit``) are set on ``resolved`` here,
+        once per query build, rather than per result row.
         """
         resolved = super().resolve_expression(*args, **kwargs)
         resolved.original_field = getattr(resolved.source_expressions[0], "field", None)
+        if resolved.original_field is not None:
+            resolved.base_unit = Quantity(f"1 * {resolved.original_field.default_unit}").to_base_units().units
         return resolved
 
     def convert_value(self, value, expression, connection):
@@ -107,7 +101,7 @@ class QuantityOutputFieldMixin:
             # aggregates of the numeric comparator already return Decimal, but
             # PERCENTILE_CONT returns double precision; wrapping keeps aggregate
             # magnitudes consistently Decimal across field types.
-            quantity_value = self.convert_to_quantity(Decimal(str(value)), self.original_field)
+            quantity_value = self.convert_to_quantity(Decimal(str(value)))
 
         if quantity_value is None:
             return None

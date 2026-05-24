@@ -179,4 +179,20 @@ def test_grouped_annotate_returns_proxy_per_group():
     assert len(rows) == 2
     assert str(rows[0]["total"].quantity.units) == "kilogram"
     assert abs(rows[0]["total"].quantity.magnitude - Decimal("0.3")) < Decimal("0.001")  # a: 300 g
+    assert str(rows[1]["total"].quantity.units) == "kilogram"
     assert abs(rows[1]["total"].quantity.magnitude - Decimal("0.05")) < Decimal("0.001")  # b: 50 g
+
+
+@pytest.mark.django_db
+def test_aggregate_instance_reused_across_queries():
+    """Reusing one aggregate instance across queries does not leak cached state.
+
+    Each resolve_expression() returns a fresh copy with its own base_unit, so the
+    per-query cache cannot bleed across queries.
+    """
+    DecimalPintFieldSaveModel.objects.create(weight=Quantity(Decimal("1000"), ureg.gram), name="x")
+    agg = PintSum("weight")
+    first = DecimalPintFieldSaveModel.objects.aggregate(t=agg)["t"]
+    second = DecimalPintFieldSaveModel.objects.aggregate(t=agg)["t"]
+    assert first.quantity == second.quantity == Quantity(Decimal("1"), ureg.kilogram)
+    assert str(second.quantity.units) == "kilogram"
