@@ -161,3 +161,22 @@ class TestFieldAggregates:
         pint_agg = self.MODEL.objects.aggregate(pint_agg=PintVariance("weight"))["pint_agg"]
         assert abs(expected_var - pint_agg.quantity.magnitude) < Decimal("0.001")
         assert str(pint_agg.quantity.units) == "kilogram"
+
+
+@pytest.mark.django_db
+def test_grouped_annotate_returns_proxy_per_group():
+    """values().annotate() runs convert_value once per GROUP BY row.
+
+    Pins the resolve_expression/convert_value contract: original_field must be
+    set on the resolved copy so every grouped row produces a correct proxy.
+    """
+    DecimalPintFieldSaveModel.objects.create(weight=Quantity(Decimal("100"), ureg.gram), name="a")
+    DecimalPintFieldSaveModel.objects.create(weight=Quantity(Decimal("200"), ureg.gram), name="a")
+    DecimalPintFieldSaveModel.objects.create(weight=Quantity(Decimal("50"), ureg.gram), name="b")
+
+    rows = list(DecimalPintFieldSaveModel.objects.values("name").annotate(total=PintSum("weight")).order_by("name"))
+
+    assert len(rows) == 2
+    assert str(rows[0]["total"].quantity.units) == "kilogram"
+    assert abs(rows[0]["total"].quantity.magnitude - Decimal("0.3")) < Decimal("0.001")  # a: 300 g
+    assert abs(rows[1]["total"].quantity.magnitude - Decimal("0.05")) < Decimal("0.001")  # b: 50 g

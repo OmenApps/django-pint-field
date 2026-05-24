@@ -28,6 +28,8 @@ class QuantityOutputFieldMixin:
     """Mixin to convert aggregate results to PintFieldProxy objects."""
 
     is_pint_aggregate = True
+    # Set on the resolved copy by resolve_expression(); convert_value runs on that
+    # copy. None only for an unusual non-field source, which convert_value handles.
     original_field = None
     template = TEMPLATE
 
@@ -72,12 +74,14 @@ class QuantityOutputFieldMixin:
         copy, so ``original_field`` must be set on ``resolved`` (not ``self``).
         """
         resolved = super().resolve_expression(*args, **kwargs)
-        resolved.original_field = resolved.source_expressions[0].field
+        resolved.original_field = getattr(resolved.source_expressions[0], "field", None)
         return resolved
 
     def convert_value(self, value, expression, connection):
         """Convert the database value to a Quantity proxy."""
-        if value is None:
+        # original_field is None only for a non-field source (it has no unit to
+        # convert against), in which case there is nothing to wrap.
+        if value is None or self.original_field is None:
             return None
 
         internal_type = self.output_field.get_internal_type()

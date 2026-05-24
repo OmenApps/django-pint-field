@@ -402,8 +402,13 @@ def units_are_dimensionally_compatible(registry: Any, unit_a, unit_b) -> bool:
         unit_b: A unit string or Unit object.
 
     Returns:
-        True if both units share the same dimensionality.
+        True if both units share the same dimensionality, False otherwise.
+
+    Note:
+        Assumes both units are known to ``registry``; an unrecognized unit
+        propagates ``pint.UndefinedUnitError``. Callers pass pre-validated units.
     """
+    # str() normalizes both raw strings and already-resolved Unit objects.
     return registry.Unit(str(unit_a)).dimensionality == registry.Unit(str(unit_b)).dimensionality
 
 
