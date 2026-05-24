@@ -12,14 +12,14 @@ Base class for all PintField types. You do not use this directly; use `IntegerPi
 
 **Parameters:**
 
-| Parameter      | Type                      | Required | Default | Description                                                                                                               |
-| -------------- | ------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Parameter      | Type                                          | Required | Default | Description                                                                                                               |
+| -------------- | --------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `default_unit` | `str`, `tuple[str, str]`, or `list[str, str]` | Yes      | --      | The default unit for this field. Can be a string (`"gram"`) or a display/value pair (`["Gram", "gram"]`).                 |
-| `unit_choices` | `list`                    | No       | `None`  | Available units for this field. Each item can be a string or a display/value pair. The `default_unit` is always included. |
-| `null`         | `bool`                    | No       | `False` | Allow NULL in the database.                                                                                               |
-| `blank`        | `bool`                    | No       | `False` | Allow blank values in forms.                                                                                              |
-| `verbose_name` | `str`                     | No       | `None`  | Human-readable field name.                                                                                                |
-| `help_text`    | `str`                     | No       | `""`    | Help text for forms.                                                                                                      |
+| `unit_choices` | `list`                                        | No       | `None`  | Available units for this field. Each item can be a string or a display/value pair. The `default_unit` is always included. |
+| `null`         | `bool`                                        | No       | `False` | Allow NULL in the database.                                                                                               |
+| `blank`        | `bool`                                        | No       | `False` | Allow blank values in forms.                                                                                              |
+| `verbose_name` | `str`                                         | No       | `None`  | Human-readable field name.                                                                                                |
+| `help_text`    | `str`                                         | No       | `""`    | Help text for forms.                                                                                                      |
 
 **Key methods:**
 
@@ -236,17 +236,17 @@ Accepts dictionary input with `magnitude` and `units` keys.
 
 All aggregates accept a field name as the first argument and return results with proper unit handling.
 
-| Aggregate                           | Returns          | Description                                                          |
-| ----------------------------------- | ---------------- | -------------------------------------------------------------------- |
-| `PintCount(field)`                  | `int`            | Count of non-null values.                                            |
-| `PintAvg(field)`                    | `PintFieldProxy` | Average value.                                                       |
-| `PintSum(field)`                    | `PintFieldProxy` | Sum of values.                                                       |
-| `PintMax(field)`                    | `PintFieldProxy` | Maximum value.                                                       |
-| `PintMin(field)`                    | `PintFieldProxy` | Minimum value.                                                       |
-| `PintStdDev(field, sample=False)`   | `PintFieldProxy` | Standard deviation. Set `sample=True` for sample standard deviation. |
-| `PintVariance(field, sample=False)` | `PintFieldProxy` | Variance. Set `sample=True` for sample variance.                     |
+| Aggregate                           | Returns          | Description                                                           |
+| ----------------------------------- | ---------------- | --------------------------------------------------------------------- |
+| `PintCount(field)`                  | `int`            | Count of non-null values.                                             |
+| `PintAvg(field)`                    | `PintFieldProxy` | Average value.                                                        |
+| `PintSum(field)`                    | `PintFieldProxy` | Sum of values.                                                        |
+| `PintMax(field)`                    | `PintFieldProxy` | Maximum value.                                                        |
+| `PintMin(field)`                    | `PintFieldProxy` | Minimum value.                                                        |
+| `PintStdDev(field, sample=False)`   | `PintFieldProxy` | Standard deviation. Set `sample=True` for sample standard deviation.  |
+| `PintVariance(field, sample=False)` | `PintFieldProxy` | Variance. Set `sample=True` for sample variance.                      |
 | `PintPercentile(field, percentile)` | `PintFieldProxy` | Continuous percentile (`percentile` in [0, 1]) via `PERCENTILE_CONT`. |
-| `PintMedian(field)`                 | `PintFieldProxy` | Median (50th percentile).                                            |
+| `PintMedian(field)`                 | `PintFieldProxy` | Median (50th percentile).                                             |
 
 Aggregates that return a `PintFieldProxy` accept an optional `output_unit=` to convert the result. The `pint_histogram(queryset, field_name, *, buckets, min_value, max_value)` helper returns a list of `{"bucket", "lower", "upper", "count"}` dicts (boundaries as `Quantity`, in base units) computed with PostgreSQL `width_bucket`.
 
@@ -265,11 +265,11 @@ Product.objects.aggregate(
 
 SQL-native query expressions that read and transform the `pint_field` composite directly in PostgreSQL.
 
-| Expression                     | Returns        | Description                                                                          |
-| ------------------------------ | -------------- | ------------------------------------------------------------------------------------ |
-| `PintComparator(field)`        | `DecimalField` | The base-unit `comparator` component.                                                |
-| `PintMagnitude(field)`         | `DecimalField` | The originally stored `magnitude` component.                                         |
-| `PintConvert(field, to_unit)`  | `DecimalField` | The magnitude converted to `to_unit`, computed in SQL (handles offset units).        |
+| Expression                    | Returns        | Description                                                                   |
+| ----------------------------- | -------------- | ----------------------------------------------------------------------------- |
+| `PintComparator(field)`       | `DecimalField` | The base-unit `comparator` component.                                         |
+| `PintMagnitude(field)`        | `DecimalField` | The originally stored `magnitude` component.                                  |
+| `PintConvert(field, to_unit)` | `DecimalField` | The magnitude converted to `to_unit`, computed in SQL (handles offset units). |
 
 ```python
 from django_pint_field import PintConvert
@@ -375,10 +375,10 @@ quantity = ureg.Quantity("500 gram")
 
 Handles conversion of various input types to Pint `Quantity` objects.
 
-| Parameter       | Type           | Default     | Description                                     |
-| --------------- | -------------- | ----------- | ----------------------------------------------- |
-| `default_unit`  | `str`          | --          | Default unit for conversions.                   |
-| `field_type`    | `str`          | `"decimal"` | `"decimal"` or `"integer"`.                     |
+| Parameter       | Type           | Default     | Description                                                                      |
+| --------------- | -------------- | ----------- | -------------------------------------------------------------------------------- |
+| `default_unit`  | `str`          | --          | Default unit for conversions.                                                    |
+| `field_type`    | `str`          | `"decimal"` | `"decimal"` or `"integer"`.                                                      |
 | `unit_registry` | `UnitRegistry` | `None`      | Custom registry; if omitted, `QuantityConverter` creates a new `UnitRegistry()`. |
 
 **Method:**

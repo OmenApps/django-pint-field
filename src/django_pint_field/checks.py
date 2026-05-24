@@ -82,7 +82,7 @@ def check_composite_type_registered(app_configs, databases=None, **kwargs):
             continue
         try:
             exists = pint_composite_type_exists(connection)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:  # noqa: BLE001  # nosec B112  # pylint: disable=broad-except
             # If we cannot introspect, stay silent rather than emit a false alarm.
             continue
         if not exists:

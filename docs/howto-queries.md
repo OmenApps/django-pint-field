@@ -454,7 +454,7 @@ the annotation is a number in `to_unit`, not a Pint field.
 composite components when you need them.
 
 **Use native lookups for index-backed filtering.** A `PintFieldComparatorIndex`
-indexes the bare comparator. Converting to a *non-base* unit wraps the comparator
+indexes the bare comparator. Converting to a _non-base_ unit wraps the comparator
 in arithmetic the planner cannot match against that index, so a large
 `filter(kg__gte=…)` on a `PintConvert` annotation may fall back to a sequential
 scan. For the indexed hot path, filter the field directly with a `Quantity`,
