@@ -641,6 +641,36 @@ Template for the intermediate page (`admin/mass_weight_update.html`):
 {% endblock %}
 ```
 
+## Range filters in the admin
+
+`PintComparatorRangeListFilter` (from `django_pint_field.admin`) buckets a Pint
+field into developer-defined ranges, compared cross-unit via the base-unit
+comparator. Subclass it, set `parameter_name`, `title`, `field_name`, and
+`ranges` (each `(label, low_quantity_or_None, high_quantity_or_None)`; bounds
+are inclusive lower / exclusive upper):
+
+```python
+from django.contrib import admin
+
+from django_pint_field.admin import PintComparatorRangeListFilter
+from django_pint_field.units import ureg
+
+
+class WeightBucketFilter(PintComparatorRangeListFilter):
+    parameter_name = "weight_bucket"
+    title = "weight"
+    field_name = "weight"
+    ranges = [
+        ("under 1 kg", None, ureg.Quantity(1, "kilogram")),
+        ("1-5 kg", ureg.Quantity(1, "kilogram"), ureg.Quantity(5, "kilogram")),
+        ("5 kg and up", ureg.Quantity(5, "kilogram"), None),
+    ]
+
+
+class PackageAdmin(admin.ModelAdmin):
+    list_filter = [WeightBucketFilter]
+```
+
 ---
 
 **See also:**

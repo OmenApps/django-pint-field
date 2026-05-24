@@ -502,6 +502,29 @@ and a row `count`, all computed in PostgreSQL. Values below `min_value` or
 at/above `max_value` fall outside the returned buckets (`width_bucket`
 semantics).
 
+## Filtering with django-filter
+
+These filters require the optional [`django-filter`](https://django-filter.readthedocs.io/)
+package (`pip install django-filter`). Import them from `django_pint_field.filters`:
+
+```python
+import django_filters
+from django_pint_field.filters import PintFieldFilter, PintFieldRangeFilter
+
+class PackageFilter(django_filters.FilterSet):
+    weight = PintFieldRangeFilter(field_name="weight")               # weight_min / weight_max
+    min_weight = PintFieldFilter(field_name="weight", lookup_expr="gte")
+
+    class Meta:
+        model = Package
+        fields = ["weight"]
+```
+
+Inputs are `"<magnitude> <unit>"` strings (e.g. `"2 kilogram"`). Comparison is
+cross-unit via the base-unit comparator, so users can filter in any compatible
+unit regardless of how the value was stored. Invalid input (a bad number or
+undefined unit) surfaces as a form validation error rather than an exception.
+
 ---
 
 - See [API Reference](reference) for the complete lookup and aggregate API.
