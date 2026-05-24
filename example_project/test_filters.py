@@ -80,6 +80,12 @@ class TestPintFieldFilter:
         fs = WeightFilterSet({"weight": "2 notaunit"}, queryset=DecimalPintFieldSaveModel.objects.all())
         assert not fs.is_valid()
 
+    def test_incompatible_dimension_is_a_form_error(self, three_weights):
+        """A dimensionally-incompatible unit is a form error, not a query-time crash."""
+        fs = WeightFilterSet({"weight": "5 meter"}, queryset=DecimalPintFieldSaveModel.objects.all())
+        assert not fs.is_valid()
+        assert "weight" in fs.form.errors
+
 
 class WeightRangeFilterSet(django_filters.FilterSet):
     """A FilterSet exercising PintFieldRangeFilter."""
@@ -121,6 +127,14 @@ class TestPintFieldRangeFilter:
         )
         names = set(fs.qs.values_list("name", flat=True))
         assert names == {"light", "mid"}
+
+    def test_incompatible_dimension_is_a_form_error(self, three_weights):
+        """A dimensionally-incompatible bound is a form error, not a query-time crash."""
+        fs = WeightRangeFilterSet(
+            {"weight_min": "5 meter"},
+            queryset=DecimalPintFieldSaveModel.objects.all(),
+        )
+        assert not fs.is_valid()
 
 
 class WeightBucketFilter(PintComparatorRangeListFilter):

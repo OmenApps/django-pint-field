@@ -63,16 +63,26 @@ class TestPintPercentileIntegerField:
     """PintPercentile works on IntegerPintField, exercising the integer branch."""
 
     def test_p50_integer_field(self):
-        """The 50th percentile of integer-backed 1..5 kg is 3 kg.
+        """The 50th percentile of integer-backed 1..5 kg is 3 kg, as a Decimal.
 
-        PostgreSQL ``PERCENTILE_CONT`` returns double precision, so the integer
-        field's result magnitude may be a float; assert on the value, not the type.
+        Aggregate results are normalized to Decimal magnitudes across all field
+        types (PostgreSQL ``PERCENTILE_CONT`` returns double precision, which is
+        wrapped back to Decimal for consistency).
         """
         for grams in (1000, 2000, 3000, 4000, 5000):
             IntegerPintFieldSaveModel.objects.create(weight=Quantity(grams, ureg.gram), name=f"{grams}g")
         result = IntegerPintFieldSaveModel.objects.aggregate(p=PintPercentile("weight", percentile=0.5))["p"]
-        assert abs(Decimal(str(result.quantity.magnitude)) - Decimal("3")) < Decimal("0.001")
+        assert isinstance(result.quantity.magnitude, Decimal)
+        assert abs(result.quantity.magnitude - Decimal("3")) < Decimal("0.001")
         assert str(result.quantity.units) == "kilogram"
+
+    def test_median_integer_field_returns_decimal(self):
+        """PintMedian on an integer field also yields a Decimal magnitude."""
+        for grams in (1000, 2000, 3000):
+            IntegerPintFieldSaveModel.objects.create(weight=Quantity(grams, ureg.gram), name=f"{grams}g")
+        result = IntegerPintFieldSaveModel.objects.aggregate(m=PintMedian("weight"))["m"]
+        assert isinstance(result.quantity.magnitude, Decimal)
+        assert abs(result.quantity.magnitude - Decimal("2")) < Decimal("0.001")
 
 
 @pytest.mark.django_db

@@ -264,10 +264,12 @@ class BasePintField(PintFieldMixin, models.Field):
         """Return a single shared PintFieldConverter for this field instance.
 
         Reused by ``from_db_value`` so loading N rows allocates one converter,
-        not N.
+        not N. The cache is rebuilt if it belongs to a different field instance,
+        which happens when Django deepcopies the field (model inheritance,
+        migration state) and the copy inherits the original's cached converter.
         """
         converter = getattr(self, "_cached_converter", None)
-        if converter is None:
+        if converter is None or converter.field is not self:
             converter = PintFieldConverter(self)
             self._cached_converter = converter
         return converter

@@ -1,5 +1,6 @@
 """Tests for proxy/converter caching and typing metadata."""
 
+import copy
 import importlib.util
 from decimal import Decimal
 from pathlib import Path
@@ -33,6 +34,20 @@ class TestConverterCaching:
         assert proxy.converter is field.get_cached_converter()
         # Behavior unchanged
         assert proxy.quantity == Quantity(Decimal("500"), ureg.gram)
+
+    def test_cached_converter_rebuilt_after_field_deepcopy(self):
+        """A deepcopied field gets its own converter, not the original's.
+
+        Django deepcopies field instances (model inheritance, migration state).
+        The cache must rebind to the copy rather than keep the original's
+        converter (which references the original field).
+        """
+        field = DecimalPintFieldSaveModel._meta.get_field("weight")
+        original = field.get_cached_converter()
+        copied = copy.deepcopy(field)
+        copied_converter = copied.get_cached_converter()
+        assert copied_converter is not original
+        assert copied_converter.field is copied
 
 
 @pytest.mark.django_db

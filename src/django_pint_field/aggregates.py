@@ -85,10 +85,12 @@ class QuantityOutputFieldMixin:
             return None
 
         quantity_value = None
-        if internal_type == "DecimalPintField":
+        if internal_type in ("DecimalPintField", "IntegerPintField"):
+            # Normalize to Decimal regardless of the SQL result type. Most
+            # aggregates of the numeric comparator already return Decimal, but
+            # PERCENTILE_CONT returns double precision; wrapping keeps aggregate
+            # magnitudes consistently Decimal across field types.
             quantity_value = self.convert_to_quantity(Decimal(str(value)), self.original_field)
-        elif internal_type == "IntegerPintField":
-            quantity_value = self.convert_to_quantity(value, self.original_field)
 
         if quantity_value is None:
             return None

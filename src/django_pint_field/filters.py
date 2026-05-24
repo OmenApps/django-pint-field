@@ -64,18 +64,68 @@ def parse_quantity_string(value: str | None) -> Quantity | None:
 
 
 class QuantityFormField(forms.CharField):
-    """A text form field that cleans ``"<magnitude> <unit>"`` into a Quantity."""
+    """A text form field that cleans ``"<magnitude> <unit>"`` into a Quantity.
+
+    When ``field_unit`` is supplied (the model field's ``default_unit``), input
+    in an incompatible dimension is rejected as a form validation error rather
+    than reaching the database and raising at query time.
+    """
+
+    def __init__(self, *args, field_unit=None, **kwargs):
+        """Store the expected unit for dimensionality validation."""
+        self.field_unit = field_unit
+        super().__init__(*args, **kwargs)
 
     def clean(self, value):
-        """Parse the raw string into a Quantity, surfacing parse errors as form errors."""
+        """Parse the raw string into a Quantity, surfacing errors as form errors."""
         value = super().clean(value)
         try:
-            return parse_quantity_string(value)
+            quantity = parse_quantity_string(value)
         except ValueError as exc:
             raise DjangoValidationError(str(exc)) from exc
 
+        if quantity is not None and self.field_unit is not None:
+            try:
+                expected_dimensionality = ureg.Unit(self.field_unit).dimensionality
+            except Exception:  # pragma: no cover - field_unit comes from a validated field
+                expected_dimensionality = None
+            if expected_dimensionality is not None and quantity.dimensionality != expected_dimensionality:
+                raise DjangoValidationError(
+                    f"Unit '{quantity.units}' is not compatible with this field "
+                    f"(expected a unit measuring the same quantity as '{self.field_unit}')."
+                )
+        return quantity
 
-class PintFieldFilter(django_filters.Filter):
+
+class _PintFilterUnitMixin:
+    """Inject the model field's ``default_unit`` into the filter's form field.
+
+    Lets ``QuantityFormField`` validate that filter input is dimensionally
+    compatible with the field, producing a clean form error instead of a
+    query-time exception. Degrades gracefully (no validation) when the model or
+    field cannot be resolved, e.g. a filter used outside a FilterSet.
+    """
+
+    def _resolve_field_unit(self):
+        """Return the target model field's ``default_unit``, or None."""
+        model = getattr(self, "model", None)
+        if model is None or not self.field_name:
+            return None
+        try:
+            model_field = model._meta.get_field(self.field_name)  # pylint: disable=W0212
+        except Exception:  # pragma: no cover - defensive
+            return None
+        return getattr(model_field, "default_unit", None)
+
+    @property
+    def field(self):
+        """Build the form field, passing the resolved unit for validation."""
+        if not hasattr(self, "_field"):
+            self.extra.setdefault("field_unit", self._resolve_field_unit())
+        return django_filters.Filter.field.fget(self)
+
+
+class PintFieldFilter(_PintFilterUnitMixin, django_filters.Filter):
     """Filter a PintField by a single comparison (gt/gte/lt/lte/exact).
 
     The supplied value is a ``"<magnitude> <unit>"`` string; comparison happens
@@ -97,16 +147,20 @@ class QuantityRangeField(RangeField):
 
     Renders two ``"<magnitude> <unit>"`` inputs suffixed ``_min`` / ``_max``
     (django-filter's ``RangeWidget`` convention); either bound may be omitted.
+    ``field_unit`` is forwarded to each bound for dimensionality validation.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, field_unit=None, **kwargs):
         """Build the two optional Quantity-parsing bound fields."""
-        fields = (QuantityFormField(required=False), QuantityFormField(required=False))
+        fields = (
+            QuantityFormField(required=False, field_unit=field_unit),
+            QuantityFormField(required=False, field_unit=field_unit),
+        )
         kwargs.setdefault("require_all_fields", False)
         super().__init__(fields, *args, **kwargs)
 
 
-class PintFieldRangeFilter(django_filters.RangeFilter):
+class PintFieldRangeFilter(_PintFilterUnitMixin, django_filters.RangeFilter):
     """Filter a PintField by an inclusive ``[min, max]`` range.
 
     Inputs are ``"<magnitude> <unit>"`` strings; comparison is cross-unit via
