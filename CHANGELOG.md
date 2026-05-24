@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - SQL-native query expressions `PintConvert`, `PintComparator`, and `PintMagnitude` for converting and accessing Pint field components directly in PostgreSQL.
+- `py.typed` marker so type checkers and IDEs treat the package as typed.
+
+### Changed
+
+- Each `PintField` now reuses a single cached `PintFieldConverter`, avoiding a per-row allocation when loading querysets.
 
 ## [2024.11.1]
 

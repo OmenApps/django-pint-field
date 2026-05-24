@@ -390,3 +390,11 @@ Handles conversion of various input types to Pint `Quantity` objects.
 | `validate_required_value(value, required, blank)`   | Validates that a required field has a non-empty value.                                                    |
 | `validate_decimal_precision(value, allow_rounding)` | Validates that a decimal value does not exceed the context precision.                                     |
 | `validate_value_range(value, min_value, max_value)` | Validates that a value falls within the specified range, with unit-aware comparison.                      |
+
+## Typing and Performance
+
+django-pint-field ships a `py.typed` marker (PEP 561), so type checkers and IDEs recognize its public API as typed.
+
+Each `PintField` instance reuses a single `PintFieldConverter` (via `get_cached_converter()`), so loading N rows allocates one converter rather than one per row. This is an internal optimization and does not change any returned values.
+
+For a model instance loaded from the database, the field value is wrapped once in a `PintFieldProxy` and stored on the instance, so repeated reads return the same object. Attribute-based unit access (e.g. `obj.weight.kilogram`) is available on loaded instances.

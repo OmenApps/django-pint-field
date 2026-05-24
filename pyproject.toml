@@ -104,6 +104,9 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+django_pint_field = ["py.typed"]
+
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
 tests = ["example_project", "*/example_project"]

@@ -260,6 +260,18 @@ class BasePintField(PintFieldMixin, models.Field):
         """Returns the database column data type for this field."""
         return "pint_field"
 
+    def get_cached_converter(self) -> PintFieldConverter:
+        """Return a single shared PintFieldConverter for this field instance.
+
+        Reused by ``from_db_value`` so loading N rows allocates one converter,
+        not N.
+        """
+        converter = getattr(self, "_cached_converter", None)
+        if converter is None:
+            converter = PintFieldConverter(self)
+            self._cached_converter = converter
+        return converter
+
     def contribute_to_class(self, cls, name, private_only=False, **kwargs):
         """Add the field to the model class."""
         super().contribute_to_class(cls, name, private_only=private_only, **kwargs)
@@ -405,9 +417,8 @@ class BasePintField(PintFieldMixin, models.Field):
         if converted is None:
             return None
 
-        # Always wrap in our new, pickle-friendly PintFieldProxy
-        converter = PintFieldConverter(self)
-        return PintFieldProxy(converted, converter)
+        # Reuse the field's cached converter (one allocation per field, not per row)
+        return PintFieldProxy(converted, self.get_cached_converter())
 
     def to_python(self, value):
         """Converts the value into the correct Python object."""
