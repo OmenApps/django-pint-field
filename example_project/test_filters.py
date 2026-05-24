@@ -113,6 +113,15 @@ class TestPintFieldRangeFilter:
         names = set(fs.qs.values_list("name", flat=True))
         assert names == {"mid", "heavy"}
 
+    def test_only_max_bound(self, three_weights):
+        """Supplying only the max bound filters as <= ."""
+        fs = WeightRangeFilterSet(
+            {"weight_max": "1 kilogram"},
+            queryset=DecimalPintFieldSaveModel.objects.all(),
+        )
+        names = set(fs.qs.values_list("name", flat=True))
+        assert names == {"light", "mid"}
+
 
 class WeightBucketFilter(PintComparatorRangeListFilter):
     """Admin filter bucketing weight into named ranges."""
@@ -150,3 +159,18 @@ class TestPintComparatorRangeListFilter:
         qs = f.queryset(request, DecimalPintFieldSaveModel.objects.all())
         names = set(qs.values_list("name", flat=True))
         assert names == {"mid", "heavy"}
+
+    def test_selecting_light_filters_queryset(self, three_weights):
+        """Selecting 'light' (upper-bound-only range) returns rows < 0.5 kilogram."""
+        request = self._request({"weight_bucket": "light"})
+        f = WeightBucketFilter(request, {"weight_bucket": ["light"]}, DecimalPintFieldSaveModel, admin_site)
+        qs = f.queryset(request, DecimalPintFieldSaveModel.objects.all())
+        names = set(qs.values_list("name", flat=True))
+        assert names == {"light"}
+
+    def test_no_selection_returns_all(self, three_weights):
+        """With no range selected, the queryset is unfiltered."""
+        request = self._request({})
+        f = WeightBucketFilter(request, {}, DecimalPintFieldSaveModel, admin_site)
+        qs = f.queryset(request, DecimalPintFieldSaveModel.objects.all())
+        assert qs.count() == 3

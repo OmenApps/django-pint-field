@@ -12,39 +12,49 @@ from django.db import connections
 
 
 def check_database_backend(app_configs, **kwargs):
-    """Error if the default database is not PostgreSQL.
+    """Error if no configured database uses a PostgreSQL backend.
 
     django_pint_field stores quantities in a PostgreSQL composite type and
-    cannot work on other backends.
+    cannot work on other backends. Multi-database projects are valid as long as
+    at least one configured database is PostgreSQL, so the error fires only when
+    none are (e.g. a SQLite-only project).
 
     Args:
         app_configs: The app configs passed by Django's check framework (unused).
         **kwargs: Additional keyword arguments from the check framework.
 
     Returns:
-        A list containing a single ``Error`` when the default backend is not
-        PostgreSQL, otherwise an empty list.
+        A list containing a single ``Error`` when no configured database uses a
+        PostgreSQL backend, otherwise an empty list.
     """
     errors = []
-    connection = connections["default"]
-    if connection.vendor != "postgresql":
+    if not any(connections[alias].vendor == "postgresql" for alias in connections):
         errors.append(
             Error(
-                "django_pint_field requires a PostgreSQL database, but the default "
-                f"connection uses the {connection.vendor!r} backend.",
-                hint="Set DATABASES['default']['ENGINE'] to a PostgreSQL backend "
-                "(e.g. 'django.db.backends.postgresql').",
+                "django_pint_field requires a PostgreSQL database, but none of the "
+                "configured databases use a PostgreSQL backend.",
+                hint="Set a database ENGINE to a PostgreSQL backend (e.g. 'django.db.backends.postgresql').",
                 id="django_pint_field.E001",
             )
         )
     return errors
 
 
-def _pint_composite_type_exists(connection) -> bool:
-    """Return True if the ``pint_field`` composite type exists in PostgreSQL."""
+def pint_composite_type_exists(connection) -> bool:
+    """Return True if the ``pint_field`` composite type is visible in PostgreSQL.
+
+    Uses ``to_regtype`` so the result respects the connection's ``search_path``
+    (the type must be resolvable by name, not merely present in some schema).
+
+    Args:
+        connection: A database connection wrapper.
+
+    Returns:
+        True if ``pint_field`` resolves in the current search path, else False.
+    """
     with connection.cursor() as cursor:
-        cursor.execute("SELECT 1 FROM pg_type WHERE typname = %s", ["pint_field"])
-        return cursor.fetchone() is not None
+        cursor.execute("SELECT to_regtype(%s)", ["pint_field"])
+        return cursor.fetchone()[0] is not None
 
 
 def check_composite_type_registered(app_configs, databases=None, **kwargs):
@@ -71,7 +81,7 @@ def check_composite_type_registered(app_configs, databases=None, **kwargs):
         if connection.vendor != "postgresql":
             continue
         try:
-            exists = _pint_composite_type_exists(connection)
+            exists = pint_composite_type_exists(connection)
         except Exception:  # pylint: disable=broad-except
             # If we cannot introspect, stay silent rather than emit a false alarm.
             continue

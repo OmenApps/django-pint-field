@@ -1,5 +1,7 @@
 """Provides aggregation functions for django_pint_field."""
 
+from __future__ import annotations
+
 from decimal import Decimal
 from typing import Any
 
@@ -14,7 +16,6 @@ from django.db.models.functions import Cast
 
 from .helpers import PintFieldConverter
 from .helpers import PintFieldProxy
-from .helpers import get_base_unit_magnitude
 from .units import ureg
 
 
@@ -92,9 +93,12 @@ class QuantityOutputFieldMixin:
         if quantity_value is None:
             return None
 
-        # Always wrap in a proxy
+        # Always wrap in a proxy, reusing the field's cached converter when available
         if self.original_field is not None:
-            converter = PintFieldConverter(self.original_field)
+            if hasattr(self.original_field, "get_cached_converter"):
+                converter = self.original_field.get_cached_converter()
+            else:
+                converter = PintFieldConverter(self.original_field)
             return PintFieldProxy(quantity_value, converter)
 
         # Fallback if something is off
@@ -260,9 +264,12 @@ class PintMedian(PintPercentile):
 
 
 class _WidthBucket(Func):
-    """Wrap PostgreSQL ``width_bucket`` over a Pint field's comparator."""
+    """Wrap PostgreSQL ``width_bucket`` over a Pint field's comparator.
 
-    function = "WIDTH_BUCKET"
+    ``as_sql`` builds the SQL directly (to reach the composite ``.comparator``
+    component), so no ``function``/``template`` class attribute is used.
+    """
+
     output_field = IntegerField()
 
     def __init__(self, field_name, low, high, buckets, **extra):
@@ -301,9 +308,12 @@ def pint_histogram(queryset, field_name, *, buckets, min_value, max_value):
     if buckets < 1:
         raise ValidationError("buckets must be >= 1")
 
-    low = get_base_unit_magnitude(min_value)
-    high = get_base_unit_magnitude(max_value)
+    # Convert the bounds to base-unit magnitudes directly. (Do NOT route through
+    # get_base_unit_magnitude: it rounds non-Decimal magnitudes to int, which
+    # would silently corrupt fractional float bounds like 0.5.)
     base_unit = max_value.to_base_units().units
+    low = Decimal(str(min_value.to_base_units().magnitude))
+    high = Decimal(str(max_value.to_base_units().magnitude))
     width = (high - low) / Decimal(buckets)
 
     rows = (

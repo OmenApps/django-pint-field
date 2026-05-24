@@ -4,6 +4,7 @@ from io import StringIO
 from unittest import mock
 
 import pytest
+from django.core.checks import registry as checks_registry
 from django.core.management import call_command
 
 from django_pint_field.checks import check_composite_type_registered
@@ -43,11 +44,18 @@ class TestCompositeTypeCheck:
         warnings = check_composite_type_registered(app_configs=None, databases=None)
         assert warnings == []
 
+    def test_warning_when_type_missing(self):
+        """W001 is emitted when the composite type is not visible."""
+        fake_conn = mock.Mock(vendor="postgresql")
+        with mock.patch("django_pint_field.checks.connections", {"default": fake_conn}):
+            with mock.patch("django_pint_field.checks.pint_composite_type_exists", return_value=False):
+                warnings = check_composite_type_registered(app_configs=None, databases=["default"])
+        assert len(warnings) == 1
+        assert warnings[0].id == "django_pint_field.W001"
+
 
 def test_checks_are_registered():
     """Both pint-field checks are registered with Django's check framework."""
-    from django.core.checks import registry as checks_registry
-
     names = {getattr(check, "__name__", "") for check in checks_registry.registry.registered_checks}
     assert "check_database_backend" in names
     assert "check_composite_type_registered" in names

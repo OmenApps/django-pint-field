@@ -1,11 +1,13 @@
 """Management command that prepares the database for django_pint_field."""
 
+from __future__ import annotations
+
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from django.db import connections
 
-from django_pint_field.checks import _pint_composite_type_exists
+from django_pint_field.checks import pint_composite_type_exists
 
 
 class Command(BaseCommand):
@@ -34,7 +36,7 @@ class Command(BaseCommand):
         self.stdout.write("Applying django_pint_field migrations...")
         call_command("migrate", "django_pint_field", database=alias, verbosity=0)
 
-        if _pint_composite_type_exists(connection):
+        if pint_composite_type_exists(connection):
             self.stdout.write(
                 self.style.SUCCESS(
                     "The 'pint_field' composite type exists - django_pint_field is ready. "

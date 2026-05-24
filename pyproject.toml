@@ -32,6 +32,10 @@ classifiers = [
 requires-python = ">=3.11,<4.0"
 dependencies = ["django>=4.2.29", "pint>=0.24"]
 
+[project.optional-dependencies]
+# Enables django_pint_field.filters (PintFieldFilter / PintFieldRangeFilter).
+filter = ["django-filter>=23"]
+
 [project.urls]
 Homepage = "https://github.com/OmenApps/django-pint-field"
 Repository = "https://github.com/OmenApps/django-pint-field"

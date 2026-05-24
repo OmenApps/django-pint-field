@@ -14,7 +14,6 @@ import django_filters
 from django import forms
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.fields import RangeField
-from pint.errors import UndefinedUnitError
 
 from .units import ureg
 
@@ -43,18 +42,23 @@ def parse_quantity_string(value: str | None) -> Quantity | None:
 
     parts = value.split()
     if len(parts) != 2:
-        raise ValueError("Expected '<magnitude> <unit>', e.g. '2 kilogram'.")
+        raise ValueError("Enter a number followed by a unit, e.g. '2 kilogram'.")
 
     raw_magnitude, raw_unit = parts
     try:
         magnitude = Decimal(raw_magnitude)
     except InvalidOperation as exc:
         raise ValueError(f"Invalid magnitude: {raw_magnitude!r}") from exc
+    if not magnitude.is_finite():
+        raise ValueError(f"Magnitude must be a finite number: {raw_magnitude!r}")
 
+    # ureg.Unit can raise a variety of errors for malformed input
+    # (UndefinedUnitError, DefinitionSyntaxError, tokenize.TokenError, ...);
+    # normalize them all to ValueError so callers see a clean validation error.
     try:
         unit = ureg.Unit(raw_unit)
-    except UndefinedUnitError as exc:
-        raise ValueError(f"Undefined unit: {raw_unit!r}") from exc
+    except Exception as exc:
+        raise ValueError(f"Invalid or undefined unit: {raw_unit!r}") from exc
 
     return Quantity(magnitude, unit)
 
