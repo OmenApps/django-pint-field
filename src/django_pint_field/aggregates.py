@@ -5,12 +5,16 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db.models import Aggregate
+from django.db.models import Count
+from django.db.models import F
+from django.db.models import Func
 from django.db.models import IntegerField
 from django.db.models.expressions import Star
 from django.db.models.functions import Cast
 
 from .helpers import PintFieldConverter
 from .helpers import PintFieldProxy
+from .helpers import get_base_unit_magnitude
 from .units import ureg
 
 
@@ -206,3 +210,119 @@ class PintVariance(QuantityOutputFieldMixin, Aggregate):
     def _get_repr_options(self):
         """Return the options for the __repr__ method."""
         return {**super()._get_repr_options(), "sample": self.function == "VAR_SAMP"}
+
+
+class PintPercentile(QuantityOutputFieldMixin, Aggregate):
+    """Continuous percentile of a PintField, computed in PostgreSQL.
+
+    Usage::
+
+        Model.objects.aggregate(p=PintPercentile("weight", percentile=0.95))
+
+    ``percentile`` is a float in the closed interval [0, 1]. The result is a
+    ``PintFieldProxy`` in the field's base unit, or in ``output_unit`` if given.
+    """
+
+    name = "PintPercentile"
+    function = "PERCENTILE_CONT"
+    template = "%(function)s(%(percentile)s) WITHIN GROUP (ORDER BY (%(expressions)s).comparator)"
+
+    def __init__(self, expression, percentile, output_unit=None, **extra):
+        """Validate and store the percentile fraction."""
+        if isinstance(percentile, bool) or not isinstance(percentile, (int, float)) or not 0 <= percentile <= 1:
+            raise ValidationError("percentile must be a number between 0 and 1 inclusive.")
+        self.percentile = percentile
+        super().__init__(expression, output_unit=output_unit, **extra)
+
+    def as_sql(self, compiler, connection, **extra):
+        """Inject the percentile fraction into the ordered-set template."""
+        extra["percentile"] = repr(float(self.percentile))
+        return super().as_sql(compiler, connection, **extra)
+
+    def _get_repr_options(self):
+        """Include the percentile in the repr."""
+        return {**super()._get_repr_options(), "percentile": self.percentile}
+
+
+class PintMedian(PintPercentile):
+    """Median (50th percentile) of a PintField, computed in PostgreSQL.
+
+    Usage::
+
+        Model.objects.aggregate(m=PintMedian("weight"))
+    """
+
+    name = "PintMedian"
+
+    def __init__(self, expression, output_unit=None, **extra):
+        """Delegate to PintPercentile with percentile fixed at 0.5."""
+        super().__init__(expression, percentile=0.5, output_unit=output_unit, **extra)
+
+
+class _WidthBucket(Func):
+    """Wrap PostgreSQL ``width_bucket`` over a Pint field's comparator."""
+
+    function = "WIDTH_BUCKET"
+    output_field = IntegerField()
+
+    def __init__(self, field_name, low, high, buckets, **extra):
+        """Store the bucket bounds and wrap the field reference."""
+        self._low = low
+        self._high = high
+        self._buckets = buckets
+        super().__init__(F(field_name), **extra)
+
+    def as_sql(self, compiler, connection, **extra):
+        """Compile to ``width_bucket((col).comparator, low, high, buckets)``."""
+        col_sql, col_params = compiler.compile(self.source_expressions[0])
+        sql = f"WIDTH_BUCKET(({col_sql}).comparator, %s, %s, %s)"
+        return sql, [*col_params, self._low, self._high, self._buckets]
+
+
+def pint_histogram(queryset, field_name, *, buckets, min_value, max_value):
+    """Compute an equi-width histogram of a Pint field in PostgreSQL.
+
+    Args:
+        queryset: A queryset of the model owning ``field_name``.
+        field_name: Name of the IntegerPintField / DecimalPintField.
+        buckets: Number of equal-width buckets (int >= 1).
+        min_value: Lower bound as a pint Quantity.
+        max_value: Upper bound as a pint Quantity.
+
+    Returns:
+        A list of dicts ``{"bucket": int, "lower": Quantity, "upper": Quantity,
+        "count": int}`` ordered by bucket, where boundaries are expressed in the
+        field's base units. Values below ``min_value`` or at/above ``max_value``
+        fall outside the returned buckets (PostgreSQL ``width_bucket`` semantics).
+
+    Raises:
+        ValidationError: if ``buckets`` is less than 1.
+    """
+    if buckets < 1:
+        raise ValidationError("buckets must be >= 1")
+
+    low = get_base_unit_magnitude(min_value)
+    high = get_base_unit_magnitude(max_value)
+    base_unit = max_value.to_base_units().units
+    width = (high - low) / Decimal(buckets)
+
+    rows = (
+        queryset.annotate(_bucket=_WidthBucket(field_name, low, high, buckets))
+        .values("_bucket")
+        .annotate(count=Count("pk"))
+    )
+    counts = {row["_bucket"]: row["count"] for row in rows}
+
+    result = []
+    for index in range(1, buckets + 1):
+        lower = low + width * Decimal(index - 1)
+        upper = low + width * Decimal(index)
+        result.append(
+            {
+                "bucket": index,
+                "lower": Quantity(lower, base_unit),
+                "upper": Quantity(upper, base_unit),
+                "count": counts.get(index, 0),
+            }
+        )
+    return result

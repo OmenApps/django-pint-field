@@ -245,6 +245,10 @@ All aggregates accept a field name as the first argument and return results with
 | `PintMin(field)`                    | `PintFieldProxy` | Minimum value.                                                       |
 | `PintStdDev(field, sample=False)`   | `PintFieldProxy` | Standard deviation. Set `sample=True` for sample standard deviation. |
 | `PintVariance(field, sample=False)` | `PintFieldProxy` | Variance. Set `sample=True` for sample variance.                     |
+| `PintPercentile(field, percentile)` | `PintFieldProxy` | Continuous percentile (`percentile` in [0, 1]) via `PERCENTILE_CONT`. |
+| `PintMedian(field)`                 | `PintFieldProxy` | Median (50th percentile).                                            |
+
+Aggregates that return a `PintFieldProxy` accept an optional `output_unit=` to convert the result. The `pint_histogram(queryset, field_name, *, buckets, min_value, max_value)` helper returns a list of `{"bucket", "lower", "upper", "count"}` dicts (boundaries as `Quantity`, in base units) computed with PostgreSQL `width_bucket`.
 
 ```python
 from django_pint_field.aggregates import PintAvg, PintSum

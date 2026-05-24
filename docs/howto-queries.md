@@ -479,6 +479,29 @@ meaningless result. Pass a unit in the same dimension as the field's
 `default_unit`. An undefined or empty `to_unit` *does* raise at expression
 construction time.
 
+## Analytics aggregates
+
+```python
+from django_pint_field import PintPercentile, PintMedian, pint_histogram
+
+Reading.objects.aggregate(p95=PintPercentile("value", percentile=0.95))
+Reading.objects.aggregate(median=PintMedian("value"))
+
+pint_histogram(
+    Reading.objects.all(), "value",
+    buckets=10,
+    min_value=Quantity(0, "kilogram"),
+    max_value=Quantity(100, "kilogram"),
+)
+```
+
+Percentile and median results are `PintFieldProxy` objects in the field's base
+unit (pass `output_unit=` to convert). `pint_histogram` returns one dict per
+bucket - `{"bucket", "lower", "upper", "count"}` - with `Quantity` boundaries
+and a row `count`, all computed in PostgreSQL. Values below `min_value` or
+at/above `max_value` fall outside the returned buckets (`width_bucket`
+semantics).
+
 ---
 
 - See [API Reference](reference) for the complete lookup and aggregate API.

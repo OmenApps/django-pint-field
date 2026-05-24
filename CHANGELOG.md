@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - SQL-native query expressions `PintConvert`, `PintComparator`, and `PintMagnitude` for converting and accessing Pint field components directly in PostgreSQL.
+- Analytics aggregates `PintPercentile` and `PintMedian`, plus the `pint_histogram()` queryset helper, all computed in PostgreSQL.
 - `py.typed` marker so type checkers and IDEs treat the package as typed.
 
 ### Changed
