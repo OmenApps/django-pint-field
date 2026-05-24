@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db.models import DecimalField
 from django.db.models import Func
 from django.db.models import Value
@@ -80,8 +81,8 @@ class PintConvert(Func):
 
     Notes:
         - ``to_unit`` must be dimensionally compatible with the field's
-          ``default_unit``. This is not validated: converting a mass field to a
-          length unit returns a numerically meaningless value without error.
+          ``default_unit``; an incompatible unit (e.g. converting a mass field
+          to a length unit) raises ``ValidationError`` when the query is built.
         - For index-backed filtering, prefer a native field lookup against a
           ``Quantity`` (e.g. ``filter(weight__gte=Quantity(2, "kilogram"))``),
           which matches ``PintFieldComparatorIndex``. ``PintConvert`` is best
@@ -107,6 +108,25 @@ class PintConvert(Func):
         if self._m == 0:
             raise ValueError(f"Cannot convert to non-scalable unit: {to_unit!r}")
         super().__init__(expression, **extra)
+
+    def resolve_expression(self, *args, **kwargs):
+        """Resolve, then verify ``to_unit`` matches the source field's dimension.
+
+        The source field is only known once resolved, so dimensional
+        compatibility is checked here (at query-build time) rather than in
+        ``__init__``. Non-field sources (e.g. nested expressions) are skipped.
+        """
+        resolved = super().resolve_expression(*args, **kwargs)
+        field = getattr(resolved.source_expressions[0], "field", None)
+        default_unit = getattr(field, "default_unit", None)
+        if default_unit is not None:
+            expected = ureg.Unit(default_unit).dimensionality
+            if ureg.Unit(self.to_unit).dimensionality != expected:
+                raise ValidationError(
+                    f"Cannot convert a field measured in '{default_unit}' to '{self.to_unit}': "
+                    "incompatible dimensionality."
+                )
+        return resolved
 
     def as_sql(self, compiler, connection, **extra):
         """Compile to ``((<column>).comparator - b) / m``, dropping identity terms.

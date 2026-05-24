@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+from django.core.exceptions import ValidationError
 from django.db.models import F
 
 from django_pint_field.expressions import PintComparator
@@ -162,17 +163,11 @@ class TestExpressionsNullPropagation:
 
 
 @pytest.mark.django_db
-def test_convert_dimensionally_incompatible_unit_is_not_validated():
-    """Documented limitation: an incompatible target unit does not raise.
-
-    Converting a mass field to ``meter`` yields b=0, m=1, so the comparator
-    (in kilograms) is returned unchanged rather than raising. This pins the
-    current behavior; if dimensional validation is added later, this test
-    should become a ``pytest.raises`` for a dimensionality error.
-    """
+def test_convert_dimensionally_incompatible_unit_raises():
+    """Converting a field to a dimensionally-incompatible unit raises at resolve time."""
     DecimalPintFieldSaveModel.objects.create(weight=Quantity(Decimal("1000"), ureg.gram), name="x")
-    row = DecimalPintFieldSaveModel.objects.annotate(bad=PintConvert("weight", "meter")).get()
-    assert row.bad == Decimal("1")
+    with pytest.raises(ValidationError):
+        list(DecimalPintFieldSaveModel.objects.annotate(bad=PintConvert("weight", "meter")))
 
 
 def test_affine_constants_multiplicative_unit():

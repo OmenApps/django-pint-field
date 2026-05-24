@@ -277,7 +277,7 @@ from django_pint_field import PintConvert
 Product.objects.annotate(kg=PintConvert("weight", "kilogram")).filter(kg__gte=2)
 ```
 
-`PintConvert` raises `ValueError` for an empty `to_unit` and `pint.UndefinedUnitError` for an unknown one, both at expression construction. It does not validate dimensional compatibility - see [Querying](howto-queries) for the indexing and precision caveats.
+`PintConvert` raises `ValueError` for an empty `to_unit` and `pint.UndefinedUnitError` for an unknown one, both at expression construction; a `to_unit` whose dimensionality is incompatible with the field raises `ValidationError` when the query is built. See [Querying](howto-queries) for the indexing and precision caveats.
 
 ## Lookups
 

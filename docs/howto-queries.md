@@ -472,12 +472,10 @@ field's base unit collapses to the bare comparator and remains index-usable.)
 differ slightly from Python/Pint. Use range or `gte`/`lte` comparisons rather than
 `__exact` on a converted annotation.
 
-**Warning:** `PintConvert` does not validate that the target unit is dimensionally
-compatible with the field. Converting a mass field to a length unit (e.g.
-`PintConvert("weight", "meter")`) will not raise - it returns a numerically
-meaningless result. Pass a unit in the same dimension as the field's
-`default_unit`. An undefined or empty `to_unit` *does* raise at expression
-construction time.
+**Dimensionality:** `to_unit` must measure the same quantity as the field's
+`default_unit`. Converting a mass field to a length unit (e.g.
+`PintConvert("weight", "meter")`) raises `ValidationError` when the query is
+built. An undefined or empty `to_unit` raises at expression construction time.
 
 ## Analytics aggregates
 
