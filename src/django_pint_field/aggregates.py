@@ -38,15 +38,31 @@ class QuantityOutputFieldMixin:
         self.output_unit = output_unit
         super().__init__(expression, **extra)
 
+    def _get_base_unit(self, field):
+        """Return the field's base unit, computed once per resolved aggregate.
+
+        The base unit depends only on ``field.default_unit`` (fixed for a query),
+        so it is cached on the resolved instance to avoid recomputing it for every
+        result row in ``convert_value``.
+
+        Args:
+            field: The source PintField.
+
+        Returns:
+            The Pint Unit object for the field's base units.
+        """
+        base_unit = getattr(self, "_cached_base_unit", None)
+        if base_unit is None:
+            base_unit = Quantity(f"1 * {field.default_unit}").to_base_units().units
+            self._cached_base_unit = base_unit
+        return base_unit
+
     def convert_to_quantity(self, value, field):
         """Convert the aggregate result to a Quantity object."""
         if value is None:
             return None
 
-        # Get the base unit from the PintField
-        default_unit = field.default_unit
-        throwaway_quantity = Quantity(f"1 * {default_unit}")
-        base_unit = throwaway_quantity.to_base_units().units
+        base_unit = self._get_base_unit(field)
 
         # Create quantity with base unit
         quantity = Quantity(value, base_unit)
