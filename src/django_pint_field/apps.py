@@ -4,6 +4,8 @@ import logging
 from decimal import getcontext
 
 from django.apps import AppConfig
+from django.core.checks import Tags
+from django.core.checks import register as register_check
 from django.db.backends.signals import connection_created
 from django.db.models.signals import post_migrate
 
@@ -87,3 +89,10 @@ class DjangoPintFieldAppConfig(AppConfig):
 
         # Set decimal precision - this doesn't require database access
         set_decimal_precision()
+
+        # Register system checks for common misconfigurations
+        from .checks import check_composite_type_registered  # pylint: disable=C0415
+        from .checks import check_database_backend  # pylint: disable=C0415
+
+        register_check(check_database_backend, Tags.compatibility)
+        register_check(check_composite_type_registered, Tags.database)

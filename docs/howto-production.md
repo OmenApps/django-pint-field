@@ -232,6 +232,27 @@ class CachedMeasurement(models.Model):
 
 ## Production Setup
 
+### Verifying your setup
+
+django_pint_field registers Django system checks. Run them as part of deploy:
+
+```bash
+python manage.py check --database default
+```
+
+- **E001** - the default database is not PostgreSQL (hard error).
+- **W001** - the `pint_field` composite type is missing from the database.
+
+To create and verify the composite type in one step, run this before migrating
+any model that uses a PintField:
+
+```bash
+python manage.py setup_pint_field
+```
+
+It applies the `django_pint_field` migrations and confirms the `pint_field`
+composite type exists (pass `--database <alias>` for a non-default database).
+
 Use `PintFieldMonitor` to track conversion performance and field statistics:
 
 ```python
