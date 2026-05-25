@@ -247,8 +247,11 @@ All aggregates accept a field name as the first argument and return results with
 | `PintVariance(field, sample=False)` | `PintFieldProxy` | Variance. Set `sample=True` for sample variance.                      |
 | `PintPercentile(field, percentile)` | `PintFieldProxy` | Continuous percentile (`percentile` in [0, 1]) via `PERCENTILE_CONT`. |
 | `PintMedian(field)`                 | `PintFieldProxy` | Median (50th percentile).                                             |
+| `PintWindow(aggregate, ...)`        | `PintFieldProxy` | Unit-aware window wrapper for running/partitioned aggregates.         |
 
 Aggregates that return a `PintFieldProxy` accept an optional `output_unit=` to convert the result. The `pint_histogram(queryset, field_name, *, buckets, min_value, max_value)` helper returns a list of `{"bucket", "lower", "upper", "count"}` dicts (boundaries as `Quantity`, in base units) computed with PostgreSQL `width_bucket`.
+
+The unit-bearing aggregates set `window_compatible = False`, so a bare `django.db.models.Window(PintSum(...))` raises `ValueError` (it would otherwise silently return a base-unit number in the wrong unit). Use `PintWindow(PintSum("field"), order_by=..., partition_by=..., frame=...)` for running totals and partitioned aggregates; it accepts the same arguments as `Window`, returns a result in the field's base unit (use the wrapped aggregate's `output_unit`, or `.quantity.to(...)`, to convert), and rejects ordered-set aggregates (`PintPercentile`, `PintMedian`) since `PERCENTILE_CONT` cannot be used in an `OVER` clause. For `PintCount` (no unit conversion), a plain `Window` works.
 
 ```python
 from django_pint_field.aggregates import PintAvg, PintSum

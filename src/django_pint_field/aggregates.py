@@ -6,11 +6,13 @@ from decimal import Decimal
 from typing import Any
 
 from django.core.exceptions import ValidationError
+from django.db import NotSupportedError
 from django.db.models import Aggregate
 from django.db.models import Count
 from django.db.models import F
 from django.db.models import Func
 from django.db.models import IntegerField
+from django.db.models import Window
 from django.db.models.expressions import Star
 from django.db.models.functions import Cast
 
@@ -28,6 +30,12 @@ class QuantityOutputFieldMixin:
     """Mixin to convert aggregate results to PintFieldProxy objects."""
 
     is_pint_aggregate = True
+    # A bare django.db.models.Window resolves to the *outer* select expression,
+    # so it never calls this aggregate's convert_value: the base-unit comparator
+    # scalar would come back wearing the wrong unit (a silent ~base/default-unit
+    # error). Refuse bare Window() and steer callers to PintWindow, which runs
+    # the same conversion the non-window path uses.
+    window_compatible = False
     # Set on the resolved copy by resolve_expression(); convert_value runs on that
     # copy. None only for an unusual non-field source, which convert_value handles.
     original_field = None
@@ -265,6 +273,70 @@ class PintMedian(PintPercentile):
     def __init__(self, expression, output_unit=None, **extra):
         """Delegate to PintPercentile with percentile fixed at 0.5."""
         super().__init__(expression, percentile=0.5, output_unit=output_unit, **extra)
+
+
+class PintWindow(Window):
+    """Unit-aware window expression for Pint aggregates.
+
+    A plain ``django.db.models.Window`` cannot carry a Pint aggregate's unit
+    conversion: ``Window`` resolves to the *outer* select expression, so the
+    wrapped aggregate's ``convert_value`` (which interprets the base-unit
+    ``comparator`` and converts to the field's unit) is never called. The value
+    that comes back is the raw base-unit magnitude wearing the wrong unit - a
+    silent, potentially large numerical error. Unit-bearing Pint aggregates
+    therefore set ``window_compatible = False`` and a bare
+    ``Window(PintSum(...))`` raises.
+
+    ``PintWindow`` wraps the aggregate and runs the same conversion the
+    non-window path uses, returning a ``PintFieldProxy`` running/partitioned
+    result in the field's base unit (pass ``output_unit=`` on the wrapped
+    aggregate, or call ``.quantity.to(...)`` on the result, to convert)::
+
+        from django.db.models import F
+        from django_pint_field.aggregates import PintSum, PintWindow
+
+        Reservoir.objects.annotate(running=PintWindow(PintSum("capacity"), order_by=F("pk").asc()))
+
+    ``partition_by``, ``order_by``, ``frame`` and the wrapped aggregate's
+    ``output_unit`` all behave as expected. Use a plain ``Window`` for
+    ``PintCount`` - a count has no unit to convert. Ordered-set aggregates
+    (``PintPercentile``, ``PintMedian``) cannot be used in an OVER clause and
+    are rejected at construction.
+    """
+
+    def __init__(self, expression, *args, **kwargs):
+        """Wrap a unit-bearing Pint aggregate for use in an OVER clause."""
+        if not getattr(expression, "is_pint_aggregate", False):
+            raise TypeError(
+                "PintWindow requires a Pint aggregate (PintSum, PintAvg, PintMax, "
+                "PintMin, PintStdDev, or PintVariance). "
+                "For PintCount, use django.db.models.Window directly."
+            )
+        # PERCENTILE_CONT is an ordered-set aggregate; PostgreSQL rejects it in an
+        # OVER clause. Fail at construction with a clear message rather than at
+        # query execution.
+        if isinstance(expression, PintPercentile):
+            raise NotSupportedError(
+                f"{type(expression).__name__} is an ordered-set aggregate and cannot be used "
+                "inside a window (OVER) clause. Aggregate it in a separate query instead."
+            )
+        # Pint aggregates set window_compatible = False so a bare Window() fails
+        # loudly. Re-enable it on a copy for this explicitly unit-aware wrapper,
+        # without mutating the caller's aggregate instance.
+        expression = expression.copy()
+        expression.window_compatible = True
+        super().__init__(expression, *args, **kwargs)
+
+    def convert_value(self, value, expression, connection):
+        """Convert the database scalar to a PintFieldProxy via the wrapped aggregate.
+
+        ``PintWindow`` overrides ``convert_value`` (``Window`` inherits a no-op),
+        so Django's converter machinery includes it in this expression's
+        converter chain. It delegates to the resolved aggregate's
+        ``convert_value``, which wraps the base-unit comparator scalar in a
+        ``PintFieldProxy`` (honoring the aggregate's ``output_unit`` if set).
+        """
+        return self.source_expression.convert_value(value, expression, connection)
 
 
 class _WidthBucket(Func):

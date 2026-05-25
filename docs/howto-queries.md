@@ -500,6 +500,53 @@ and a row `count`, all computed in PostgreSQL. Values below `min_value` or
 at/above `max_value` fall outside the returned buckets (`width_bucket`
 semantics).
 
+## Running totals and partitioned aggregates (window functions)
+
+A plain Django `Window` cannot carry a Pint aggregate's unit conversion: the
+window resolves to the outer select column, so the aggregate's conversion step
+never runs and you would get the raw base-unit number wearing the wrong unit -
+a silent, potentially large error. To prevent that, the unit-bearing aggregates
+(`PintSum`, `PintAvg`, `PintMax`, `PintMin`, `PintStdDev`, `PintVariance`)
+refuse to be wrapped in a bare `Window`:
+
+```python
+from django.db.models import Window, F
+from django_pint_field.aggregates import PintSum
+
+# Raises ValueError: "Expression 'PintSum' isn't compatible with OVER clauses."
+Reservoir.objects.annotate(running=Window(PintSum("capacity"), order_by=F("pk").asc()))
+```
+
+Use `PintWindow` instead. It wraps the aggregate, runs the same conversion the
+non-window path uses, and returns a `PintFieldProxy`. Like every other
+aggregate, the result is in the field's **base unit** (e.g. `cubic_meter` for an
+`acre_feet` field); pass `output_unit=` on the wrapped aggregate, or call
+`.quantity.to(...)` on the result, to get a specific unit:
+
+```python
+from django.db.models import F
+from django_pint_field.aggregates import PintSum, PintWindow
+
+# Running (cumulative) total, correctly unit-aware (result in the base unit):
+qs = Reservoir.objects.annotate(
+    running=PintWindow(PintSum("capacity"), order_by=F("pk").asc())
+)
+for row in qs:
+    print(row.running.quantity.to("acre_feet"))   # convert to the unit you want
+
+# Partitioned total:
+Reservoir.objects.annotate(
+    per_basin=PintWindow(PintSum("capacity"), partition_by=[F("basin")])
+)
+
+# Or have the running total come back already in a chosen unit:
+PintWindow(PintSum("capacity", output_unit="acre_feet"), order_by=F("pk").asc())
+```
+
+`PintWindow` accepts the same `partition_by`, `order_by`, and `frame` arguments
+as `Window`. For `PintCount` (which has no unit to convert) use a plain
+`Window` directly. Ordered-set aggregates (`PintPercentile`, `PintMedian`)
+cannot be used in an `OVER` clause and are rejected at construction.
 ## Filtering with django-filter
 
 These filters require the optional [`django-filter`](https://django-filter.readthedocs.io/)

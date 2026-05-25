@@ -11,6 +11,7 @@ from .aggregates import PintPercentile
 from .aggregates import PintStdDev
 from .aggregates import PintSum
 from .aggregates import PintVariance
+from .aggregates import PintWindow
 from .aggregates import pint_histogram
 
 # Expressions
@@ -66,6 +67,7 @@ __all__ = [
     "PintCount",
     "PintPercentile",
     "PintMedian",
+    "PintWindow",
     "pint_histogram",
     # Expressions
     "PintComparator",
