@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.backends.base.base import NO_DB_ALIAS
 from django.db.models import Field
+from django.db.models.expressions import CombinedExpression
 from django.utils.translation import gettext_lazy as _
 from pint import DimensionalityError
 from pint import Quantity as BaseQuantity
@@ -349,6 +350,36 @@ class BasePintField(PintFieldMixin, models.Field):
             return converter.convert(value)
         return value
 
+    def _reject_field_arithmetic(self, value):
+        """Raise a clear error for arithmetic on the composite column.
+
+        A PintField is a PostgreSQL composite type, not a scalar, so there is no
+        ``pint_field +/- value`` operator. ``F("field") - quantity`` resolves to
+        a ``CombinedExpression``; reject it here with an actionable message
+        instead of letting it fail later as an opaque database operator error.
+        """
+        if isinstance(value, CombinedExpression):
+            raise ValidationError(
+                _(
+                    "Arithmetic on a PintField is not supported: '%(field)s' is a composite "
+                    "type, not a scalar, so expressions like F('%(field)s') - value have no "
+                    "database operator. Fetch the rows, compute the new Quantity in Python, "
+                    "and write it back (use bulk_update() for many rows)."
+                )
+                % {"field": self.name},
+                code="unsupported_arithmetic",
+            )
+
+    def get_db_prep_save(self, value, connection):
+        """Prepare a value for saving, rejecting unsupported composite arithmetic.
+
+        Subclasses that override ``get_db_prep_save`` (e.g. ``DecimalPintField``)
+        call ``_reject_field_arithmetic`` themselves; this base implementation
+        covers ``IntegerPintField``, which otherwise inherits Django's default.
+        """
+        self._reject_field_arithmetic(value)
+        return super().get_db_prep_save(value, connection)
+
     def get_prep_value(self, value):
         """Converts Python objects to query values."""
         if value in self.empty_values:
@@ -632,6 +663,16 @@ class DecimalPintField(BasePintField):
     def get_db_prep_save(self, value, connection) -> Decimal:  # pylint: disable=W0621
         """Get value that shall be saved to database."""
         if value is None:
+            return value
+
+        # Query expressions (Case/When from bulk_update(), Cast, etc.) arrive here
+        # already resolved and compile their own SQL - the inner Value(Quantity)
+        # nodes route back through this method as real Quantities - so pass them
+        # through untouched (this mirrors Django's base Field.get_db_prep_save,
+        # which guards on as_sql). Arithmetic on the composite column is rejected
+        # with a clear message rather than coerced.
+        if hasattr(value, "as_sql"):
+            self._reject_field_arithmetic(value)
             return value
 
         converter = QuantityConverter(

@@ -547,6 +547,53 @@ PintWindow(PintSum("capacity", output_unit="acre_feet"), order_by=F("pk").asc())
 as `Window`. For `PintCount` (which has no unit to convert) use a plain
 `Window` directly. Ordered-set aggregates (`PintPercentile`, `PintMedian`)
 cannot be used in an `OVER` clause and are rejected at construction.
+
+## Bulk and expression-based updates
+
+`bulk_update()` works with Pint fields - assign a `Quantity` (in any compatible
+unit) to each instance and call `bulk_update`; the values round-trip correctly:
+
+```python
+for account in accounts:
+    account.balance = ureg.Quantity(new_magnitude, "acre_feet")
+Account.objects.bulk_update(accounts, ["balance"], batch_size=500)
+```
+
+A conditional `update()` with `Case`/`When` is also supported, but a bare
+`Case` compiles to `text`; wrap it in `Cast(..., output_field=field)` so
+PostgreSQL casts it to the composite type (the same cast `bulk_update` applies
+internally):
+
+```python
+from django.db.models import Case, When, Value
+from django.db.models.functions import Cast
+
+field = Account._meta.get_field("balance")
+Account.objects.update(
+    balance=Cast(
+        Case(
+            When(name="a", then=Value(ureg.Quantity(11, "acre_feet"))),
+            default=Value(ureg.Quantity(22, "acre_feet")),
+        ),
+        output_field=field,
+    )
+)
+```
+
+**`F()` arithmetic on a Pint column is not supported.** The field is a
+PostgreSQL composite `(comparator, magnitude, units)`, not a scalar, so there is
+no `pint_field - numeric` operator. An expression like
+`update(balance=F("balance") - loss)` raises a clear `ValidationError`
+("Arithmetic on a PintField is not supported ..."). Fetch the rows, compute the
+new `Quantity` in Python, and write it back (via `bulk_update` for many rows):
+
+```python
+# Instead of: Account.objects.update(balance=F("balance") - loss)  # unsupported
+for account in Account.objects.all():
+    account.balance = account.balance.quantity - loss
+Account.objects.bulk_update(accounts, ["balance"])
+```
+
 ## Filtering with django-filter
 
 These filters require the optional [`django-filter`](https://django-filter.readthedocs.io/)
