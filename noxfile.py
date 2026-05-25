@@ -127,18 +127,17 @@ def precommit(session: Session, django: str) -> None:
     ]
     session.install(
         "bandit",
-        "black",
         "darglint",
         "djlint",
         "flake8",
         "flake8-bugbear",
         "flake8-docstrings",
         "flake8-rst-docstrings",
-        "isort",
         "pep8-naming",
         "pre-commit",
         "pre-commit-hooks",
         "pyupgrade",
+        "ruff",
     )
     session.run("pre-commit", *args)
     if args and args[0] == "install":
