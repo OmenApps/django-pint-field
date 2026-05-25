@@ -192,6 +192,24 @@ Product.objects.aggregate(
 - `PintSum`
 - `PintStdDev`
 - `PintVariance`
+- `PintPercentile` - continuous percentile (`PERCENTILE_CONT`)
+- `PintMedian` - 50th percentile
+- `pint_histogram()` - equi-width histogram helper
+
+#### Running Totals and Partitioned Aggregates
+
+Use `PintWindow` for unit-aware window functions; a plain `django.db.models.Window` around a Pint aggregate is rejected (it cannot carry the unit conversion):
+
+```python
+from django.db.models import F
+from django_pint_field.aggregates import PintSum, PintWindow
+
+Product.objects.annotate(
+    running_total=PintWindow(PintSum("weight"), order_by=F("pk").asc()),
+)
+```
+
+The result is a `PintFieldProxy` in the field's base unit; pass `output_unit=` on the wrapped aggregate (or call `.quantity.to(...)`) to convert. Ordered-set aggregates (`PintPercentile`, `PintMedian`) cannot be used in a window.
 
 ## Advanced Usage
 
