@@ -2,6 +2,9 @@ version = 1
 revision = 3
 requires-python = ">=3.11, <4.0"
 
+[options]
+prerelease-mode = "allow"
+
 [[package]]
 name = "accessible-pygments"
 version = "0.0.5"
@@ -644,7 +647,7 @@ wheels = [
 
 [[package]]
 name = "django-pint-field"
-version = "2026.5.2"
+version = "2026.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "django" },
@@ -698,7 +701,6 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-django" },
-    { name = "python-environ" },
     { name = "pyupgrade" },
     { name = "redis" },
     { name = "requests" },
@@ -768,7 +770,6 @@ dev = [
     { name = "pytest", specifier = "==9.0.3" },
     { name = "pytest-cov", specifier = "==7.0.0" },
     { name = "pytest-django", specifier = "==4.11.1" },
-    { name = "python-environ", specifier = "==0.4.54" },
     { name = "pyupgrade", specifier = "==3.21.0" },
     { name = "redis", specifier = "==6.4.0" },
     { name = "requests", specifier = "==2.33.0" },
@@ -1875,12 +1876,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/b1/fb/55d580352db26eb3d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/be/ac/bd0608d229ec808e51a21044f3f2f27b9a37e7a0ebaca7247882e67876af/pytest_django-4.11.1-py3-none-any.whl", hash = "sha256:1b63773f648aa3d8541000c26929c1ea63934be1cfa674c76436966d73fe6a10", size = 25281, upload-time = "2025-04-03T18:56:07.678Z" },
 ]
-
-[[package]]
-name = "python-environ"
-version = "0.4.54"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0c/5d/8d4462fe29d3d3357eaac0f8321b7d0e77d0a4ea64505be1e6a90fba42dc/python-environ-0.4.54.tar.gz", hash = "sha256:6249a14057f95aba3b4906d73276f770e01e659f8098b3f3b34295feac42865b", size = 22947, upload-time = "2020-04-13T06:42:49.443Z" }
 
 [[package]]
 name = "pyupgrade"

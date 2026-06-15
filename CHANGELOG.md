@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2026.6.1]
+
+### Fixed
+
+- Attribute-style unit conversion (`obj.field.unit`, e.g. `product.weight.kilogram`) now works on unsaved/in-memory instances, not only on rows loaded from the database. The `PintField` descriptor was previously overwritten by the bare field instance, so an unsaved instance held a raw `Quantity` and `obj.field.kilogram` raised `AttributeError` until the row was saved and reloaded.
+- Deferred loading of a Pint field via `.only()` / `.defer()` now lazily loads and returns the value instead of the field object (the descriptor now subclasses Django's `DeferredAttribute`).
+
+### Changed
+
+- Accessing a `PintField` on an unsaved instance (including the instance returned by `Model(...)` or `objects.create()`) now returns a `PintFieldProxy`, consistent with database-loaded instances. **Migration:** code that relied on getting a bare Pint `Quantity` from such instances should use `obj.field.quantity` for the raw `Quantity` (for example `obj.field.quantity.to("kg")` instead of `obj.field.to("kg")`), or the proxy shortcut `obj.field.kilogram`. Loaded instances are unaffected - they already returned a proxy.
+
 ## [2026.5.1] & [2026.5.2]
 
 ### Added
