@@ -15,8 +15,8 @@ from django.core import validators
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.backends.base.base import NO_DB_ALIAS
-from django.db.models import Field
 from django.db.models.expressions import CombinedExpression
+from django.db.models.query_utils import DeferredAttribute
 from django.utils.translation import gettext_lazy as _
 from pint import DimensionalityError
 from pint import Quantity as BaseQuantity
@@ -95,25 +95,40 @@ class FieldType(Enum):
     DECIMAL_FIELD = 3
 
 
-class PintFieldDescriptor:
-    """Descriptor for handling PintField attribute access and unit conversions."""
+class PintFieldDescriptor(DeferredAttribute):
+    """Data descriptor that wraps PintField values in a ``PintFieldProxy``.
 
-    def __init__(self, field: Field):
-        """Initialize the descriptor with the field instance."""
-        self.field = field
-        self.converter = PintFieldConverter(field)
+    Subclasses Django's ``DeferredAttribute`` so deferred loading (``.only()`` /
+    ``.defer()``) keeps working, and adds ``__set__`` so attribute access is
+    consistent: assigning a raw ``Quantity`` - e.g. on an unsaved instance -
+    stores a proxy, exactly like values loaded from the database. The proxy is
+    kept in the instance ``__dict__``, so repeated reads return the same object
+    and ``obj.field.unit`` works before the row is ever saved.
+    """
 
-    def __get__(self, instance, owner=None):
-        """Return the descriptor or a proxy object for the field value."""
+    def _wrap(self, value):
+        """Wrap a bare Quantity in a proxy; leave proxies/None/other values alone."""
+        if isinstance(value, (BaseQuantity, self.field.ureg.Quantity)):
+            return PintFieldProxy(value, self.field.get_cached_converter())
+        return value
+
+    def __set__(self, instance, value):
+        """Store the assigned value, wrapping a bare Quantity in a proxy."""
+        instance.__dict__[self.field.attname] = self._wrap(value)
+
+    def __get__(self, instance, cls=None):
+        """Return the stored proxy, lazy-loading deferred fields on demand."""
         if instance is None:
             return self
 
-        value = instance.__dict__.get(self.field.name)
-        if value is None:
-            return None
-
-        # Return a proxy object that handles unit conversions
-        return PintFieldProxy(value, self.converter)
+        value = super().__get__(instance, cls)
+        # A raw Quantity can reach __dict__ via a path that bypasses __set__
+        # (e.g. DeferredAttribute's multi-table-inheritance parent-chain reuse).
+        # Normalize to a proxy once and cache it so identity stays stable.
+        wrapped = self._wrap(value)
+        if wrapped is not value:
+            instance.__dict__[self.field.attname] = wrapped
+        return wrapped
 
 
 class PintFieldMixin:
@@ -274,11 +289,6 @@ class BasePintField(PintFieldMixin, models.Field):
             converter = PintFieldConverter(self)
             self._cached_converter = converter
         return converter
-
-    def contribute_to_class(self, cls, name, private_only=False, **kwargs):
-        """Add the field to the model class."""
-        super().contribute_to_class(cls, name, private_only=private_only, **kwargs)
-        setattr(cls, self.name, self)
 
     def _get_FIELD_display(self, obj: Quantity, digits=None, format_string=None):  # noqa: N802  # pylint: disable=C0103
         """Return the display value for a PintField."""

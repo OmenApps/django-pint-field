@@ -65,6 +65,8 @@ product.weight.kilogram__2  # 0.50 kilogram (returns a rounded Quantity)
 
 The proxy also implements comparison and math operators (`__eq__`, `__lt__`, `__add__`, `__mul__`, etc.), so you can compare and combine quantities directly in Python code.
 
+The same proxy is returned whether the instance was loaded from the database or just built in Python - `Product(weight=...)` before `save()`, or the instance returned by `objects.create()`. Because the attribute is always a proxy, reach for `product.weight.quantity` when you need the raw Pint `Quantity` (for example `product.weight.quantity.to("kilogram")` rather than `product.weight.to("kilogram")`): the proxy treats unknown attributes like `to` as unit names, so `.to(...)` is not forwarded.
+
 ## Dynamic Unit Properties
 
 When a model class is created, `PintFieldMixin.add_properties()` automatically adds properties for unit conversion. For a field called `weight` with a default unit of `"gram"`, the model gets properties for all units with the same dimensionality (mass), such as:

@@ -54,8 +54,10 @@ class TestAdminListDisplay:
         content = response.content.decode()
         # Check primary value display
         assert str(integer_model.weight.magnitude) in content
-        # Check only compatible unit conversions
-        kilo_mag = str(integer_model.weight.to("kilogram").magnitude)
+        # Check only compatible unit conversions. ``objects.create()`` returns the
+        # in-memory instance, whose attribute is a PintFieldProxy; use ``.quantity``
+        # (or the proxy shortcut ``.kilogram``) to reach the raw Pint Quantity.
+        kilo_mag = str(integer_model.weight.quantity.to("kilogram").magnitude)
         assert kilo_mag in content
 
 
